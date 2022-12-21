@@ -7,17 +7,38 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Lexing;
 
-internal sealed class CharStream : IEnumerator<char>
+internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
 {
-    private char[] _text;
-    private int _position = 0;
-    public char Current => _text[_position];
+    private char[][] _lines;
+
+
+    //private char[] _text;
+    private int _position = -1;
+    private int _currentLine = 0;
+    public int Position { get => _position; }
+    //public int Length { get => _text.Length; }
+    public int LineCount { get => _lines.Length; }
+    public int Line { get => _currentLine; }
+    public char Current => _lines[_currentLine][_position];
 
     object IEnumerator.Current => Current;
 
-    public CharStream(string input)
+    public CharStream(string[] input)
     {
-        _text = input.ToCharArray();
+        _lines = input.Where(l => !string.IsNullOrEmpty(l))
+            .Select(l => l.Trim())
+            .Select(l => l.Normalize())
+            .Select(l => l.ToCharArray())
+            .ToArray();
+        Console.WriteLine($"""
+            lines: {LineCount},
+            line: {Line}
+            position: {Position}
+            """);
+
+        //input.Trim();
+        //input.Normalize();
+        //_text = input.ToCharArray();
     }
 
     public void Dispose()
@@ -27,11 +48,17 @@ internal sealed class CharStream : IEnumerator<char>
 
     public bool MoveNext()
     {
-        if (_position < _text.Length)
+        if (_position + 1 < _lines[_currentLine].Length)
         {
             _position++;
             return true;
         }
+        //else if (_currentLine < _lines.Length)
+        //{
+        //    _currentLine++;
+        //    _position = -1;
+        //    return true;
+        //}
         return false;
     }
 
@@ -41,28 +68,59 @@ internal sealed class CharStream : IEnumerator<char>
     }
     public char? Next()
     {
-        try
+        if (MoveNext())
         {
             return Current;
         }
-        catch 
+        else
         {
             return null;
         }
-        finally
+        //try
+        //{
+        //    return Current;
+        //}
+        //catch 
+        //{
+        //    return null;
+        //}
+        //finally
+        //{
+        //    MoveNext();
+        //}
+    }
+    public bool MoveBack()
+    {
+        if(_position -1  > 0)
         {
-            MoveNext();
+            _position--;
+            return true;
         }
+        return false;
     }
     public char? Peek()
     {
         try
         {
-            return _text[_position + 1];
+            return _lines[_currentLine][_position + 1];
         }
         catch
         {
             return null;
         }
+    }
+    public bool EndOfInput()
+    {
+        return _currentLine == _lines.Length - 1 && _position == _lines[_currentLine].Length - 1;
+    }
+
+    public IEnumerator<char> GetEnumerator()
+    {
+        return this;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return this;
     }
 }

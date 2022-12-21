@@ -4,6 +4,7 @@ using System.Linq;
 using SpuchSharp.Tokens;
 using System.IO;
 using System.Collections;
+using System.Linq.Expressions;
 
 namespace SpuchSharp.Lexing;
 
@@ -16,111 +17,108 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
 
     object IEnumerator.Current => _currentToken;
 
-    public Lexer(string text)
+    public Lexer(string[] lines)
     {
-        _charStream= new CharStream(text);
+        _charStream= new CharStream(lines);
     }
 
     public bool Lex()
     {
         Token? ret = null;
         var literal = string.Empty;
-        while(_charStream.Next() is char current)
+        foreach(char current in _charStream)
         {
-            if (current == ' ') { continue; }
+            if (current == ' ') { break; }
+            if (char.IsWhiteSpace(current)) { continue; }
             literal += current;
-            Console.WriteLine(literal);
-            //if (IsKeyword(literal, out var keyWord)) { ret = keyWord; break; }
-            if (IsSimpleToken(literal, out var simpleToken)) { ret = simpleToken; break; }
-            if (IsValue(literal, out var valueWord)) { ret = valueWord; break; }
-            if (IsIdent(literal, out var identWord)) { ret = identWord; break; }
+            //Console.WriteLine(literal);
+            if (IsIdent(literal, out var ident)) { ret = ident; continue; }
+            else if (IsSimpleToken(literal, out var simple)) { ret = simple; continue; }
+            else if (IsValue(literal, out var value)) { ret = value; continue; }
+            else
+            {
+                _charStream.MoveBack();
+                break;
+            }
+        }
+        if (ret is Ident id)
+        {
+            try
+            {
+                ret = KeyWord.From(id.Value);
+            }
+            catch { }
         }
 
 
-
-        if (ret is null)
-            throw new LexerException("Could not parse to token");
-        _currentToken = ret;
-        return true;
-    }
-    private bool IsKeyword(string lit, out KeyWord? keyWord)
-    {
-        switch (lit)
+        if (ret is not null)
         {
-            case "var":
-                keyWord = new Var();
-                return true;
-            case "fun":
-                keyWord= new Fun();
-                return true;
-            default:
-                keyWord = null;
-                return false;
+            _currentToken = ret;
+            return true;
         }
-    }
-
-    private bool IsIdent(string lit, out Ident? ident)
-    {
-        if (lit == ";")
+        else if (ret is not null && _charStream.EndOfInput())
         {
-            ident = null;
+            _currentToken = ret;
+            return true;
+        }
+        else if (ret is null && _charStream.EndOfInput())
+        {
             return false;
         }
-        ident = new Ident() { Value = lit };
-        return true;
+        else
+        {
+            throw new LexerException($"Could not parse to token `{literal}`");
+        }
+        //Console.WriteLine($"{_charStream.Position} / {_charStream.Length - 1}");
+        //if (_charStream.EndOfInput())
+        //{
+        //    Console.WriteLine("End of input");
+        //    return false;
+        //}
+        //if (ret is null)
+        //    throw new LexerException($"Could not parse to token `{literal}`");
+        //return true;
+    }
+    private bool IsIdent(string lit, out Ident? ident)
+    {
+        ident = null;
+        try
+        {
+            ident = Ident.From(lit);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
     private bool IsSimpleToken(string lit, out SimpleToken? simple)
     {
+        simple = null;
         try
         {
-            simple = SimpleToken.From(lit); 
+            simple = SimpleToken.From(lit);
             return true;
         }
         catch 
-        {
-            simple = null;
+        { 
             return false; 
         }
     }
-    public bool IsValue(string lit, out Value? value)
+    private bool IsValue(string lit, out Value? value)
     {
+        value = null;
         try
         {
-            var type = Ty.FromValue(lit);
-            Console.WriteLine("Chuj");
-            while (_charStream.Peek() is char next)
-            {
-                Console.WriteLine("Ciba");
-                var possible = lit + next;
-                if (Ty.FromValue(possible) is Ty newType)
-                {
-                    lit += next;
-                    type = newType;
-                    _charStream.MoveNext();
-                }
-                else
-                {
-                    value = new Value()
-                    {
-                        Ty = type,
-                        Val = possible,
-                    };
-                    return true;
-                }
-            }
+            var ty = Ty.FromValue(lit);
             value = new Value()
             {
-                Ty = type,
+                Ty = ty,
                 Val = lit,
             };
             return true;
         }
-        catch 
-        {
-            Console.WriteLine("Wagena");
-            value = null;
-            return false; 
-        }
+        catch { return false; }
     }
     public IEnumerator<Token> GetEnumerator()
     {

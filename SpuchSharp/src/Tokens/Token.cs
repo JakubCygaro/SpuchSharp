@@ -10,16 +10,24 @@ public abstract class Token
     public abstract string Stringify();
 }
 
-public sealed class Ident : Token 
+public sealed class Ident : Token
 {
     public required string Value { get; set; }
     public override string Stringify() => Value;
+    public static Ident From(string text)
+    {
+        if (text.All(c => char.IsAsciiLetter(c)) && !char.IsUpper(text.First()))
+        {
+            return new Ident() { Value = text };
+        }
+        throw new Lexing.LexerException($"Failed to tokenize {text} as Ident");
+    }
 }
 public sealed class Value : Token 
 {
     public required Ty Ty { get; set; }
     public required object Val { get; set; }
-    public override string Stringify() => $"{Ty} {Val}";
+    public override string Stringify() => $"{Ty.Ident.Value} {Val}";
 }
 public sealed class Ty : Token 
 {
