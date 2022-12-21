@@ -27,8 +27,10 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
     public CharStream(string[] input)
     {
         _lines = input.Where(l => !string.IsNullOrEmpty(l))
+            .Where(l => !l.StartsWith("#"))
             .Select(l => l.Trim())
             .Select(l => l.Normalize())
+            .Select(l => l + " ")
             .Select(l => l.ToCharArray())
             .ToArray();
         //Console.WriteLine($"""

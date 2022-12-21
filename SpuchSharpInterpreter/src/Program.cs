@@ -13,8 +13,7 @@ internal class Program
         var lexer = new Lexer(text);
         foreach(var token in lexer)
         {
-            Console.WriteLine(token);
-            Console.WriteLine(token.Stringify());
+            Console.WriteLine($"{token} {token.Stringify()}");
         }
     }
 }

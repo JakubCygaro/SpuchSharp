@@ -12,6 +12,8 @@ internal abstract class SimpleToken : Token
     {
         ";" => new Semicolon(),
         "=" => new Equality(),
+        "(" or ")" => new Round(),
+        "{" or "}" => new Curly(),
         _ => throw new System.Diagnostics.UnreachableException(),
     };
 }
@@ -23,5 +25,22 @@ sealed class Equality : SimpleToken
 sealed class Semicolon: SimpleToken 
 {
     public override string Stringify() => ";";
+}
+
+abstract class Paren : SimpleToken { }
+
+sealed class Round: Paren 
+{
+    public override string Stringify()
+    {
+        return "()";
+    }
+}
+sealed class Curly : Paren 
+{
+    public override string Stringify()
+    {
+        return "{}";
+    }
 }
 

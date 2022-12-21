@@ -31,14 +31,14 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             if (current == ' ') { break; }
             //if (char.IsWhiteSpace(current)) { continue; }
             literal += current;
-            //Console.WriteLine(literal);
+            Console.WriteLine(literal);
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
             else if (IsSimpleToken(literal, out var simple)) { ret = simple; continue; }
             else if (IsValue(literal, out var value)) { ret = value; continue; }
             else
             {
                 _charStream.MoveBack();
-                break;
+                break;  
             }
         }
         if (ret is Ident id)
