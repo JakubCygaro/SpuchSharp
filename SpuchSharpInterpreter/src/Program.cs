@@ -15,8 +15,6 @@ internal class Program
         {
             Console.WriteLine(token);
             Console.WriteLine(token.Stringify());
-            chuj++;
-            if (chuj > 7) break;
         }
     }
 }

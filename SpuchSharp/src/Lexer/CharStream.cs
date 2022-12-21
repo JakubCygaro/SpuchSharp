@@ -19,6 +19,7 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
     //public int Length { get => _text.Length; }
     public int LineCount { get => _lines.Length; }
     public int Line { get => _currentLine; }
+    public int LineLength { get => _lines[_currentLine].Length; }
     public char Current => _lines[_currentLine][_position];
 
     object IEnumerator.Current => Current;
@@ -30,11 +31,11 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             .Select(l => l.Normalize())
             .Select(l => l.ToCharArray())
             .ToArray();
-        Console.WriteLine($"""
-            lines: {LineCount},
-            line: {Line}
-            position: {Position}
-            """);
+        //Console.WriteLine($"""
+        //    lines: {LineCount},
+        //    line: {Line}
+        //    position: {Position}
+        //    """);
 
         //input.Trim();
         //input.Normalize();
@@ -53,12 +54,12 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             _position++;
             return true;
         }
-        //else if (_currentLine < _lines.Length)
-        //{
-        //    _currentLine++;
-        //    _position = -1;
-        //    return true;
-        //}
+        else if (_currentLine + 1 < _lines.Length)
+        {
+            _currentLine++;
+            _position = 0;
+            return true;
+        }
         return false;
     }
 
@@ -76,24 +77,18 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
         {
             return null;
         }
-        //try
-        //{
-        //    return Current;
-        //}
-        //catch 
-        //{
-        //    return null;
-        //}
-        //finally
-        //{
-        //    MoveNext();
-        //}
     }
     public bool MoveBack()
     {
-        if(_position -1  > 0)
+        if(_position - 1 > 0)
         {
             _position--;
+            return true;
+        }
+        else if(_lines.Length - 1 > 0)
+        {
+            _currentLine--;
+            _position = _lines[_currentLine].Length - 1;
             return true;
         }
         return false;

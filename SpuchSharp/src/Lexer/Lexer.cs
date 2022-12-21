@@ -29,7 +29,7 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         foreach(char current in _charStream)
         {
             if (current == ' ') { break; }
-            if (char.IsWhiteSpace(current)) { continue; }
+            //if (char.IsWhiteSpace(current)) { continue; }
             literal += current;
             //Console.WriteLine(literal);
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
@@ -50,7 +50,7 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             catch { }
         }
 
-
+        //Console.WriteLine($"line: {_charStream.Line} position: {_charStream.Position} length: {_charStream.LineLength}");
         if (ret is not null)
         {
             _currentToken = ret;
@@ -65,19 +65,14 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         {
             return false;
         }
+        else if (string.IsNullOrEmpty(literal))
+        {
+            return false;
+        }
         else
         {
             throw new LexerException($"Could not parse to token `{literal}`");
         }
-        //Console.WriteLine($"{_charStream.Position} / {_charStream.Length - 1}");
-        //if (_charStream.EndOfInput())
-        //{
-        //    Console.WriteLine("End of input");
-        //    return false;
-        //}
-        //if (ret is null)
-        //    throw new LexerException($"Could not parse to token `{literal}`");
-        //return true;
     }
     private bool IsIdent(string lit, out Ident? ident)
     {
