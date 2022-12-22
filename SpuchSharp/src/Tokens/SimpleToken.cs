@@ -11,20 +11,30 @@ internal abstract class SimpleToken : Token
     public static SimpleToken From(string value) => value switch 
     {
         ";" => new Semicolon(),
-        "=" => new Equality(),
+        "=" => new Assigment(),
         "(" or ")" => new Round(),
         "{" or "}" => new Curly(),
-        _ => throw new System.Diagnostics.UnreachableException(),
+        "." => new Dot(),
+        ":" => new Colon(),
+        _ => Operator.From(value),
     };
 }
 
-sealed class Equality : SimpleToken 
+sealed class Assigment : SimpleToken 
 {
     public override string Stringify() => "=";
 }
 sealed class Semicolon: SimpleToken 
 {
     public override string Stringify() => ";";
+}
+sealed class Colon : SimpleToken
+{
+    public override string Stringify() => ":";
+}
+sealed class Dot : SimpleToken 
+{
+    public override string Stringify() => ".";
 }
 
 abstract class Paren : SimpleToken { }
@@ -42,5 +52,20 @@ sealed class Curly : Paren
     {
         return "{}";
     }
+}
+
+abstract class Operator : SimpleToken
+{
+    public static Operator From(string value) => value switch 
+    {
+        "==" => new Equality(),
+        _ => throw new Lexing.LexerException($"Failed to tokenize into Operator `{value}`"),
+    };
+
+}
+
+sealed class Equality : Operator 
+{
+    public override string Stringify() => "==";
 }
 

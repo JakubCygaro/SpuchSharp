@@ -31,8 +31,8 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             if (current == ' ') { break; }
             //if (char.IsWhiteSpace(current)) { continue; }
             literal += current;
-            Console.WriteLine(literal);
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
+            else if (IsText(literal, out var text)) { ret = text; continue; }
             else if (IsSimpleToken(literal, out var simple)) { ret = simple; continue; }
             else if (IsValue(literal, out var value)) { ret = value; continue; }
             else
@@ -50,7 +50,6 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             catch { }
         }
 
-        //Console.WriteLine($"line: {_charStream.Line} position: {_charStream.Position} length: {_charStream.LineLength}");
         if (ret is not null)
         {
             _currentToken = ret;
@@ -71,7 +70,10 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         }
         else
         {
-            throw new LexerException($"Could not parse to token `{literal}`");
+            _charStream.MoveNext();
+            throw new LexerException(
+                $"What the fuck is at ({_charStream.Line + 1}:{_charStream.Position + 1}) " +
+                $"`{_charStream.Current}` ?");
         }
     }
     private bool IsIdent(string lit, out Ident? ident)
@@ -114,6 +116,27 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             return true;
         }
         catch { return false; }
+    }
+    private bool IsText(string lit, out Value? text)
+    {
+        text = null;
+        if (lit != "\"") return false;
+        var content = lit;
+        while(_charStream.Next() is char c)
+        {
+            if(c == '"')
+            {
+                content += c;
+                break;
+            }
+            content += c;
+        }
+        if (!content.EndsWith('"'))
+            throw new LexerException(
+                $"Unterminated string at ({_charStream.Line + 1}:{_charStream.Position + 1})");
+        var type = Ty.FromValue(content);
+        text = new Value { Ty= type, Val = content };
+        return true;
     }
     public IEnumerator<Token> GetEnumerator()
     {

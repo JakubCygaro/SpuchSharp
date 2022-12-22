@@ -30,24 +30,12 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             .Where(l => !l.StartsWith("#"))
             .Select(l => l.Trim())
             .Select(l => l.Normalize())
-            .Select(l => l + " ")
+            //.Select(l => l + " ")
             .Select(l => l.ToCharArray())
             .ToArray();
-        //Console.WriteLine($"""
-        //    lines: {LineCount},
-        //    line: {Line}
-        //    position: {Position}
-        //    """);
-
-        //input.Trim();
-        //input.Normalize();
-        //_text = input.ToCharArray();
     }
 
-    public void Dispose()
-    {
-        
-    }
+    public void Dispose(){ }
 
     public bool MoveNext()
     {
@@ -82,12 +70,12 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
     }
     public bool MoveBack()
     {
-        if(_position - 1 > 0)
+        if(_position - 1 >= 0)
         {
             _position--;
             return true;
         }
-        else if(_lines.Length - 1 > 0)
+        else if(_lines.Length - 1 >= 0)
         {
             _currentLine--;
             _position = _lines[_currentLine].Length - 1;

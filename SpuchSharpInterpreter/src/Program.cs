@@ -14,6 +14,8 @@ internal class Program
         foreach(var token in lexer)
         {
             Console.WriteLine($"{token} {token.Stringify()}");
+            //if (chuj > 30) break;
+            //chuj++;
         }
     }
 }
