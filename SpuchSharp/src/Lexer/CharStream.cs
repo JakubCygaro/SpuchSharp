@@ -75,7 +75,7 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             _position--;
             return true;
         }
-        else if(_lines.Length - 1 >= 0)
+        else if(_currentLine - 1 >= 0)
         {
             _currentLine--;
             _position = _lines[_currentLine].Length - 1;

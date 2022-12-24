@@ -5,8 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
+
+public readonly struct Location
+{
+    public override string ToString() => $"({Line}:{Column})";
+    public required int Line { get; init; }
+    public required int Column { get; init; }
+}
 public abstract class Token
 {
+    public Location? Location { get; set; }
     public abstract string Stringify();
 }
 
@@ -50,6 +58,12 @@ public sealed class Ty : Token
         }
         throw new Lexing.LexerException("Failed to parse to Ty");
     }
+    public static Ty From(string lit) => lit switch
+    {
+        "int" => new Ty() { Ident = new Ident { Value = lit } },
+        "text" => new Ty() { Ident = new Ident { Value = lit } },
+        _ => throw new Lexing.LexerException("Failed to parse to Ty"),
+    };
     public override string Stringify() => Ident.Value;
 }
 

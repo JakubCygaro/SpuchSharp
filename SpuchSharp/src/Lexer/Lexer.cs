@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 
 namespace SpuchSharp.Lexing;
 
-public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
+internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
 {
     private CharStream _charStream;
 
@@ -29,7 +29,6 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         foreach(char current in _charStream)
         {
             if (current == ' ') { break; }
-            //if (char.IsWhiteSpace(current)) { continue; }
             literal += current;
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
             else if (IsText(literal, out var text)) { ret = text; continue; }
@@ -48,15 +47,30 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
                 ret = KeyWord.From(id.Value);
             }
             catch { }
+            try
+            {
+                ret = Ty.From(id.Value);
+            }
+            catch { }
         }
 
         if (ret is not null)
         {
+            ret.Location = new()
+            {
+                Line = _charStream.Position + 1,
+                Column = _charStream.Line + 1,
+            };
             _currentToken = ret;
             return true;
         }
         else if (ret is not null && _charStream.EndOfInput())
         {
+            ret.Location = new()
+            {
+                Line = _charStream.Position + 1,
+                Column = _charStream.Line + 1,
+            };
             _currentToken = ret;
             return true;
         }
@@ -70,10 +84,10 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         }
         else
         {
-            _charStream.MoveNext();
+            //_charStream.MoveNext();
             throw new LexerException(
-                $"What the fuck is at ({_charStream.Line + 1}:{_charStream.Position + 1}) " +
-                $"`{_charStream.Current}` ?");
+                $"What the fuck is this `{_charStream.Current}` ?", 
+                _charStream.Line + 1, _charStream.Position + 1);
         }
     }
     private bool IsIdent(string lit, out Ident? ident)
@@ -121,27 +135,41 @@ public sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         text = null;
         if (lit != "\"") return false;
-        var content = lit;
+        var literal = lit;
+        var content = string.Empty;
         while(_charStream.Next() is char c)
         {
             if(c == '"')
             {
-                content += c;
+                literal += c;
                 break;
             }
             content += c;
         }
-        if (!content.EndsWith('"'))
+        if (!literal.EndsWith('"'))
             throw new LexerException(
-                $"Unterminated string at ({_charStream.Line + 1}:{_charStream.Position + 1})");
-        var type = Ty.FromValue(content);
+                $"Unterminated string", _charStream.Line + 1, _charStream.Position + 1);
+
+        var type = Ty.FromValue(literal);
         text = new Value { Ty= type, Val = content };
         return true;
     }
-    public IEnumerator<Token> GetEnumerator()
+
+    public Token? Next()
     {
-        return this;
+        if (MoveNext())
+        {
+            return Current;
+        }
+        else
+        {
+            return null;
+        }
     }
+
+
+    public IEnumerator<Token> GetEnumerator() => this;
+
 
     public bool MoveNext()
     {

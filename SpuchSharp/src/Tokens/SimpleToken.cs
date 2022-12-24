@@ -16,6 +16,7 @@ internal abstract class SimpleToken : Token
         "{" or "}" => new Curly(),
         "." => new Dot(),
         ":" => new Colon(),
+        "," => new Comma(),
         _ => Operator.From(value),
     };
 }
@@ -35,6 +36,10 @@ sealed class Colon : SimpleToken
 sealed class Dot : SimpleToken 
 {
     public override string Stringify() => ".";
+}
+sealed class Comma : SimpleToken
+{
+    public override string Stringify() => ",";
 }
 
 abstract class Paren : SimpleToken { }

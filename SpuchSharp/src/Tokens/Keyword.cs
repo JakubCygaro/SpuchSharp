@@ -24,3 +24,8 @@ internal sealed class Fun : KeyWord
     public override string Stringify() => "fun";
 }
 
+internal sealed class Delete : KeyWord
+{
+    public override string Stringify() => "delete";
+}
+
