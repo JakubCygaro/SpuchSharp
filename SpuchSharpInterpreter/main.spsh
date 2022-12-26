@@ -1,4 +1,7 @@
 ﻿var x = 10;
 var x = 11;
 var a = "asdasda";
-#fun b(){};
+int z = 100;
+fun b(int x, int a){
+	text t = "text";
+};

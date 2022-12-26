@@ -31,40 +31,58 @@ public sealed class Ident : Token
         throw new Lexing.LexerException($"Failed to tokenize {text} as Ident");
     }
 }
-public sealed class Value : Token 
+internal sealed class Value : Token
 {
     public required Ty Ty { get; set; }
     public required object Val { get; set; }
     public override string Stringify() => $"{Ty.Ident.Value} {Val}";
 }
-public sealed class Ty : Token 
+internal abstract class Ty : Token, IEquatable<Ty>
 {
-    public required Ident Ident { get; set; }
+    public abstract Ident Ident { get; }
     public static Ty FromValue(string lit)
     {
         if (lit.ToCharArray().All(char.IsDigit))
         {
-            return new Ty()
-            {
-                Ident = new Ident { Value = "int" }
-            };
+            return new IntTy();
         }
         if (lit.StartsWith('"') && lit.EndsWith('"')) 
         {
-            return new Ty()
-            {
-                Ident = new Ident { Value = "text" }
-            };
+            return new TextTy();
+        }
+        if (lit == "false" || lit == "true")
+        {
+            return new BooleanTy();
         }
         throw new Lexing.LexerException("Failed to parse to Ty");
     }
     public static Ty From(string lit) => lit switch
     {
-        "int" => new Ty() { Ident = new Ident { Value = lit } },
-        "text" => new Ty() { Ident = new Ident { Value = lit } },
+        "int" => new IntTy(),
+        "text" => new TextTy(),
+        "bool" => new BooleanTy(),
         _ => throw new Lexing.LexerException("Failed to parse to Ty"),
     };
     public override string Stringify() => Ident.Value;
+
+    public bool Equals(Ty? other)
+    {
+        if (other is null) return false;
+        return this.Ident == other.Ident;
+    }
+}
+
+internal sealed class TextTy : Ty
+{
+    public override Ident Ident => new Ident() { Value = "text" };
+}
+internal sealed class IntTy : Ty
+{
+    public override Ident Ident => new Ident() { Value = "int" };
+}
+internal sealed class BooleanTy : Ty
+{
+    public override Ident Ident => new Ident() { Value = "bool" };
 }
 
 

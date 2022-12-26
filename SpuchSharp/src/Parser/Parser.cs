@@ -41,19 +41,39 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
     }
 
-    private bool IsDeclaration(Token token, out Instruction? declaration)
+    private bool IsDeclaration(Token token, out Declaration? declaration)
     {
         declaration = null;
         if(token is Var var)
         {
             if (_lexer.Next() is not Ident ident)
                 throw new ParserException("Invalid token error");
-            if (_lexer.Next() is not Assigment ass)
+            if (_lexer.Next() is not Assigment)
                 throw new ParserException("Invalid token error");
             if (_lexer.Next() is not Value val)
                 throw new ParserException("Invalid token error");
             if (_lexer.Next() is not Semicolon)
                 throw new ParserException("Invalid token error");
+            declaration = new Variable()
+            {
+                Name = ident.Value,
+                Value = val,
+            };
+            return true;
+        }
+        else if (token is Ty ty)
+        {
+            if (_lexer.Next() is not Ident ident)
+                throw new ParserException("Invalid token error");
+            if (_lexer.Next() is not Assigment)
+                throw new ParserException("Invalid token error");
+            if (_lexer.Next() is not Value val)
+                throw new ParserException("Invalid token error");
+            if (_lexer.Next() is not Semicolon)
+                throw new ParserException("Invalid token error");
+            if (ty.Equals(val.Ty))
+                throw new ParserException(
+                    $"Mismatched types, declared type is different than assigned type ({ty} {val.Ty})", val.Ty.Location);
             declaration = new Variable()
             {
                 Name = ident.Value,
@@ -68,8 +88,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if (_lexer.Next() is not Round)
                 throw new ParserException("Invalid token error");
             //parse function args
-            //i need the lexer to actually know what the fuck a function looks like
-
+            var arguments = ParseFunctionArguments();
 
             if (_lexer.Next() is not Curly)
                 throw new ParserException("Invalid token error");
@@ -81,16 +100,50 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         return false;
     }
+    private FunArg[] ParseFunctionArguments()
+    {
+        List<FunArg> args = new List<FunArg>();
+        while(_lexer.Next() is Token token)
+        {
+            if (token is Round)
+                break;
+            if (token is not Ty type)
+                throw new ParserException("Invalid function argument declaration", token.Location);
+            if (_lexer.Next() is not Ident ident)
+                throw new ParserException("Invalid function argument declaration");
+            args.Add(new FunArg()
+            {
+                Name = ident,
+                Ty = type,
+                Location = ident.Location,
+            });
+        }
+
+        return args.ToArray();
+    }
     private Expression[] ParseFunctionExpressions()
     {
         List<Expression> list = new List<Expression>();
         while(_lexer.Next() is Token token)
         {
-
+            if (token is Curly)
+                break;
+            if (IsExpression(token, out var expression)) { list.Add(expression!); }
+            else
+                throw new ParserException("Failed to parse expression", token.Location);
         }
 
 
         return list.ToArray();
+    }
+    private bool IsExpression(Token token, out Expression? expr)
+    {
+        //I have to get expression parsing to work somehow xd.
+        expr = null;
+        if (IsDeclaration(token, out var d)) { expr = d; return true; }
+        else if (IsAssignExpression(token, out var e)) { expr = e; return true; }
+        else
+            return false;
     }
     private bool IsAssignExpression(Token token, out Expression? assigment)
     {
