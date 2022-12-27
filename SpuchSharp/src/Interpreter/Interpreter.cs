@@ -28,16 +28,30 @@ public sealed class Interpreter
         foreach(var instruction in _parser)
         {
             PrintInstruction(instruction);
-            IfDeclaration(instruction);
+            if(instruction is Statement stmt)
+            {
+                IfDeclaration(stmt);
+                IfAssignment(stmt);
+            }
+            if (instruction is Expression expr)
+                EvaluateExpression(expr);
         }
         DebugInfo();
     }
-    private void IfDeclaration(Instruction instruction)
+    private void IfDeclaration(Statement instruction)
     {
         if (instruction is not Declaration decl) return;
         if (decl is Variable var) CreateVariable(var);
         if (decl is Function fun) CreateFunction(fun);
-
+    }
+    private void IfAssignment(Statement statement)
+    {
+        if (statement is not Assignment ass) return;
+        AssignValue(ass);
+    }
+    private void EvaluateExpression(Expression expr)
+    {
+        throw new NotImplementedException("Expression handling is TODO");
     }
     private void CreateVariable(Variable var)
     {
@@ -48,6 +62,10 @@ public sealed class Interpreter
         };
         if (!_globalVariableScope.Add(newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
+    }
+    private void AssignValue(Assignment ass)
+    {
+        throw new NotImplementedException("Assignment handling is TODO");
     }
     private void CreateFunction(Function fun)
     {

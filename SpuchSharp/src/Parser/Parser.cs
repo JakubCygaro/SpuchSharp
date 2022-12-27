@@ -92,10 +92,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
             if (_lexer.Next() is not Curly)
                 throw new ParserException("Invalid token error");
-            var expressions = ParseFunctionExpressions();
+            var instructions = ParseFunctionInstructions();
             //if (_lexer.Next() is not Semicolon)
             //    throw new ParserException("Invalid token error");
-
+            declaration = new Function()
+            {
+                Args = arguments,
+                Block = instructions,
+                Name = ident,
+            };
             throw new ParserException("Function declarations are TODO");
         }
         return false;
@@ -121,9 +126,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return args.ToArray();
     }
-    private Expression[] ParseFunctionExpressions()
+    private Instruction[] ParseFunctionInstructions()
     {
-        List<Expression> list = new List<Expression>();
+        List<Instruction> list = new List<Instruction>();
         while(_lexer.Next() is Token token)
         {
             if (token is Curly)
@@ -136,24 +141,13 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return list.ToArray();
     }
+
     private bool IsExpression(Token token, out Expression? expr)
     {
         //I have to get expression parsing to work somehow xd.
         expr = null;
-        if (IsDeclaration(token, out var d)) { expr = d; return true; }
-        else if (IsAssignExpression(token, out var e)) { expr = e; return true; }
-        else
             return false;
     }
-    private bool IsAssignExpression(Token token, out Expression? assigment)
-    {
-        assigment = null;
-        if (token is not Ident ident)
-            throw new ParserException("Failed parsing expression!");
-        //if (_lexer.Next())
-        return false;
-    }
-
     public IEnumerator<Instruction> GetEnumerator() => this;
 
     IEnumerator IEnumerable.GetEnumerator() => this;
