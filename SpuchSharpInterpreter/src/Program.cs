@@ -12,7 +12,14 @@ internal class Program
         //var text = File.ReadAllLines("main.spsh", Encoding.UTF8);
         //int chuj = 0;
         Interpreter interpreter = new("main.spsh");
-        interpreter.Run();
+        try
+        {
+            interpreter.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+        }
         
     }
 }

@@ -15,6 +15,8 @@ public class ParserException : Exception
         : base($"{message}. {location.ToString()}")
     {
     }
+    public ParserException(string message, Token token)
+        : base($"{message}. {token.Location} | {token.Stringify()}") { }
     public ParserException(string message) : base(message) { }
     public ParserException(string message, Exception inner) : base(message, inner) { }
     protected ParserException(

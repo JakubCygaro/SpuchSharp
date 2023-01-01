@@ -13,7 +13,7 @@ internal abstract class Declaration : Statement { }
 internal sealed class Variable : Declaration
 {
     public required string Name { get; set; }
-    public required Value Value { get; set; }
+    public required Expression Expr { get; set; }
 }
 
 internal sealed class Function : Declaration

@@ -5,6 +5,7 @@ using SpuchSharp.Tokens;
 using System.IO;
 using System.Collections;
 using System.Linq.Expressions;
+using System.Diagnostics;
 
 namespace SpuchSharp.Lexing;
 
@@ -28,7 +29,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         var literal = string.Empty;
         foreach(char current in _charStream)
         {
-            if (current == ' ') { break; }
+            if (char.IsWhiteSpace(current)) { break; }
             literal += current;
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
             else if (IsText(literal, out var text)) { ret = text; continue; }
@@ -84,7 +85,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         }
         else
         {
-            //_charStream.MoveNext();
+            _charStream.MoveNext();
             throw new LexerException(
                 $"What the fuck is this `{_charStream.Current}` ?", 
                 _charStream.Line + 1, _charStream.Position + 1);
@@ -159,6 +160,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         if (MoveNext())
         {
+            PrintToken(Current);
             return Current;
         }
         else
@@ -166,6 +168,8 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             return null;
         }
     }
+    [Conditional("DEBUG")]
+    void PrintToken(Token token) => Console.WriteLine(token);
 
 
     public IEnumerator<Token> GetEnumerator() => this;

@@ -1,7 +1,8 @@
-﻿var x = 10;
-var x = 11;
-var a = "asdasda";
+﻿var a = "asdasda";
+var x = 10;
+var exp = 10 + 20 + 30;
+#bar(a,b,c) + 20 + 30;
 int z = 100;
-fun b(int x, int a){
-	text t = "text";
-};
+#fun b(int x, int a){
+#	text t = "text";
+#};

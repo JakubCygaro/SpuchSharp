@@ -30,6 +30,10 @@ public sealed class Ident : Token
         }
         throw new Lexing.LexerException($"Failed to tokenize {text} as Ident");
     }
+    public override int GetHashCode()
+    {
+        return Value.GetHashCode();
+    }
 }
 internal sealed class Value : Token
 {

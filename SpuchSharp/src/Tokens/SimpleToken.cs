@@ -12,8 +12,10 @@ internal abstract class SimpleToken : Token
     {
         ";" => new Semicolon(),
         "=" => new Assigment(),
-        "(" or ")" => new Round(),
-        "{" or "}" => new Curly(),
+        "(" => new Round.Open(),
+        ")" => new Round.Closed(),
+        "{" => new Curly.Open(),
+        "}" => new Curly.Closed(),
         "." => new Dot(),
         ":" => new Colon(),
         "," => new Comma(),
@@ -44,18 +46,38 @@ sealed class Comma : SimpleToken
 
 abstract class Paren : SimpleToken { }
 
-sealed class Round: Paren 
+abstract class Round: Paren 
 {
-    public override string Stringify()
+    internal sealed class Open : Round
     {
-        return "()";
+        public override string Stringify()
+        {
+            return "(";
+        }
+    }
+    internal sealed class Closed : Round
+    {
+        public override string Stringify()
+        {
+            return ")";
+        }
     }
 }
-sealed class Curly : Paren 
+abstract class Curly : Paren 
 {
-    public override string Stringify()
+    internal sealed class Open : Curly
     {
-        return "{}";
+        public override string Stringify()
+        {
+            return "{";
+        }
+    }
+    internal sealed class Closed : Curly
+    {
+        public override string Stringify()
+        {
+            return "}";
+        }
     }
 }
 
@@ -69,6 +91,10 @@ abstract class Operator : SimpleToken
         "<" => new Less(),
         ">=" => new GreaterOrEq(),
         "<=" => new LessOrEq(),
+        "+" => new Add(),
+        "-" => new Sub(),
+        "*" => new Mult(),
+        "/" => new Div(),
         _ => throw new Lexing.LexerException($"Failed to tokenize into Operator `{value}`"),
     };
 

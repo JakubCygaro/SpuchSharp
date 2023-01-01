@@ -11,4 +11,10 @@
     <ProjectReference Include="..\SpuchSharp\SpuchSharp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="main.spsh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
