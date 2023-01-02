@@ -123,11 +123,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         try
         {
             var ty = Ty.FromValue(lit);
-            value = new Value()
-            {
-                Ty = ty,
-                Val = lit,
-            };
+            value = new Value(ty, lit);
             return true;
         }
         catch { return false; }
@@ -152,7 +148,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
                 $"Unterminated string", _charStream.Line + 1, _charStream.Position + 1);
 
         var type = Ty.FromValue(literal);
-        text = new Value { Ty= type, Val = content };
+        text = new Value(type, content);
         return true;
     }
 
@@ -160,7 +156,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         if (MoveNext())
         {
-            PrintToken(Current);
+            //PrintToken(Current);
             return Current;
         }
         else

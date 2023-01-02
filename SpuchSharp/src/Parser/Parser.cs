@@ -28,8 +28,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         Instruction? ret = null;
         foreach(Token token in _lexer)
         {
-            if (IsDeclaration(token, out var declaration)) { ret = declaration; Console.WriteLine("Found decl"); ; }
-            if(IsExpression(token, out var expression)) { ret = expression; Console.WriteLine("Found expr"); }
+            if (IsDeclaration(token, out var declaration)) { ret = declaration; /*Console.WriteLine("Found decl");*/ ; }
+            if(IsExpressionOrStatement(token, out var expression)) { ret = expression; /*Console.WriteLine("Found expr");*/ }
 
             if (ret is not null)
             {
@@ -43,80 +43,80 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
     }
 
-    private bool IsExpression(Token token, out Expression? expr)
+    private bool IsExpressionOrStatement(Token token, out Instruction? ins)
     {
-        expr = null;
+        ins = null;
         //the left side of a possible ComplexExpr
-        SimpleExpression? left;
+        Expression left;
         //ValueExpr
         if (token is Value val)
         {
-            Console.WriteLine($"Got value! {val.Stringify()}");
             left = new ValueExpression { Val = val };
-            if (IsComplexExpression(left, out var complex)) { expr = complex; return true; }
-            else { expr = left; return true; }
         }
-        //IdentExpr or CallExpr
-        if (token is Ident ident)
+        else if (token is Ident ident)
         {
-            var next = _lexer.Next();
-            //CallExpr
-            if(next is Round.Open)
+            left = new IdentExpression { Ident = ident };
+        }
+        else return false;
+        var next = _lexer.Next();
+        //assign statement!
+        if (next is Assign && token is Ident id)
+            if (IsExpressionOrStatement(_lexer.Next()
+                ?? throw new ParserException("Premature end of input"),
+                out var e))
             {
-                throw new ParserException("Function calls not working atm", ident);
-                Console.WriteLine($"Got call! {ident.Stringify()}");
-                List<Expression> args = new();
-                while (true)
+                ins = new Assignment
                 {
-                    var t = _lexer.Next();
-                    if (t is Round.Closed) { Console.WriteLine("CHUJ"); break; };
-                    if (t is null) 
-                        throw new ParserException("Premature end of input", _lexer.Current);
-                    if (!IsExpression(t, out var e))
-                    //    break;
-                        throw new ParserException("Could not parse to expression", _lexer.Current);
-                    args.Add(e!);
-                }
-                left = new CallExpression { Args = args.ToArray(), Function = ident };
+                    Left = id,
+                    Expr = e as Expression ??
+                    throw new ParserException("Failed to parse expression in assignment!", _lexer.Current)
+                };
+                return true;
             }
-            //IdentExpr
-            else
-            {
-                Console.WriteLine($"Got ident! {ident.Stringify()}");
-                left = new IdentExpression { Ident = ident, };
-            }
-            //Check for complexExpr
-            if(next is Comma || next is Round.Closed) { expr = left; return true; }
-            else if(IsComplexExpression(left, out var complex)) { expr = complex; return true; }
-            else { expr = left; return true; }
-        }
-        return false;
-
-    }
-    private bool IsComplexExpression(SimpleExpression left, out ComplexExpression? complex)
-    {
-        complex = null;
-        var next = _lexer.Next() ?? throw new ParserException("Premature end of input", _lexer.Current);
-        //semicolon means that the expression has ended and cannot be complex
-        if (next is Semicolon) return false;
-        if (next is Comma) return false;
-        if (next is Round.Closed) return false;
-        //an operator means that there should be a second expression
-        else if (next is Operator op)
+            else throw new ParserException("Expected an expression in assignment!", _lexer.Current);
+        //CallExpr
+        else if (next is Round.Open)
         {
-            Console.WriteLine($"With operator {op.Stringify()}");
-            if (!IsExpression(_lexer.Next()
-                ?? throw new ParserException("Premature end of input", _lexer.Current),
-                out var expr)) throw new ParserException("Expected an expression", _lexer.Current);
-            complex = new ComplexExpression
-            {
-                Left = left,
-                Op = op,
-                Expr = expr!,
-            };
+            throw new ParserException("Function calls not working atm", next);
+            //Console.WriteLine($"Got call! {ident.Stringify()}");
+            //List<Expression> args = new();
+            //while (true)
+            //{
+            //    var t = _lexer.Next();
+            //    if (t is Round.Closed) { Console.WriteLine("CHUJ"); break; };
+            //    if (t is null) 
+            //        throw new ParserException("Premature end of input", _lexer.Current);
+            //    if (!IsExpression(t, out var e))
+            //    //    break;
+            //        throw new ParserException("Could not parse to expression", _lexer.Current);
+            //    args.Add(e!);
+            //}
+            //left = new CallExpression { Args = args.ToArray(), Function = ident };
+        }
+        if (next is Semicolon)
+        {
+            ins = left;
             return true;
         }
-        return false;
+        //next could be an operator at this point
+        //so lets try parsing this as a complex expression
+        else if(next is Operator op)
+        {
+            ins = ParseComplexExpression(left, op);
+            return true;
+        }
+        else return false;
+
+    }
+    private ComplexExpression ParseComplexExpression(Expression left, Operator op)
+    {
+        //an operator means that there should be a second expression
+        //Console.WriteLine($"With operator {op.Stringify()}");
+        if (!IsExpressionOrStatement(_lexer.Next()
+            ?? throw new ParserException("Premature end of input", _lexer.Current),
+            out var expr)) throw new ParserException("Expected an expression", _lexer.Current);
+        return ComplexExpression.From(left, op, expr as Expression ??
+                    throw new ParserException("Failed to parse expression", _lexer.Current));
     }
 
     private bool IsDeclaration(Token token, out Declaration? declaration)
@@ -126,18 +126,19 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (_lexer.Next() is not Ident ident)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assigment)
+            if (_lexer.Next() is not Assign)
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Token tok)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if(!IsExpression(tok, out var expression))
+            if(!IsExpressionOrStatement(tok, out var expression))
                 throw new ParserException("Invalid token error", tok);
             //if (_lexer.Next() is not Semicolon)
             //    throw new ParserException("Invalid token error");
             declaration = new Variable()
             {
                 Name = ident.Value,
-                Expr = expression!,
+                Expr = expression as Expression ??
+                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
             };
             return true;
         }
@@ -145,11 +146,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (_lexer.Next() is not Ident ident)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assigment)
+            if (_lexer.Next() is not Assign)
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Token tok)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if (!IsExpression(tok, out var expression))
+            if (!IsExpressionOrStatement(tok, out var expression))
                 throw new ParserException("Invalid token error", _lexer.Current);
             //if (_lexer.Next() is not Semicolon)
             //    throw new ParserException("Invalid token error");
@@ -159,7 +160,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             declaration = new Variable()
             {
                 Name = ident.Value,
-                Expr = expression!,
+                Expr = expression as Expression ??
+                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
             };
             return true;
         }
@@ -183,7 +185,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Block = instructions,
                 Name = ident,
             };
-            throw new ParserException("Function declarations are TODO", _lexer.Current);
+            //throw new ParserException("Function declarations are TODO", _lexer.Current);
         }
         return false;
     }
@@ -194,8 +196,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (token is Round.Closed)
                 break;
+            if (token is Comma)
+                continue;
             if (token is not Ty type)
-                throw new ParserException("Invalid function argument declaration", _lexer.Current);
+                throw new ParserException(
+                    $"Invalid function argument declaration, not a type: {_lexer.Current}", _lexer.Current);
             if (_lexer.Next() is not Ident ident)
                 throw new ParserException("Invalid function argument declaration", _lexer.Current);
             args.Add(new FunArg()
@@ -215,9 +220,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (token is Curly.Closed)
                 break;
-            if (IsExpression(token, out var expression)) { list.Add(expression!); }
+            //if (IsExpressionOrStatement(token, out var expression)) { list.Add(expression!); }
+            if (IsDeclaration(token, out var declaration)) { list.Add(declaration!); /*Console.WriteLine("Found decl");*/ ; }
+            if (IsExpressionOrStatement(token, out var expression)) { list.Add(expression!); }
             else
-                throw new ParserException("Failed to parse expression", _lexer.Current);
+                throw new ParserException("Failed to parse instruction", _lexer.Current);
         }
 
 

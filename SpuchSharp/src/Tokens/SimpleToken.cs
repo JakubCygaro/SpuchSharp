@@ -11,7 +11,7 @@ internal abstract class SimpleToken : Token
     public static SimpleToken From(string value) => value switch 
     {
         ";" => new Semicolon(),
-        "=" => new Assigment(),
+        "=" => new Assign(),
         "(" => new Round.Open(),
         ")" => new Round.Closed(),
         "{" => new Curly.Open(),
@@ -23,7 +23,7 @@ internal abstract class SimpleToken : Token
     };
 }
 
-sealed class Assigment : SimpleToken 
+sealed class Assign : SimpleToken 
 {
     public override string Stringify() => "=";
 }
@@ -95,6 +95,8 @@ abstract class Operator : SimpleToken
         "-" => new Sub(),
         "*" => new Mult(),
         "/" => new Div(),
+        "&&" => new And(),
+        "||" => new Or(),
         _ => throw new Lexing.LexerException($"Failed to tokenize into Operator `{value}`"),
     };
 
@@ -124,6 +126,14 @@ sealed class GreaterOrEq : LogicOperator
 sealed class LessOrEq : LogicOperator
 {
     public override string Stringify() => "<=";
+}
+sealed class And : LogicOperator 
+{
+    public override string Stringify() => "&&";
+}
+sealed class Or : LogicOperator
+{
+    public override string Stringify() => "||";
 }
 
 // value operators

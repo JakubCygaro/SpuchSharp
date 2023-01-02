@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using SpuchSharp.Instructions;
 using SpuchSharp.Parsing;
 using SpuchSharp.Tokens;
+using System.Text.Json;
 
 namespace SpuchSharp.Interpreting;
 
@@ -47,20 +48,45 @@ public sealed class Interpreter
     }
     private void IfAssignment(Statement statement)
     {
-        if (statement is not Assignment ass) return;
-        AssignValue(ass);
+        if (statement is Assignment ass) 
+            AssignValue(_globalVariableScope, ass);
     }
     private Value EvaluateExpression(Dictionary<Ident, SVariable> scope, Expression expr)
     {
         PrintExpression(expr);
-        Value val =  expr switch
+        return expr switch
         {
-            ValueExpression ve => ve.Val,
-            IdentExpression ie => FindVariable(ie.Ident, scope).Value,
-            CallExpression cle => throw new InterpreterException("Call Expressions TODO"),
-            ComplexExpression cxe => 
+            SimpleExpression s => EvaluateSimple(scope, s),
+            ComplexExpression c => EvaluateComplex(scope, c),
+            _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    private Value EvaluateSimple(Dictionary<Ident, SVariable> scope, SimpleExpression expr)
+    {
+        return expr switch
+        {
+            ValueExpression v => v.Val,
+            IdentExpression i => FindVariable(i.Ident, scope).Value,
+            CallExpression c => throw new NotImplementedException("Calls implementation todo"),
+            _ => throw new System.Diagnostics.UnreachableException(),
+        };
+    }
+    private Value EvaluateComplex(Dictionary<Ident, SVariable> scope, ComplexExpression expr)
+    {
+        var left = EvaluateExpression(scope, expr.Left);
+        var right = EvaluateExpression(scope, expr.Right);
 
+        return expr switch
+        {
+            AddExpr => Value.Add(left, right),
+            SubExpr => Value.Sub(left, right),
+            MulExpr => Value.Mul(left, right),
+            AndExpr => Value.And(left, right),
+            OrExpr => Value.Or(left, right),
+            EqExpr => Value.Eq(left, right),
+            InEqExpr => Value.InEq(left, right),
+            _ => throw new InterpreterException("FUCK")
+        };
     }
     private SVariable FindVariable(Ident ident, Dictionary<Ident, SVariable> scope)
     {
@@ -71,44 +97,80 @@ public sealed class Interpreter
         else throw new InterpreterException($"No variable {ident.Value} declared in this scope");
         
     }
-    [Conditional("DEBUG")]
-    void PrintExpression(Expression expr)
-    {
-        Console.WriteLine(expr.Display());
-    }
+    
     private void CreateVariable(Dictionary<Ident, SVariable> scope, Variable var)
     {
         SVariable newVariable = new()
         {
-            Name = var.Name,
             Value = EvaluateExpression(scope, var.Expr),
         };
         if (!_globalVariableScope.TryAdd(new Ident { Value = var.Name }, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
-    private void AssignValue(Assignment ass)
+    private void AssignValue(Dictionary<Ident, SVariable> scope, Assignment ass)
     {
-        throw new NotImplementedException("Assignment handling is TODO");
+        var svar = FindVariable(ass.Left, scope);
+        var val = EvaluateExpression(scope, ass.Expr);
+        if (!svar.Value.Ty.Equals(val.Ty))
+            throw new InterpreterException("Mismatched types!");
+        svar.Value = val;
     }
     private void CreateFunction(Function fun)
     {
 
     }
 
-
+    [Conditional("DEBUG")]
+    void PrintExpression(Expression expr)
+    {
+        //if (expr is ComplexExpression c)
+        //{
+        //    var ser = JsonSerializer.Serialize(c, new JsonSerializerOptions() { WriteIndented = true });
+        //    Console.WriteLine(ser);
+        //}
+        Console.WriteLine($$"""
+            Expression 
+            {
+                Type: {{expr}}
+                Display: {{expr.Display()}}
+            }
+            """);
+    }
 
     [Conditional("DEBUG")]
     void PrintInstruction(Instruction ins)
     {
-        Console.WriteLine(ins);
+        Console.WriteLine($$"""
+            Instruction
+            {
+                Type: {{ins}}
+            }
+            """);
     }
+
     [Conditional("DEBUG")]
     void DebugInfo()
     {
-        Console.WriteLine();
-        foreach(var v in _globalVariableScope) 
+        Console.WriteLine($"""
+
+            Execution Ended...
+
+            ///////DEBUG///////
+            
+            Variables:
+            {printVariables()}
+
+            ///////DEBUG///////
+            """);
+
+        string printVariables()
         {
-            Console.WriteLine(v.ToString());
+            StringBuilder sb = new StringBuilder();
+            foreach (var (ident, svar) in _globalVariableScope)
+            {
+                sb.AppendLine($"[{ident.Stringify()}, {svar.Value.Stringify()}]");
+            }
+            return sb.ToString();
         }
     }
 }

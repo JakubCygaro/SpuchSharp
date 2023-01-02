@@ -18,7 +18,7 @@ public abstract class Token
     public abstract string Stringify();
 }
 
-public sealed class Ident : Token
+public sealed class Ident : Token, IEquatable<Ident>
 {
     public required string Value { get; set; }
     public override string Stringify() => Value;
@@ -34,12 +34,99 @@ public sealed class Ident : Token
     {
         return Value.GetHashCode();
     }
+    public bool Equals(Ident? other)
+    {
+        if(other is null) return false;
+        return Value == other.Value;
+    }
 }
 internal sealed class Value : Token
 {
-    public required Ty Ty { get; set; }
-    public required object Val { get; set; }
+    public Ty Ty { get; }
+    public object Val { get; }
+    public Value(Ty type, string literal)
+    {
+        Ty = type;
+        Val = Ty switch 
+        {
+            IntTy => int.Parse(literal),
+            TextTy => literal,
+            BooleanTy => bool.Parse(literal),
+            _ => throw new System.Diagnostics.UnreachableException(),
+        };
+    }
+    public Value(Ty type, object val) => (Ty , Val) = (type, val);
     public override string Stringify() => $"{Ty.Ident.Value} {Val}";
+    public static Value Add(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            IntTy => new Value(left.Ty,(int)left.Val + (int)right.Val),
+            //TextTy => new Value { Ty = left.Ty, Val = (string)left.Val + (string)right.Val },
+            _ => throw new Interpreting.InterpreterException("Types cannot be added!")
+        };
+    }
+    public static Value Sub(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            IntTy => new Value(left.Ty, (int)left.Val - (int)right.Val),
+            _ => throw new Interpreting.InterpreterException("Types cannot be subtracted!")
+        };
+    }
+    public static Value Mul(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            IntTy => new Value(left.Ty,(int)left.Val * (int)right.Val),
+            _ => throw new Interpreting.InterpreterException("Types cannot be multiplied!")
+        };
+    }
+    public static Value And(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            BooleanTy => new Value(left.Ty, (bool)left.Val && (bool)right.Val),
+            _ => throw new Interpreting.InterpreterException("Types not boolean!")
+        };
+    }
+    public static Value Or(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            BooleanTy => new Value(left.Ty, (bool)left.Val || (bool)right.Val ),
+            _ => throw new Interpreting.InterpreterException("Types not boolean!")
+        };
+    }
+    public static Value Eq(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            BooleanTy => new Value(left.Ty, (bool)left.Val == (bool)right.Val),
+            _ => throw new Interpreting.InterpreterException("Types not boolean!")
+        };
+    }
+    public static Value InEq(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left.Ty switch
+        {
+            BooleanTy => new Value(left.Ty, (bool)left.Val != (bool)right.Val ),
+            _ => throw new Interpreting.InterpreterException("Types not boolean!")
+        };
+    }
+    public static void TypeCheck(Value left, Value right)
+    {
+        if (!left.Ty.Equals(right.Ty))
+            throw new Interpreting.InterpreterException(
+                $"Type mismatch! {left.Ty.Stringify()} {right.Ty.Stringify()}");
+    }
 }
 internal abstract class Ty : Token, IEquatable<Ty>
 {
@@ -71,22 +158,30 @@ internal abstract class Ty : Token, IEquatable<Ty>
 
     public bool Equals(Ty? other)
     {
-        if (other is null) return false;
-        return this.Ident == other.Ident;
+        if (other is null)
+        {
+            return false;
+        }
+        return this.Ident.Equals(other.Ident);
     }
 }
 
 internal sealed class TextTy : Ty
 {
-    public override Ident Ident => new Ident() { Value = "text" };
+    static Ident _ident => new Ident() { Value = "text" };
+
+    public override Ident Ident => _ident;
 }
 internal sealed class IntTy : Ty
 {
-    public override Ident Ident => new Ident() { Value = "int" };
+    static Ident _ident => new Ident() { Value = "int" };
+
+    public override Ident Ident => _ident;
 }
 internal sealed class BooleanTy : Ty
 {
-    public override Ident Ident => new Ident() { Value = "bool" };
+    static Ident _ident => new Ident() { Value = "bool" };
+    public override Ident Ident => _ident;
 }
 
 

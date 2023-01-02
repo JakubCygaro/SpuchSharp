@@ -15,13 +15,13 @@ internal abstract class SObject
 
 internal class SVariable : SObject
 {
-    public required string Name { get; init; }
-    public required Tokens.Value Value { get; init; }
-    public override string ToString() => $"{Name}: {Value.Ty.Stringify()} = {Value.Val}";
-    public override int GetHashCode()
-    {
-        return Name.GetHashCode();
-    }
+    //public required string Name { get; init; }
+    public required Tokens.Value Value { get; set; }
+    public override string ToString() => $"{Value.Ty.Stringify()} = {Value.Val}";
+    //public override int GetHashCode()
+    //{
+    //    return Name.GetHashCode();
+    //}
 }
 
 //internal class SFunction : SObject
