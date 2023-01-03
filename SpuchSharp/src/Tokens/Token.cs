@@ -57,6 +57,10 @@ internal sealed class Value : Token
     }
     public Value(Ty type, object val) => (Ty , Val) = (type, val);
     public override string Stringify() => $"{Ty.Ident.Value} {Val}";
+
+    static Value _void = new Value(new VoidTy(), new object());
+    public static Value Void => _void;
+
     public static Value Add(Value left, Value right)
     {
         TypeCheck(left, right);
@@ -168,19 +172,22 @@ internal abstract class Ty : Token, IEquatable<Ty>
 
 internal sealed class TextTy : Ty
 {
-    static Ident _ident => new Ident() { Value = "text" };
-
+    static Ident _ident = new Ident() { Value = "text" };
     public override Ident Ident => _ident;
 }
 internal sealed class IntTy : Ty
 {
-    static Ident _ident => new Ident() { Value = "int" };
-
+    static Ident _ident = new Ident() { Value = "int" };
     public override Ident Ident => _ident;
 }
 internal sealed class BooleanTy : Ty
 {
-    static Ident _ident => new Ident() { Value = "bool" };
+    static Ident _ident = new Ident() { Value = "bool" };
+    public override Ident Ident => _ident;
+}
+internal sealed class VoidTy : Ty
+{
+    static Ident _ident = new Ident() { Value = "void" };
     public override Ident Ident => _ident;
 }
 

@@ -26,7 +26,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
     private bool Parse()
     {
-        Instruction? ret = null;
         foreach(Token token in _lexer)
         {
             _currentInstruction = ParseInstruction(token);
@@ -326,12 +325,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     $"Invalid function argument declaration, not a type: {_lexer.Current}", _lexer.Current);
             if (_lexer.Next() is not Ident ident)
                 throw new ParserException("Invalid function argument declaration", _lexer.Current);
-            args.Add(new FunArg()
+            var arg = new FunArg()
             {
                 Name = ident,
                 Ty = type,
                 Location = ident.Location,
-            });
+            };
+            if (args.Any(a => a.Name.Equals(ident)))
+                throw new ParserException($"Function arguments cannot have repeating names", ident);
+            args.Add(arg);
         }
 
         return args.ToArray();

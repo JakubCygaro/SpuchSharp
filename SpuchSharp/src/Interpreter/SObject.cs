@@ -10,23 +10,34 @@ namespace SpuchSharp.Interpreting;
 
 internal abstract class SObject
 {
-    public abstract new string ToString();
+    public required Ident Ident { get; init; }
+    public override int GetHashCode()
+    {
+        return Ident.GetHashCode();
+    }
+
+    public abstract string Display();
 }
 
 internal class SVariable : SObject
 {
-    //public required string Name { get; init; }
     public required Tokens.Value Value { get; set; }
-    public override string ToString() => $"{Value.Ty.Stringify()} = {Value.Val}";
-    //public override int GetHashCode()
-    //{
-    //    return Name.GetHashCode();
-    //}
+    public override string Display() => $"{Value.Ty.Stringify()} = {Value.Val}";
 }
 
-//internal class SFunction : SObject
-//{
+internal class SFunction : SObject
+{
+    public override string Display()
+    {
+        StringBuilder sb = new();
+        sb.AppendLine($"{Ident}");
+        sb.Append('(');
+        foreach(var arg in Args)
+            sb.Append($"{arg.Ty} {arg.Name},");
+        sb.Append(')');
+        return sb.ToString();
+    }
+    public required Parsing.FunArg[] Args { get; init; }
+    public required Instruction[] Block { get; init; }
+}
 
-//}
-
- 

@@ -12,6 +12,8 @@ public class InterpreterException : Exception
 {
 	public InterpreterException() { }
 	public InterpreterException(string message) : base(message) { }
+	public InterpreterException(string message, Tokens.Token token) : base($"{message} {token.Location}") 
+	{ }
 	public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(
 	  System.Runtime.Serialization.SerializationInfo info,

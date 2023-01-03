@@ -9,13 +9,18 @@ using SpuchSharp.Parsing;
 using SpuchSharp.Tokens;
 using System.Text.Json;
 
-namespace SpuchSharp.Interpreting;
+using VariableScope = 
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
+using FunctionScope = 
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 
+namespace SpuchSharp.Interpreting;
 public sealed class Interpreter
 {
     private readonly Parser _parser;
 
-    private Dictionary<Ident, SVariable> _globalVariableScope = new();
+    private VariableScope _globalVariableScope = new();
+    private FunctionScope _globalFunctionScope = new();
     internal Interpreter(Parser parser) 
     {
         _parser = parser;
@@ -25,61 +30,95 @@ public sealed class Interpreter
     {
         return new Parser(new Lexing.Lexer(File.ReadAllLines(path, Encoding.UTF8)));
     }
+    private void ExcecuteInstruction(Instruction instruction, 
+        VariableScope varScope, 
+        FunctionScope funScope)
+    {
+        PrintInstruction(instruction);
+        if(instruction is Statement stmt)
+        {
+            IfDeclaration(varScope, funScope, stmt);
+            IfAssignment(varScope, funScope, stmt);
+        }
+        if (instruction is Expression expr)
+            EvaluateExpression(varScope, funScope, expr);
+    }
     public void Run()
     {
         foreach(var instruction in _parser)
         {
-            PrintInstruction(instruction);
-            if(instruction is Statement stmt)
-            {
-                IfDeclaration(stmt);
-                IfAssignment(stmt);
-            }
-            if (instruction is Expression expr)
-                EvaluateExpression(_globalVariableScope, expr);
+            ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
         }
         DebugInfo();
     }
-    private void IfDeclaration(Statement instruction)
+    private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
     {
         if (instruction is not Declaration decl) return;
-        if (decl is Variable var) CreateVariable(_globalVariableScope, var);
-        if (decl is Function fun) CreateFunction(fun);
+        if (decl is Variable var) CreateVariable(varScope, funScope, var);
+        if (decl is Function fun) CreateFunction(fun, funScope);
     }
-    private void IfAssignment(Statement statement)
+    private void IfAssignment(VariableScope scope, FunctionScope funScope, Statement statement)
     {
         if (statement is Assignment ass) 
-            AssignValue(_globalVariableScope, ass);
+            AssignValue(_globalVariableScope, funScope, ass);
     }
-    private Value EvaluateExpression(Dictionary<Ident, SVariable> scope, Expression expr)
+    private Value EvaluateExpression(VariableScope scope, FunctionScope funScope, Expression expr)
     {
         PrintExpression(expr);
         return expr switch
         {
-            SimpleExpression s => EvaluateSimple(scope, s),
-            ComplexExpression c => EvaluateComplex(scope, c),
+            SimpleExpression s => EvaluateSimple(scope, funScope, s),
+            ComplexExpression c => EvaluateComplex(scope, funScope, c),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    private Value EvaluateSimple(Dictionary<Ident, SVariable> scope, SimpleExpression expr)
+    private Value EvaluateSimple(VariableScope scope, FunctionScope funScope, SimpleExpression expr)
     {
         return expr switch
         {
             ValueExpression v => v.Val,
             IdentExpression i => FindVariable(i.Ident, scope).Value,
-            CallExpression c => EvaluateCall(scope, c),
+            CallExpression c => EvaluateCall(scope, funScope, c),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    private Value EvaluateCall(Dictionary<Ident, SVariable> scope, CallExpression call)
+    private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
     {
+        var targetFunction = FindFunction(call.Function, funScope);
+        if (targetFunction.Args.Length != call.Args.Length)
+            throw new InterpreterException($"Expected {targetFunction.Args.Length + 1} arguments " +
+                $"got {call.Args.Length + 1}", call.Function);
+        VariableScope variables = new();
+        for(int i = 0; i < targetFunction.Args.Length; i++)
+        {
+            var value = EvaluateExpression(scope, funScope, call.Args[i]);
+            if (!targetFunction.Args[i].Ty.Equals(value.Ty))
+                throw new InterpreterException("Mismatched argument type!");
+            variables.Add(targetFunction.Args[i].Name, new SVariable
+            {
+                Ident = targetFunction.Args[i].Name,
+                Value = value,
+            });
+        }
+        var newVarScope = scope.Clone();
+        var newFunScope = funScope.Clone();
 
-        throw new NotImplementedException("Function call evaluation TODO");
+        foreach(var (ident, sVariable) in variables)
+        {
+            if (!newVarScope.TryAdd(ident, sVariable))
+                throw new InterpreterException($"Variable {ident.Stringify()} already declared", ident);
+        }
+        foreach (var instruction in targetFunction.Block)
+            ExcecuteInstruction(instruction, newVarScope, newFunScope);
+
+        return Value.Void;
+
+        //throw new NotImplementedException("Function call evaluation TODO");
     }
-    private Value EvaluateComplex(Dictionary<Ident, SVariable> scope, ComplexExpression expr)
+    private Value EvaluateComplex(VariableScope scope, FunctionScope funScope, ComplexExpression expr)
     {
-        var left = EvaluateExpression(scope, expr.Left);
-        var right = EvaluateExpression(scope, expr.Right);
+        var left = EvaluateExpression(scope, funScope, expr.Left);
+        var right = EvaluateExpression(scope, funScope, expr.Right);
 
         return expr switch
         {
@@ -93,7 +132,7 @@ public sealed class Interpreter
             _ => throw new InterpreterException("FUCK")
         };
     }
-    private SVariable FindVariable(Ident ident, Dictionary<Ident, SVariable> scope)
+    private SVariable FindVariable(Ident ident, VariableScope scope)
     {
         if (scope.TryGetValue(ident, out var v))
         {
@@ -102,27 +141,43 @@ public sealed class Interpreter
         else throw new InterpreterException($"No variable {ident.Value} declared in this scope");
         
     }
-    
-    private void CreateVariable(Dictionary<Ident, SVariable> scope, Variable var)
+    private SFunction FindFunction(Ident ident, FunctionScope scope)
+    {
+        if(scope.TryGetValue(ident, out var f))
+        {
+            return f;
+        }
+        else throw new InterpreterException($"No function {ident.Value} declared in this scope");
+    }
+
+    private void CreateVariable(VariableScope scope, FunctionScope funScope, Variable var)
     {
         SVariable newVariable = new()
         {
-            Value = EvaluateExpression(scope, var.Expr),
+            Ident = new Ident { Value = var.Name },
+            Value = EvaluateExpression(scope, funScope, var.Expr),
         };
-        if (!_globalVariableScope.TryAdd(new Ident { Value = var.Name }, newVariable))
+        if (!_globalVariableScope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
-    private void AssignValue(Dictionary<Ident, SVariable> scope, Assignment ass)
+    private void AssignValue(VariableScope scope, FunctionScope funScope, Assignment ass)
     {
         var svar = FindVariable(ass.Left, scope);
-        var val = EvaluateExpression(scope, ass.Expr);
+        var val = EvaluateExpression(scope, funScope, ass.Expr);
         if (!svar.Value.Ty.Equals(val.Ty))
             throw new InterpreterException("Mismatched types!");
         svar.Value = val;
     }
-    private void CreateFunction(Function fun)
+    private void CreateFunction(Function fun, FunctionScope funScope)
     {
-
+        if (funScope.ContainsKey(fun.Name))
+            throw new InterpreterException($"Function {fun.Name} already exists!", fun.Name);
+        funScope.Add(fun.Name, new SFunction
+        {
+            Args = fun.Args,
+            Block = fun.Block,
+            Ident = fun.Name,
+        });
     }
 
     [Conditional("DEBUG")]
@@ -165,6 +220,9 @@ public sealed class Interpreter
             Variables:
             {printVariables()}
 
+            Functions:
+            {printFunctions()}
+
             ///////DEBUG///////
             """);
 
@@ -177,10 +235,41 @@ public sealed class Interpreter
             }
             return sb.ToString();
         }
+        string printFunctions()
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var (ident, sfun) in _globalFunctionScope)
+            {
+                sb.AppendLine($"[{ident.Stringify()}, {sfun.Display()}]");
+            }
+            return sb.ToString();
+        }
     }
     [Conditional("DEBUG")]
     void PrintCall(CallExpression call)
     {
         Console.WriteLine(call.Display());
+    }
+}
+
+internal static class ScopeExt
+{
+    /// <summary>
+    /// Clones a <c>VariableScope</c>
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns>A new <c>VariableScope</c></returns>
+    public static VariableScope Clone(this VariableScope other)
+    {
+        return new VariableScope(other);
+    }
+    /// <summary>
+    /// Clones a <c>FunctionScope</c>
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns>A new <c>FunctionScope</c></returns>
+    public static FunctionScope Clone(this FunctionScope other)
+    {
+        return new FunctionScope(other);
     }
 }

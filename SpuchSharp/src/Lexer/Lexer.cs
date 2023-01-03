@@ -156,7 +156,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         if (MoveNext())
         {
-            PrintToken(Current);
+            //PrintToken(Current);
             return Current;
         }
         else
