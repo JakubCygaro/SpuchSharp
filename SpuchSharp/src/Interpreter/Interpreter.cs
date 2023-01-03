@@ -67,9 +67,14 @@ public sealed class Interpreter
         {
             ValueExpression v => v.Val,
             IdentExpression i => FindVariable(i.Ident, scope).Value,
-            CallExpression c => throw new NotImplementedException("Calls implementation todo"),
+            CallExpression c => EvaluateCall(scope, c),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    private Value EvaluateCall(Dictionary<Ident, SVariable> scope, CallExpression call)
+    {
+
+        throw new NotImplementedException("Function call evaluation TODO");
     }
     private Value EvaluateComplex(Dictionary<Ident, SVariable> scope, ComplexExpression expr)
     {
@@ -172,5 +177,10 @@ public sealed class Interpreter
             }
             return sb.ToString();
         }
+    }
+    [Conditional("DEBUG")]
+    void PrintCall(CallExpression call)
+    {
+        Console.WriteLine(call.Display());
     }
 }

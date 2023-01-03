@@ -110,7 +110,18 @@ internal sealed class ValueExpression : SimpleExpression
 /// </example>
 internal sealed class CallExpression : SimpleExpression
 {
-    public override string Display() => $"[{Function.Stringify()}]";
+    public override string Display()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"[{Function.Stringify()}]");
+        sb.Append('(');
+        foreach(var expr in Args)
+        {
+            sb.Append(expr.Display() + " | ");
+        }
+        sb.Append(')');
+        return sb.ToString();
+    }
     public required Ident Function { get; init; }
     public required Expression[] Args { get; init; }
 }

@@ -1,6 +1,7 @@
-﻿var a = "asdasda";
-var x = 10;
+﻿foo(a, b, 10 + 10 - 100);
 var exp = 10 * 20 + 30;
+var a = "asdasda";
+var x = 10;
 int z = 100;
 z = 101;
 #fun b(int x, int a){

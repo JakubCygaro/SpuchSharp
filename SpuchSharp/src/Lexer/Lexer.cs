@@ -59,8 +59,8 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         {
             ret.Location = new()
             {
-                Line = _charStream.Position + 1,
-                Column = _charStream.Line + 1,
+                Line = _charStream.Line + 1,
+                Column = _charStream.Position + 1,
             };
             _currentToken = ret;
             return true;
@@ -69,8 +69,8 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
         {
             ret.Location = new()
             {
-                Line = _charStream.Position + 1,
-                Column = _charStream.Line + 1,
+                Line = _charStream.Line + 1,
+                Column = _charStream.Position + 1,
             };
             _currentToken = ret;
             return true;
@@ -156,7 +156,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         if (MoveNext())
         {
-            //PrintToken(Current);
+            PrintToken(Current);
             return Current;
         }
         else
