@@ -1,17 +1,17 @@
 ﻿# Types
-int
-string
-float
-boolean
+int \/
+string \/
+float 
+boolean \/
 maybe arrays
 
-# Variable Declaration
+# Variable Declaration \/
 ```
 var x = 10;
 <typename> <name> = <typevalue>;
 int x = 10;
 ```
-# Function Declaration
+# Function Declaration and execution \/
 ```
 fun x(int a) {
 	#body
@@ -22,6 +22,18 @@ fun <name>(<type> <name>, <type> <name>){
 }
 
 ```
+# Function return types 
+```
+fun x(int a) int {
+	return a + 10;
+}
+
+fun <name>(<type> <name>, <type> <name>) <type>{
+	<body>
+	<return> <expression>
+	<body>
+}
+```
 # For Loops
 
 for x in 1 to 0 {
@@ -31,9 +43,9 @@ for x in 1 to 0 {
 # If Statements
 
 if (<expr>) {
-
+	<block>
 } else {
-
+	<block>
 }
 
 # Functions
@@ -71,6 +83,7 @@ this would require a global struct scope where all struct templates would be hel
 ```csharp
 class SStruct : SVariable {
 	//this would need some custom type ident creation or something
+	//and also custom Ty creation 
 	//because a struct instance will be used as a variable and as such has to inherit SVariable 
 	public Dictionary<string, SVariable> Fields { get; init; }
 }

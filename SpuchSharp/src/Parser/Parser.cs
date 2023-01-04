@@ -53,8 +53,26 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseDeclaration(keyword);
         else if (keyword is Delete)
             return ParseDelete(keyword);
+        else if (keyword is Import)
+            return ParseImport(keyword);
         else
             throw new ParserException("Failed to parse keyword instruction!", keyword);
+    }
+    private Instruction ParseImport(KeyWord Keyword)
+    {
+        if (_lexer.Next() is not Value value)
+            throw new ParserException("An import statement takes an external library path as an argument.",
+                _lexer.Current);
+        if (!value.Ty.Equals(Ty.Text))
+            throw new ParserException("The path to an external library must be a string value.",
+                _lexer.Current);
+        if (_lexer.Next() is not Semicolon)
+            throw new ParserException("Expected semicolon.",
+                _lexer.Current);
+        return new ImportStatement
+        {
+            Path = (string)value.Val,
+        };
     }
     private Instruction ParseDelete(KeyWord keyWord)
     {
@@ -180,9 +198,18 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Syntax error", token);
 
+        
+
         var nextToken = _lexer.Next();
-        if (nextToken is Semicolon or Round.Closed or Comma)
+        //if (nextToken is Semicolon or Round.Closed or Comma)
+        //    return expr;
+        if (nextToken is Semicolon or Comma)
             return expr;
+        if (nextToken is Round.Closed)
+            nextToken = _lexer.Next();
+        if (nextToken is Semicolon)
+            return expr;
+
         else if (nextToken is Round.Open && expr is IdentExpression identExpr2)
         {
             return ParseCallExpression(identExpr2.Ident);

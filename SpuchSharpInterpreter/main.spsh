@@ -1,12 +1,17 @@
-﻿int dupa = 1000;
+﻿import "STDLib";
 fun main(){
-	delete dupa;
-	var dupa = 999;
-	dupa = 100;
-	dupa = 10;
-	zbyszek(10);
-	zbyszek(10);
+	print("Hello World!");
+
+	var x = 2 * 2;
+	print(x);
+
+	delete x;
+
+	var x = "kartoniarz to stara kurwa";
+	print(x);
+
+	print(2 + 2 + 2);
+	print(2 + 3);
+
 }
-fun zbyszek(int zjeb){
-	zjeb = zjeb + 2;
-}
+

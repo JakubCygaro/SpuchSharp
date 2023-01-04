@@ -41,3 +41,13 @@ internal class SFunction : SObject
     public required Instruction[] Block { get; init; }
 }
 
+internal class ExternalFunction : SFunction
+{
+    public required System.Reflection.MethodInfo MethodInfo { private get; init; }
+    public Value Invoke(object[] arguments)
+    {
+        MethodInfo.Invoke(null, arguments);
+        return Value.Void;
+    }
+}
+

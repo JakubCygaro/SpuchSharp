@@ -42,5 +42,9 @@ internal sealed class Assignment : Statement
 }
 internal sealed class DeleteStatement : Statement
 {
-    public required Ident VariableIdent { get; set; }
+    public required Ident VariableIdent { get; init; }
+}
+internal sealed class ImportStatement : Statement
+{
+    public required string Path { get; init; }
 }

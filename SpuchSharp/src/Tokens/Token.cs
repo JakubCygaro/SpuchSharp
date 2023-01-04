@@ -138,6 +138,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
     public static IntTy Int = new IntTy();
     public static BooleanTy Boolean = new BooleanTy();
     public static VoidTy Void = new VoidTy();
+    public static AnyTy Any = new AnyTy();
     public abstract Ident Ident { get; }
     public static Ty FromValue(string lit)
     {
@@ -167,6 +168,8 @@ internal abstract class Ty : Token, IEquatable<Ty>
 
     public bool Equals(Ty? other)
     {
+        if (this is AnyTy)
+            return true;
         if (other is null)
         {
             return false;
@@ -193,6 +196,11 @@ internal sealed class BooleanTy : Ty
 internal sealed class VoidTy : Ty
 {
     static Ident _ident = new Ident() { Value = "void" };
+    public override Ident Ident => _ident;
+}
+internal sealed class AnyTy : Ty
+{
+    static Ident _ident = new Ident() { Value = "any" };
     public override Ident Ident => _ident;
 }
 

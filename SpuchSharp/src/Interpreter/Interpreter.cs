@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using SpuchSharp.Instructions;
 using SpuchSharp.Parsing;
 using SpuchSharp.Tokens;
-using System.Text.Json;
+using SpuchSharp.API;
 
 using VariableScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
@@ -67,11 +67,19 @@ public sealed class Interpreter
         if (instruction is Statement stmt)
         {
             IfDeclaration(_globalVariableScope, _globalFunctionScope, stmt);
+            IfImport(stmt, _globalFunctionScope);
             //IfAssignment(varScope, funScope, stmt);
         }
         else
             throw new InterpreterException($"Only variable and function declarations can happen in" +
                 $" the global scope.", instruction);
+    }
+    private void IfImport(Statement instruction, FunctionScope funScope)
+    {
+        if (instruction is not ImportStatement import) 
+            return;
+        funScope.Extend(Importer.ImportFunctions(import.Path));
+
     }
     private void RunMain()
     {
@@ -151,6 +159,9 @@ public sealed class Interpreter
                 Value = value,
             });
         }
+        if (targetFunction is ExternalFunction ext)
+            return CallExternalFunction(ext, variables.Values.ToList());
+
         variables.Extend(_globalVariableScope);
         var newFunScope = new FunctionScope();
         newFunScope.Extend(_globalFunctionScope);
@@ -161,6 +172,10 @@ public sealed class Interpreter
         return Value.Void;
 
         //throw new NotImplementedException("Function call evaluation TODO");
+    }
+    private Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
+    {
+        return external.Invoke(variables.Select(v => v.Value.Val).ToArray());
     }
     private Value EvaluateComplex(VariableScope scope, FunctionScope funScope, ComplexExpression expr)
     {
@@ -264,7 +279,7 @@ public sealed class Interpreter
 
             ///////DEBUG///////
             
-            Variables:
+            Global Variables:
             {printVariables()}
 
             Functions:
