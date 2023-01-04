@@ -137,9 +137,11 @@ public sealed class Interpreter
             });
         }
         variables.Extend(_globalVariableScope);
+        var newFunScope = new FunctionScope();
+        newFunScope.Extend(_globalFunctionScope);
 
         foreach (var instruction in targetFunction.Block)
-            ExcecuteInstruction(instruction, variables, new FunctionScope());
+            ExcecuteInstruction(instruction, variables, newFunScope);
 
         return Value.Void;
 
@@ -320,5 +322,12 @@ internal static class ScopeExt
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
                     $"Variable {pair.Key.Stringify()} already declared, ", pair.Key);
+    }
+    public static void Extend(this FunctionScope scope, FunctionScope other)
+    {
+        foreach (var pair in other)
+            if (!scope.TryAdd(pair.Key, pair.Value))
+                throw new InterpreterException(
+                    $"Function {pair.Key.Stringify()} already declared, ", pair.Key);
     }
 }

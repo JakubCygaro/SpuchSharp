@@ -2,4 +2,9 @@
 fun main(){
 	dupa = 100;
 	dupa = 10;
+	zbyszek(10);
+	zbyszek(10);
+}
+fun zbyszek(int zjeb){
+	zjeb = zjeb + 2;
 }
