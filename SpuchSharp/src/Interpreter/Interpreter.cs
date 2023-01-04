@@ -39,6 +39,7 @@ public sealed class Interpreter
         {
             IfDeclaration(varScope, funScope, stmt);
             IfAssignment(varScope, funScope, stmt);
+            IfDeletion(varScope, funScope, stmt);
         }
         if (instruction is Expression expr)
             EvaluateExpression(varScope, funScope, expr);
@@ -89,9 +90,23 @@ public sealed class Interpreter
     }
     private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
     {
-        if (instruction is not Declaration decl) return;
-        if (decl is Variable var) CreateVariable(varScope, funScope, var);
-        if (decl is Function fun) CreateFunction(fun, funScope);
+        if (instruction is not Declaration decl) 
+            return;
+        if (decl is Variable var) 
+            CreateVariable(varScope, funScope, var);
+        if (decl is Function fun) 
+            CreateFunction(fun, funScope);
+    }
+    private void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
+    {
+        if (stmt is not DeleteStatement delete)
+            return;
+        var sVar = FindVariable(delete.VariableIdent, varScope);
+        DeleteVariable(sVar.Ident, varScope);
+    }
+    private void DeleteVariable(Ident ident, VariableScope varScope)
+    {
+        varScope.Remove(ident);
     }
     private void IfAssignment(VariableScope scope, FunctionScope funScope, Statement statement)
     {

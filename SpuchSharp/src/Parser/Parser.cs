@@ -51,8 +51,23 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseDeclaration(keyword);
         else if (keyword is Var)
             return ParseDeclaration(keyword);
+        else if (keyword is Delete)
+            return ParseDelete(keyword);
         else
             throw new ParserException("Failed to parse keyword instruction!", keyword);
+    }
+    private Instruction ParseDelete(KeyWord keyWord)
+    {
+        if (_lexer.Next() is not Ident ident)
+            throw new ParserException("A delete statement takes a variable name as a parameter.",
+                _lexer.Current);
+        if(_lexer.Next() is not Semicolon)
+            throw new ParserException("Expected semicolon.",
+                _lexer.Current);
+        return new DeleteStatement
+        {
+            VariableIdent = ident,
+        };
     }
     private SimpleExpression ParseSimpleExpression(Token token)
     {

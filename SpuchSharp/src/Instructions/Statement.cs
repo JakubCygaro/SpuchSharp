@@ -40,3 +40,7 @@ internal sealed class Assignment : Statement
     public required Ident Left { get; set; }
     public required Expression Expr { get; set; }
 }
+internal sealed class DeleteStatement : Statement
+{
+    public required Ident VariableIdent { get; set; }
+}

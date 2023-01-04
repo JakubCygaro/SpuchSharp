@@ -12,6 +12,8 @@ internal abstract class KeyWord : Token
     {
         "var" => new Var(),
         "fun" => new Fun(),
+        "delete" => new Delete(),
+        "import" => new Import(),
         _ => throw new System.Diagnostics.UnreachableException(),
     };
 }
@@ -27,5 +29,10 @@ internal sealed class Fun : KeyWord
 internal sealed class Delete : KeyWord
 {
     public override string Stringify() => "delete";
+}
+
+internal sealed class Import : KeyWord
+{
+    public override string Stringify() => "import";
 }
 

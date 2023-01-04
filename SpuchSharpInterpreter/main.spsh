@@ -1,5 +1,7 @@
 ﻿int dupa = 1000;
 fun main(){
+	delete dupa;
+	var dupa = 999;
 	dupa = 100;
 	dupa = 10;
 	zbyszek(10);
