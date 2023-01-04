@@ -12,7 +12,7 @@ public class ParserException : Exception
 {
     public ParserException() { }
     public ParserException(string message, Location? location = default) 
-        : base($"{message}. {location.ToString()}")
+        : base($"{message}. {location}")
     {
     }
     public ParserException(string message, Token token)

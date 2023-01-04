@@ -42,6 +42,8 @@ public sealed class Interpreter
         }
         if (instruction is Expression expr)
             EvaluateExpression(varScope, funScope, expr);
+
+        PrintScope(varScope);
     }
     public void Run()
     {
@@ -50,6 +52,13 @@ public sealed class Interpreter
             ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
         }
         DebugInfo();
+    }
+    /// <summary>
+    /// This is what the interpreter does before calling main()
+    /// </summary>
+    private void GlobalExcecute(Instruction instruction)
+    {
+
     }
     private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
     {
@@ -60,7 +69,7 @@ public sealed class Interpreter
     private void IfAssignment(VariableScope scope, FunctionScope funScope, Statement statement)
     {
         if (statement is Assignment ass) 
-            AssignValue(_globalVariableScope, funScope, ass);
+            AssignValue(scope, funScope, ass);
     }
     private Value EvaluateExpression(VariableScope scope, FunctionScope funScope, Expression expr)
     {
@@ -93,23 +102,25 @@ public sealed class Interpreter
         {
             var value = EvaluateExpression(scope, funScope, call.Args[i]);
             if (!targetFunction.Args[i].Ty.Equals(value.Ty))
-                throw new InterpreterException("Mismatched argument type!");
+                throw new InterpreterException("Mismatched argument type!", call.Function);
             variables.Add(targetFunction.Args[i].Name, new SVariable
             {
                 Ident = targetFunction.Args[i].Name,
                 Value = value,
             });
         }
-        var newVarScope = scope.Clone();
-        var newFunScope = funScope.Clone();
+        //var newVarScope = scope.Clone();
+        //var newFunScope = funScope.Clone();
 
-        foreach(var (ident, sVariable) in variables)
-        {
-            if (!newVarScope.TryAdd(ident, sVariable))
-                throw new InterpreterException($"Variable {ident.Stringify()} already declared", ident);
-        }
+        //foreach (var (ident, sVariable) in variables)
+        //{
+        //    if (!newVarScope.TryAdd(ident, sVariable))
+        //        throw new InterpreterException($"Variable {ident.Stringify()} already declared", ident);
+        //}
+        PrintScope(variables);
+
         foreach (var instruction in targetFunction.Block)
-            ExcecuteInstruction(instruction, newVarScope, newFunScope);
+            ExcecuteInstruction(instruction, variables, new FunctionScope());
 
         return Value.Void;
 
@@ -138,7 +149,7 @@ public sealed class Interpreter
         {
             return v;
         }
-        else throw new InterpreterException($"No variable {ident.Value} declared in this scope");
+        else throw new InterpreterException($"No variable {ident.Value} declared in this scope", ident);
         
     }
     private SFunction FindFunction(Ident ident, FunctionScope scope)
@@ -157,7 +168,7 @@ public sealed class Interpreter
             Ident = new Ident { Value = var.Name },
             Value = EvaluateExpression(scope, funScope, var.Expr),
         };
-        if (!_globalVariableScope.TryAdd(newVariable.Ident, newVariable))
+        if (!scope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
     private void AssignValue(VariableScope scope, FunctionScope funScope, Assignment ass)
@@ -250,6 +261,16 @@ public sealed class Interpreter
     {
         Console.WriteLine(call.Display());
     }
+    [Conditional("DEBUG")]
+    void PrintScope(VariableScope variableScope)
+    {
+        Console.WriteLine("VARIABLE SCOPE:");
+        foreach(var (i, V) in variableScope)
+        {
+            Console.WriteLine($"[{i.Stringify()} {V.Value.Stringify()}]");
+        }
+        Console.WriteLine();
+    }
 }
 
 internal static class ScopeExt
@@ -261,6 +282,7 @@ internal static class ScopeExt
     /// <returns>A new <c>VariableScope</c></returns>
     public static VariableScope Clone(this VariableScope other)
     {
+        //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
         return new VariableScope(other);
     }
     /// <summary>
@@ -270,6 +292,7 @@ internal static class ScopeExt
     /// <returns>A new <c>FunctionScope</c></returns>
     public static FunctionScope Clone(this FunctionScope other)
     {
+        //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
         return new FunctionScope(other);
     }
 }

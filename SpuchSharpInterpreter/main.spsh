@@ -1,10 +1,13 @@
-﻿fun foo(int y, int v){
+﻿fun foo(int x, int y){
 	text t = "text";
+	t = "osioł";
 }
+foo(10, 2);
+foo(10, 2);
+
 var exp = 10 * 20 + 30;
 var a = "asdasda";
 var x = 10;
 int z = 100;
 z = 101;
-foo(10, 2);
-#bar(a,b,c) + 20 + 30;
+bar(a,b,c) + 20 + 30;

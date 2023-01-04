@@ -75,7 +75,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             var expr = ParseExpressionOrStatement(token) as Expression
                 ?? throw new ParserException("Failed to parse expression", token);
             args.Add(expr);
-            if (_lexer.Current is Round.Closed) break;
+            if (_lexer.Current is Round.Closed or Semicolon) break;
             if (_lexer.Current is Comma) continue;
         }
         return new CallExpression
@@ -109,7 +109,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             throw new ParserException("Invalid syntax", token);
 
         var nextToken = _lexer.Next();
-        if (nextToken is Semicolon or Round.Closed or Comma)
+        if (nextToken is Semicolon or Comma)
+            return simpleExpression;
+        if(nextToken is Round.Closed)
+            nextToken = _lexer.Next();
+        if(nextToken is Semicolon)
             return simpleExpression;
         if (nextToken is Assign && simpleExpression is IdentExpression identExpr)
         {

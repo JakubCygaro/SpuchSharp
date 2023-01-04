@@ -134,28 +134,33 @@ internal sealed class Value : Token
 }
 internal abstract class Ty : Token, IEquatable<Ty>
 {
+    public static TextTy Text = new TextTy();
+    public static IntTy Int = new IntTy();
+    public static BooleanTy Boolean = new BooleanTy();
+    public static VoidTy Void = new VoidTy();
     public abstract Ident Ident { get; }
     public static Ty FromValue(string lit)
     {
         if (lit.ToCharArray().All(char.IsDigit))
         {
-            return new IntTy();
+            return Ty.Int;
         }
         if (lit.StartsWith('"') && lit.EndsWith('"')) 
         {
-            return new TextTy();
+            return Ty.Text;
         }
         if (lit == "false" || lit == "true")
         {
-            return new BooleanTy();
+            return Ty.Boolean;
         }
         throw new Lexing.LexerException("Failed to parse to Ty");
     }
     public static Ty From(string lit) => lit switch
     {
-        "int" => new IntTy(),
-        "text" => new TextTy(),
-        "bool" => new BooleanTy(),
+        "int" => Ty.Int,
+        "text" => Ty.Text,
+        "bool" => Ty.Boolean,
+        "void" => Ty.Void,
         _ => throw new Lexing.LexerException("Failed to parse to Ty"),
     };
     public override string Stringify() => Ident.Value;
