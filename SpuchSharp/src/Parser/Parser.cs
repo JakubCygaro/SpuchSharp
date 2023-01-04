@@ -28,7 +28,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     {
         foreach(Token token in _lexer)
         {
+            var location = token.Location;
             _currentInstruction = ParseInstruction(token);
+            _currentInstruction.Location = location;
             return true;
         }
         return false;

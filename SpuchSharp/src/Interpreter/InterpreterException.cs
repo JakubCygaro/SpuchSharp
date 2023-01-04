@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpuchSharp.Tokens;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +13,11 @@ public class InterpreterException : Exception
 {
 	public InterpreterException() { }
 	public InterpreterException(string message) : base(message) { }
-	public InterpreterException(string message, Tokens.Token token) : base($"{message} {token.Location}") 
+	public InterpreterException(string message, Tokens.Token token) 
+		: base($"{message} {token.Location}") 
+	{ }
+	internal InterpreterException(string message, Instructions.Instruction instruction) 
+		: base($"{message} {instruction.Location}") 
 	{ }
 	public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(

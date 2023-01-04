@@ -7,5 +7,8 @@ using SpuchSharp.Tokens;
 
 namespace SpuchSharp.Instructions;
 
-internal abstract class Instruction { }
+internal abstract class Instruction 
+{
+    public Location? Location { get; set; }
+}
 

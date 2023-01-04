@@ -1,13 +1,5 @@
-﻿fun foo(int x, int y){
-	text t = "text";
-	t = "osioł";
+﻿int dupa = 1000;
+fun main(){
+	dupa = 100;
+	dupa = 10;
 }
-foo(10, 2);
-foo(10, 2);
-
-var exp = 10 * 20 + 30;
-var a = "asdasda";
-var x = 10;
-int z = 100;
-z = 101;
-bar(a,b,c) + 20 + 30;

@@ -49,16 +49,43 @@ public sealed class Interpreter
     {
         foreach(var instruction in _parser)
         {
-            ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
+            //ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
+            GlobalExcecute(instruction);
         }
+        RunMain();
         DebugInfo();
     }
     /// <summary>
-    /// This is what the interpreter does before calling main()
+    /// This is what the interpreter does before calling main(), all instructions are evaluated
+    /// on global scopes
     /// </summary>
     private void GlobalExcecute(Instruction instruction)
     {
-
+        PrintInstruction(instruction);
+        //only process variable and function declarations, ignore everything else
+        if (instruction is Statement stmt)
+        {
+            IfDeclaration(_globalVariableScope, _globalFunctionScope, stmt);
+            //IfAssignment(varScope, funScope, stmt);
+        }
+        else
+            throw new InterpreterException($"Only variable and function declarations can happen in" +
+                $" the global scope.", instruction);
+    }
+    private void RunMain()
+    {
+        var mainIdent = new Ident { Value = "main" };
+        if (!_globalFunctionScope.TryGetValue(mainIdent, out var main))
+            throw new InterpreterException("Could not find a main() fuction to begin execution.");
+        if(main.Args.Length != 0)
+            throw new InterpreterException("The main() function cannot take any arguments.");
+        EvaluateCall(_globalVariableScope,
+            _globalFunctionScope,
+            new CallExpression
+            {
+                Args = Array.Empty<Expression>(),
+                Function = mainIdent,
+            });
     }
     private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
     {
@@ -109,15 +136,7 @@ public sealed class Interpreter
                 Value = value,
             });
         }
-        //var newVarScope = scope.Clone();
-        //var newFunScope = funScope.Clone();
-
-        //foreach (var (ident, sVariable) in variables)
-        //{
-        //    if (!newVarScope.TryAdd(ident, sVariable))
-        //        throw new InterpreterException($"Variable {ident.Stringify()} already declared", ident);
-        //}
-        PrintScope(variables);
+        variables.Extend(_globalVariableScope);
 
         foreach (var instruction in targetFunction.Block)
             ExcecuteInstruction(instruction, variables, new FunctionScope());
@@ -294,5 +313,12 @@ internal static class ScopeExt
     {
         //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
         return new FunctionScope(other);
+    }
+    public static void Extend(this VariableScope scope, VariableScope other) 
+    {
+        foreach (var pair in other)
+            if (!scope.TryAdd(pair.Key, pair.Value))
+                throw new InterpreterException(
+                    $"Variable {pair.Key.Stringify()} already declared, ", pair.Key);
     }
 }
