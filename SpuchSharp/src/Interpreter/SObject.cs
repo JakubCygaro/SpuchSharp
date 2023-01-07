@@ -46,8 +46,31 @@ internal class ExternalFunction : SFunction
     public required System.Reflection.MethodInfo MethodInfo { private get; init; }
     public Value Invoke(object[] arguments)
     {
-        MethodInfo.Invoke(null, arguments);
-        return Value.Void;
+        var ret = MethodInfo.Invoke(null, arguments);
+        // schizo type marshalling back into spuch#
+        return Value.FromObject(ret);
     }
+    public override string Display()
+    {
+        Console.WriteLine("EXTERNAL FUNCTION");
+        return base.Display();
+    }
+}
+
+internal class SStruct : SObject
+{
+    public override string Display()
+    {
+        StringBuilder sb = new();
+        sb.AppendLine($$"""struct {{Ident.Stringify()}} {""");
+        foreach(var (ident, value) in Fields)
+        {
+            sb.AppendLine($"{value.Ty} {ident.Stringify()} = {value.Val};");
+        }
+        sb.AppendLine(@"}");
+        return sb.ToString();
+    }
+    public required Dictionary<Ident, Value> Fields { get; init; } = new();
+
 }
 

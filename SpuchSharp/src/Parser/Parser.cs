@@ -87,23 +87,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             VariableIdent = ident,
         };
     }
-    private SimpleExpression ParseSimpleExpression(Token token)
-    {
-        if (token is Value v)
-            return new ValueExpression { Val = v };
-        else if (token is Ident i)
-            return new IdentExpression { Ident = i };
-        else
-            throw new ParserException("Failed to parse token as a simple expression!", token);
-    }
-    private CallExpression ParseCallExpression(Ident ident)
+    private CallExpression ParseCallExpression(Ident ident) //
     {
         // foo(EXPR, EXPR, EXPR)
         List<Expression> args = new List<Expression>();
 
         while(_lexer.Next() is Token token)
         {
-            if (token is Round.Closed)
+            if (token is Round.Closed) // no check whether a semicolon is next
                 break;
             if (token is Comma)
                 continue;
@@ -119,16 +110,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Function = ident,
         };
     }
-    private Assignment ParseAssignment(Ident ident)
-    {
-        return new Assignment
-        {
-            Left = ident,
-            Expr = ParseExpressionOrStatement(_lexer.Next() ?? throw new ParserException("WIP 5")) 
-                as Expression ?? throw new ParserException("WIP 7")
-        };
-    }
-
     private Instruction ParseExpressionOrStatement(Token token)
     {
         SimpleExpression simpleExpression;
@@ -163,9 +144,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         else if (nextToken is Round.Open && simpleExpression is IdentExpression identExpr2)
         {
-            return ParseCallExpression(identExpr2.Ident);
+            //return ParseCallExpression(identExpr2.Ident);
+            //this is idiotic but it does work
+            simpleExpression = ParseCallExpression(identExpr2.Ident);
+            if (_lexer.Current is Semicolon) return simpleExpression;
+            nextToken = _lexer.Next();
+            if (nextToken is Semicolon) return simpleExpression;
         }
-        else if (nextToken is Operator op)
+        if (nextToken is Operator op)
         {
             Expression complex = simpleExpression;
             while (true)
@@ -259,11 +245,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //if (ty.Equals(val.Ty))
             //    throw new ParserException(
             //        $"Mismatched types, declared type is different than assigned type ({ty} {val.Ty})", val.Ty.Location);
-            return new Variable()
+            return new Typed()
             {
                 Name = ident.Value,
                 Expr = ParseExpressionOrStatement(tok) as Expression ??
                         throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
+                Type = ty,
             };
         }
         else if (token is Fun fun)

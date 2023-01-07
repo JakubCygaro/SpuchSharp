@@ -61,6 +61,17 @@ internal sealed class Value : Token
     static Value _void = new Value(new VoidTy(), new object());
     public static Value Void => _void;
 
+    public static Value FromObject(object? obj)
+    {
+        return obj switch
+        {
+            string s => new Value(Ty.Text, s),
+            int i => new Value(Ty.Int, i),
+            bool b => new Value(Ty.Boolean, b),
+            null => Value.Void,
+            _ => throw new InvalidCastException($"Could not transalte c# type {obj} into Spuch# type")
+        };
+    }
     public static Value Add(Value left, Value right)
     {
         TypeCheck(left, right);

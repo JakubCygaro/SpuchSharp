@@ -21,6 +21,7 @@ public sealed class Interpreter
 
     private VariableScope _globalVariableScope = new();
     private FunctionScope _globalFunctionScope = new();
+    private HashSet<string> _importedExternalLibs = new();
     internal Interpreter(Parser parser) 
     {
         _parser = parser;
@@ -78,7 +79,18 @@ public sealed class Interpreter
     {
         if (instruction is not ImportStatement import) 
             return;
-        funScope.Extend(Importer.ImportFunctions(import.Path));
+        if (_importedExternalLibs.Contains(import.Path))
+            throw new InterpreterException($"Cannot import an already imported library: {import.Path}", 
+                import);
+        try 
+        {
+            funScope.Extend(Importer.ImportFunctions(import.Path));
+            _importedExternalLibs.Add(import.Path);
+        }
+        catch(Exception ex) 
+        {
+            throw new InterpreterException(ex.Message, ex);
+        }
 
     }
     private void RunMain()
@@ -214,10 +226,15 @@ public sealed class Interpreter
 
     private void CreateVariable(VariableScope scope, FunctionScope funScope, Variable var)
     {
+        var value = EvaluateExpression(scope, funScope, var.Expr);
+        if (var is Typed typed)
+            if (!typed.Type.Equals(value.Ty))
+                throw new InterpreterException(
+                    "Mismatched types, assigned type is different from declared type.", typed.Type);
         SVariable newVariable = new()
         {
             Ident = new Ident { Value = var.Name },
-            Value = EvaluateExpression(scope, funScope, var.Expr),
+            Value = value,
         };
         if (!scope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
@@ -351,13 +368,13 @@ internal static class ScopeExt
         foreach (var pair in other)
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
-                    $"Variable {pair.Key.Stringify()} already declared, ", pair.Key);
+                    $"Variable {pair.Key.Stringify()} already declared ", pair.Key);
     }
     public static void Extend(this FunctionScope scope, FunctionScope other)
     {
         foreach (var pair in other)
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
-                    $"Function {pair.Key.Stringify()} already declared, ", pair.Key);
+                    $"Function {pair.Key.Stringify()} already declared ", pair.Key);
     }
 }

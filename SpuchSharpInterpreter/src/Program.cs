@@ -9,9 +9,17 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        //var text = File.ReadAllLines("main.spsh", Encoding.UTF8);
-        //int chuj = 0;
-        Interpreter interpreter = new("main.spsh");
+#if DEBUG
+        if(args.Length == 0)
+        {
+            args = new string[] { "main.spsh" }; 
+        }
+#else
+        if (args.Length != 1)
+            throw new ArgumentException("No main.spsh file path provided.");
+#endif
+        var main = args[0];
+        Interpreter interpreter = new(main);
         try
         {
             interpreter.Run();

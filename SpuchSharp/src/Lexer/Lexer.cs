@@ -53,6 +53,12 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
                 ret = Ty.From(id.Value);
             }
             catch { }
+            try 
+            {
+                if(IsValue(id.Value, out var val))
+                    ret = val;
+            }
+            catch { }
         }
 
         if (ret is not null)
@@ -156,7 +162,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
     {
         if (MoveNext())
         {
-            //PrintToken(Current);
+            PrintToken(Current);
             return Current;
         }
         else
@@ -164,6 +170,7 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             return null;
         }
     }
+    //[Conditional("LEXER_DEBUG")]
     [Conditional("DEBUG")]
     void PrintToken(Token token) => Console.WriteLine(token);
 

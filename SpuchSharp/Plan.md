@@ -34,6 +34,25 @@ fun <name>(<type> <name>, <type> <name>) <type>{
 	<body>
 }
 ```
+# Function parameters as ref?
+```
+fun main(){
+	int x = 10;
+	square(ref x); // -> This would work fine
+	print(x) // -> 100
+
+	square(ref 60); // -> This would throw an exception because this is a temporary value 
+}
+
+fun square(ref int x) void {
+	x * x;
+}
+
+```
+Basically instead of a new SVariable with a value procured from an expression
+a ref argument would require an already existing variable to be passed as an argument
+
+
 # For Loops
 
 for x in 1 to 0 {

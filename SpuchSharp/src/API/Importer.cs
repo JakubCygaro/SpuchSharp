@@ -19,9 +19,17 @@ internal static class Importer
 {
     public static FunctionScope ImportFunctions(string dllPath)
     {
-        dllPath= Path.GetFullPath(dllPath);
-        //Directory.GetCurrentDirectory();
-        var importedAssembly = Assembly.LoadFrom(dllPath);
+
+        Assembly importedAssembly;
+        try
+        {
+            dllPath = Path.GetFullPath(dllPath);
+            importedAssembly = Assembly.LoadFrom(dllPath);
+        }
+        catch(Exception ex) 
+        {
+            throw new ImporterException(ex.Message, ex);
+        }
         var valid = GetValidFunctions(importedAssembly);
         return valid.Select(info => new ExternalFunction
         {

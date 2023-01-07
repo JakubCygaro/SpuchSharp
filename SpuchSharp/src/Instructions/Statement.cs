@@ -10,10 +10,14 @@ namespace SpuchSharp.Instructions;
 
 internal abstract class Statement : Instruction { }
 internal abstract class Declaration : Statement { }
-internal sealed class Variable : Declaration
+internal class Variable : Declaration
 {
     public required string Name { get; set; }
     public required Expression Expr { get; set; }
+}
+internal sealed class Typed : Variable
+{
+    public required Ty Type { get; init; }
 }
 
 internal sealed class Function : Declaration
