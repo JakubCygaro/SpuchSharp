@@ -60,7 +60,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseImport(KeyWord Keyword)
     {
-        if (_lexer.Next() is not Value value)
+        if (_lexer.Next() is not TextValue value)
             throw new ParserException("An import statement takes an external library path as an argument.",
                 _lexer.Current);
         if (!value.Ty.Equals(Ty.Text))
@@ -71,7 +71,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 _lexer.Current);
         return new ImportStatement
         {
-            Path = (string)value.Val,
+            Path = value.Value,
         };
     }
     private Instruction ParseDelete(KeyWord keyWord)

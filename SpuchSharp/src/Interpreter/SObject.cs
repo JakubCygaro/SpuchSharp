@@ -22,7 +22,7 @@ internal abstract class SObject
 internal class SVariable : SObject
 {
     public required Tokens.Value Value { get; set; }
-    public override string Display() => $"{Value.Ty.Stringify()} = {Value.Val}";
+    public override string Display() => $"{Value.Ty.Stringify()} = {Value.ValueAsObject}";
 }
 
 internal class SFunction : SObject
@@ -65,7 +65,7 @@ internal class SStruct : SObject
         sb.AppendLine($$"""struct {{Ident.Stringify()}} {""");
         foreach(var (ident, value) in Fields)
         {
-            sb.AppendLine($"{value.Ty} {ident.Stringify()} = {value.Val};");
+            sb.AppendLine($"{value.Ty} {ident.Stringify()} = {value.ValueAsObject};");
         }
         sb.AppendLine(@"}");
         return sb.ToString();

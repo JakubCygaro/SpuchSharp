@@ -187,7 +187,7 @@ public sealed class Interpreter
     }
     private Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
     {
-        return external.Invoke(variables.Select(v => v.Value.Val).ToArray());
+        return external.Invoke(variables.Select(v => v.Value.ValueAsObject).ToArray());
     }
     private Value EvaluateComplex(VariableScope scope, FunctionScope funScope, ComplexExpression expr)
     {

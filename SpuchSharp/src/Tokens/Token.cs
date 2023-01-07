@@ -40,34 +40,34 @@ public sealed class Ident : Token, IEquatable<Ident>
         return Value == other.Value;
     }
 }
-internal sealed class Value : Token
+internal abstract class Value : Token
 {
-    public Ty Ty { get; }
-    public object Val { get; }
-    public Value(Ty type, string literal)
+    public abstract Ty Ty { get; }
+    public abstract object ValueAsObject { get; }
+    //public object Val { get; }
+    public static Value From(Ty type, string literal)
     {
-        Ty = type;
-        Val = Ty switch 
+        return type switch
         {
-            IntTy => int.Parse(literal),
-            TextTy => literal,
-            BooleanTy => bool.Parse(literal),
+            IntTy => new IntValue { Value = int.Parse(literal) },
+            TextTy => new TextValue { Value = literal },
+            BooleanTy => new BooleanValue { Value = bool.Parse(literal) },
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    public Value(Ty type, object val) => (Ty , Val) = (type, val);
-    public override string Stringify() => $"{Ty.Ident.Value} {Val}";
+    //public Value(Ty type, object val) => (Ty , Val) = (type, val);
+    //public override string Stringify() => $"{Ty.Ident.Value} {Val}";
 
-    static Value _void = new Value(new VoidTy(), new object());
+    static Value _void = new VoidValue();
     public static Value Void => _void;
 
     public static Value FromObject(object? obj)
     {
         return obj switch
         {
-            string s => new Value(Ty.Text, s),
-            int i => new Value(Ty.Int, i),
-            bool b => new Value(Ty.Boolean, b),
+            string s => new TextValue { Value = s },
+            int i => new IntValue { Value = i },
+            bool b => new BooleanValue { Value = b },
             null => Value.Void,
             _ => throw new InvalidCastException($"Could not transalte c# type {obj} into Spuch# type")
         };
@@ -75,9 +75,9 @@ internal sealed class Value : Token
     public static Value Add(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            IntTy => new Value(left.Ty,(int)left.Val + (int)right.Val),
+            IntValue iv => new IntValue { Value = iv.Value + ((IntValue)right).Value },
             //TextTy => new Value { Ty = left.Ty, Val = (string)left.Val + (string)right.Val },
             _ => throw new Interpreting.InterpreterException("Types cannot be added!")
         };
@@ -85,54 +85,54 @@ internal sealed class Value : Token
     public static Value Sub(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            IntTy => new Value(left.Ty, (int)left.Val - (int)right.Val),
+            IntValue iv => new IntValue { Value = iv.Value - ((IntValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be subtracted!")
         };
     }
     public static Value Mul(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            IntTy => new Value(left.Ty,(int)left.Val * (int)right.Val),
+            IntValue iv => new IntValue { Value = iv.Value * ((IntValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be multiplied!")
         };
     }
     public static Value And(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            BooleanTy => new Value(left.Ty, (bool)left.Val && (bool)right.Val),
+            BooleanValue bv => new BooleanValue { Value = bv.Value && ((BooleanValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
     public static Value Or(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            BooleanTy => new Value(left.Ty, (bool)left.Val || (bool)right.Val ),
+            BooleanValue bv => new BooleanValue { Value = bv.Value || ((BooleanValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
     public static Value Eq(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            BooleanTy => new Value(left.Ty, (bool)left.Val == (bool)right.Val),
+            BooleanValue bv => new BooleanValue { Value = bv.Value == ((BooleanValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
     public static Value InEq(Value left, Value right)
     {
         TypeCheck(left, right);
-        return left.Ty switch
+        return left switch
         {
-            BooleanTy => new Value(left.Ty, (bool)left.Val != (bool)right.Val ),
+            BooleanValue bv => new BooleanValue { Value = bv.Value != ((BooleanValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
@@ -142,6 +142,40 @@ internal sealed class Value : Token
             throw new Interpreting.InterpreterException(
                 $"Type mismatch! {left.Ty.Stringify()} {right.Ty.Stringify()}");
     }
+}
+internal class TextValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Text;
+    public required string Value { get; init; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+}
+internal class IntValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Int;
+    public required int Value { get; init; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+}
+internal class BooleanValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Boolean;
+    public required bool Value { get; init; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+}
+internal class VoidValue : Value
+{
+    public override object ValueAsObject => null!;
+    public override Ty Ty => Ty.Void;
+    public override string Stringify() => $"{Ty.Stringify()}";
+}
+internal class AnyValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Any;
+    public required object Value { get; init; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
 }
 internal abstract class Ty : Token, IEquatable<Ty>
 {
