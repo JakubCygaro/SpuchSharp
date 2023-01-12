@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -47,7 +48,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseKeyWordInstruction(KeyWord keyword)
     {
-        if(keyword is Fun)
+        if (keyword is Fun)
             return ParseDeclaration(keyword);
         else if (keyword is Var)
             return ParseDeclaration(keyword);
@@ -55,8 +56,22 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseDelete(keyword);
         else if (keyword is Import)
             return ParseImport(keyword);
+        else if (keyword is Return)
+            return ParseReturn(keyword);
         else
             throw new ParserException("Failed to parse keyword instruction!", keyword);
+    }
+    private ReturnStatement ParseReturn(KeyWord keyword)
+    {
+        var expr = ParseExpressionOrStatement(_lexer.Next() ?? 
+            throw new ParserException("Expected an expression", keyword)) 
+                as Expression ??
+            throw new ParserException("Expected an expression", keyword);
+        return new ReturnStatement
+        {
+            Expr = expr,
+            Location = keyword.Location,
+        };
     }
     private Instruction ParseImport(KeyWord Keyword)
     {
@@ -262,7 +277,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //parse function args
             var arguments = ParseFunctionArguments();
 
-            if (_lexer.Next() is not Curly.Open)
+            var next = _lexer.Next();
+            Ty type = Ty.Void;
+            if(next is Ty typeName)
+            {
+                type = typeName;
+                next = _lexer.Next();
+            }
+            if (next is not Curly.Open)
                 throw new ParserException("Invalid token error", _lexer.Current);
             var instructions = ParseFunctionInstructions();
             //if (_lexer.Next() is not Semicolon)
@@ -272,79 +294,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Args = arguments,
                 Block = instructions,
                 Name = ident,
+                ReturnTy = type,
             };
         }
         else
             throw new ParserException("Invalid syntax error!", token);
-    }
-    private bool IsDeclaration(Token token, out Declaration? declaration)
-    {
-        declaration = null;
-        if(token is Var var)
-        {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assign)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Token tok)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            //if(!IsExpressionOrStatement(tok, out var expression))
-            //    throw new ParserException("Invalid token error", tok);
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
-            declaration = new Variable()
-            {
-                Name = ident.Value,
-                Expr = ParseExpressionOrStatement(tok) as Expression ??
-                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
-            };
-            return true;
-        }
-        else if (token is Ty ty)
-        {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assign)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Token tok)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            //if (!IsExpressionOrStatement(tok, out var expression))
-            //    throw new ParserException("Invalid token error", _lexer.Current);
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
-            //if (ty.Equals(val.Ty))
-            //    throw new ParserException(
-            //        $"Mismatched types, declared type is different than assigned type ({ty} {val.Ty})", val.Ty.Location);
-            declaration = new Variable()
-            {
-                Name = ident.Value,
-                Expr = ParseExpressionOrStatement(tok) as Expression ??
-                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
-            };
-            return true;
-        }
-        else if (token is Fun fun)
-        {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Round.Open)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            //parse function args
-            var arguments = ParseFunctionArguments();
-
-            if (_lexer.Next() is not Curly.Open)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            var instructions = ParseFunctionInstructions();
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
-            declaration = new Function()
-            {
-                Args = arguments,
-                Block = instructions,
-                Name = ident,
-            };
-        }
-        return false;
     }
     private FunArg[] ParseFunctionArguments()
     {

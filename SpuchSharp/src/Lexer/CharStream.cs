@@ -33,6 +33,14 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             //.Select(l => l + " ")
             .Select(l => l.ToCharArray())
             .ToArray();
+
+        //foreach(var line in _lines)
+        //{
+        //    foreach(var character in line)
+        //        Console.Write(character);
+        //    Console.WriteLine();
+        //}
+          
     }
 
     public void Dispose(){ }

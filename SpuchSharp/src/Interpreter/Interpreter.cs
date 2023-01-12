@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+
+
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,6 +17,7 @@ using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 
 namespace SpuchSharp.Interpreting;
+
 public sealed class Interpreter
 {
     private readonly Parser _parser;
@@ -49,7 +52,7 @@ public sealed class Interpreter
     }
     public void Run()
     {
-        foreach(var instruction in _parser)
+        foreach (var instruction in _parser)
         {
             //ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
             GlobalExcecute(instruction);
@@ -100,6 +103,8 @@ public sealed class Interpreter
             throw new InterpreterException("Could not find a main() fuction to begin execution.");
         if(main.Args.Length != 0)
             throw new InterpreterException("The main() function cannot take any arguments.");
+        if(main.ReturnTy is not VoidTy)
+            throw new InterpreterException("The main() function cannot have a return type.");
         EvaluateCall(_globalVariableScope,
             _globalFunctionScope,
             new CallExpression
@@ -156,6 +161,7 @@ public sealed class Interpreter
     private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
     {
         var targetFunction = FindFunction(call.Function, funScope);
+        var returnType = targetFunction.ReturnTy;
         if (targetFunction.Args.Length != call.Args.Length)
             throw new InterpreterException($"Expected {targetFunction.Args.Length + 1} arguments " +
                 $"got {call.Args.Length + 1}", call.Function);
@@ -178,12 +184,27 @@ public sealed class Interpreter
         var newFunScope = new FunctionScope();
         newFunScope.Extend(_globalFunctionScope);
 
+        var retValue = Value.Void;
+
         foreach (var instruction in targetFunction.Block)
-            ExcecuteInstruction(instruction, variables, newFunScope);
-
-        return Value.Void;
-
-        //throw new NotImplementedException("Function call evaluation TODO");
+        {
+            if(instruction is not ReturnStatement ret)
+                ExcecuteInstruction(instruction, variables, newFunScope);
+            else
+            {
+                retValue = EvaluateExpression(variables, newFunScope, ret.Expr);
+                if (returnType is VoidTy)
+                    throw new InterpreterException(
+                        "A function that does not have a return type cannot have a return statement!",
+                        ret);
+                break;
+            }
+        }
+        if (!retValue.Ty.Equals(returnType))
+            throw new InterpreterException(
+                $"Return statement type does not match " +
+                $"the return type of the function `{targetFunction.Ident.Stringify()}`");
+        return retValue;
     }
     private Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
     {
@@ -256,10 +277,11 @@ public sealed class Interpreter
             Args = fun.Args,
             Block = fun.Block,
             Ident = fun.Name,
+            ReturnTy = fun.ReturnTy,
         });
     }
 
-    [Conditional("DEBUG")]
+    [Conditional("EXPRESSION")]
     void PrintExpression(Expression expr)
     {
         //if (expr is ComplexExpression c)
@@ -268,20 +290,18 @@ public sealed class Interpreter
         //    Console.WriteLine(ser);
         //}
         Console.WriteLine($$"""
-            Expression 
-            {
+            Expression {
                 Type: {{expr}}
                 Display: {{expr.Display()}}
             }
             """);
     }
 
-    [Conditional("DEBUG")]
+    [Conditional("INSTRUCTION")]
     void PrintInstruction(Instruction ins)
     {
         Console.WriteLine($$"""
-            Instruction
-            {
+            Instruction {
                 Type: {{ins}}
             }
             """);
@@ -292,8 +312,7 @@ public sealed class Interpreter
     {
         Console.WriteLine($"""
 
-            Execution Ended...
-
+            //EXECUTION ENDED//
             ///////DEBUG///////
             
             Global Variables:
@@ -329,15 +348,16 @@ public sealed class Interpreter
     {
         Console.WriteLine(call.Display());
     }
-    [Conditional("DEBUG")]
+    [Conditional("SCOPE")]
     void PrintScope(VariableScope variableScope)
     {
+        Console.WriteLine("=================");
         Console.WriteLine("VARIABLE SCOPE:");
         foreach(var (i, V) in variableScope)
         {
             Console.WriteLine($"[{i.Stringify()} {V.Value.Stringify()}]");
         }
-        Console.WriteLine();
+        Console.WriteLine("=================");
     }
 }
 

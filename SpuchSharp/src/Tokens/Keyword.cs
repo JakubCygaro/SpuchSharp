@@ -8,12 +8,13 @@ namespace SpuchSharp.Tokens;
 
 internal abstract class KeyWord : Token 
 {
-    public static KeyWord From(string value) => value switch
+    public static KeyWord From(string literal) => literal switch
     {
         "var" => new Var(),
         "fun" => new Fun(),
         "delete" => new Delete(),
         "import" => new Import(),
+        "return" => new Return(),
         _ => throw new System.Diagnostics.UnreachableException(),
     };
 }
@@ -34,5 +35,9 @@ internal sealed class Delete : KeyWord
 internal sealed class Import : KeyWord
 {
     public override string Stringify() => "import";
+}
+internal sealed class Return : KeyWord
+{
+    public override string Stringify() => "return";
 }
 

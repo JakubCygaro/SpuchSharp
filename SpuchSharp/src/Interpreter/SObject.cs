@@ -39,6 +39,7 @@ internal class SFunction : SObject
     }
     public required Parsing.FunArg[] Args { get; init; }
     public required Instruction[] Block { get; init; }
+    public required Ty ReturnTy { get; init; }
 }
 
 internal class ExternalFunction : SFunction

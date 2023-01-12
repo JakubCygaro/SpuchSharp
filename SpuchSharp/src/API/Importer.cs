@@ -12,6 +12,7 @@ using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 using SpuchSharp.Tokens;
 using SpuchSharp.Parsing;
+using System.Reflection.Metadata.Ecma335;
 
 namespace SpuchSharp.API;
 
@@ -25,21 +26,22 @@ internal static class Importer
         {
             dllPath = Path.GetFullPath(dllPath);
             importedAssembly = Assembly.LoadFrom(dllPath);
+            var valid = GetValidFunctions(importedAssembly);
+
+            return valid.Select(info => new ExternalFunction
+            {
+                Args = info.Args.ToArray(),
+                Block = Array.Empty<Instructions.Instruction>(),
+                Ident = info.Ident,
+                MethodInfo = info.MethodInfo,
+                ReturnTy = Ty.FromCSharpType(info.MethodInfo.ReturnType)
+            })
+                .ToDictionary(external => external.Ident, external => external as SFunction);
         }
         catch(Exception ex) 
         {
             throw new ImporterException(ex.Message, ex);
         }
-        var valid = GetValidFunctions(importedAssembly);
-        return valid.Select(info => new ExternalFunction
-        {
-            Args = info.Args.ToArray(),
-            Block = Array.Empty<Instructions.Instruction>(),
-            Ident = info.Ident,
-            MethodInfo = info.MethodInfo,
-        })
-            .ToDictionary(external => external.Ident, external => external as SFunction);
-
     }
     static List<FunctionInfo> GetValidFunctions(Assembly assembly)
     {
@@ -79,45 +81,21 @@ internal static class Importer
         {
             
             var paramType = parameter.ParameterType;
-            if (paramType == typeof(string))
+            try
             {
                 functionInfo.Args.Add(new FunArg
                 {
                     Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.Text,
+                    Ty = Ty.FromCSharpType(paramType)
                 });
             }
-            else if (paramType == typeof(int))
+            catch
             {
-                functionInfo.Args.Add(new FunArg
-                {
-                    Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.Int,
-                });
-            }
-            else if (paramType == typeof(bool))
-            {
-                functionInfo.Args.Add(new FunArg
-                {
-                    Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.Boolean,
-                });
-            }
-            else if (paramType == typeof(object))
-            {
-                functionInfo.Args.Add(new FunArg
-                {
-                    Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.Any,
-                });
-            }
-            else
-                throw new ImporterException("Function declared in the external library uses" +
+                throw new ImporterException("Function declared in an external library uses" +
                     $" unsuported argument types. fun: {functionInfo.MethodInfo.Name}, type: {paramType}");
+            }
+
         }
-        if(functionInfo.MethodInfo.ReturnType != typeof(void))
-            throw new ImporterException("Function declared in the external library uses" +
-                    $" an unsuported return type: {functionInfo.MethodInfo.Name}");
         return true;
     }
     private class FunctionInfo

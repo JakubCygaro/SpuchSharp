@@ -12,4 +12,10 @@ public static class STD
 
     [Function("pause")]
     public static void Pause(int millisecond) => Task.Delay(millisecond).Wait();
+
+    [Function("pow")]
+    public static int Pow(int x, int y) => (int)Math.Pow(x, y);
+
+    [Function("readln")]
+    public static string ReadLine() => Console.ReadLine() ?? "";
 }

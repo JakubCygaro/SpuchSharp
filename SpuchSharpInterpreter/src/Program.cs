@@ -1,4 +1,10 @@
-﻿using SpuchSharp.Lexing;
+﻿#if DEBUG
+#define INSTRUCTION
+#define EXPRESSION
+#define SCOPE
+#endif
+
+using SpuchSharp.Lexing;
 using SpuchSharp.Parsing;
 using System.IO;
 using System.Text;
@@ -26,7 +32,11 @@ internal class Program
         }
         catch (Exception ex)
         {
+#if DEBUG 
+            Console.WriteLine(ex);
+#else
             Console.WriteLine(ex.Message);
+#endif
         }
         
     }

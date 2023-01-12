@@ -1,6 +1,11 @@
 ﻿import "STDLib";
 fun main(){
+	println("type smth");
+	text t = readln();
+	println(t);
 	println("Hello World!");
+	var dzik = add(2,3);
+	println(dzik);
 	dupa(10 + 3, 100 - 100, 1000 + 69);
 	var x = 2 * 2;
 	println(x);
@@ -32,5 +37,9 @@ fun syd(){
 	pause(1000);
 	println("waters underground");
 	pause(1000);
+}
+
+fun add(int x, int y) int { 
+	return x + y;
 }
 

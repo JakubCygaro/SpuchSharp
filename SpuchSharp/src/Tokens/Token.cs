@@ -201,6 +201,21 @@ internal abstract class Ty : Token, IEquatable<Ty>
         }
         throw new Lexing.LexerException("Failed to parse to Ty");
     }
+    public static Ty FromCSharpType(Type type)
+    {
+        if (type == typeof(string))
+            return Ty.Text;
+        else if(type == typeof(int))
+            return Ty.Int;
+        else if (type == typeof(bool))
+            return Ty.Boolean;
+        else if (type == typeof(void))
+            return Ty.Void;
+        else if (type == typeof(object))
+            return Ty.Any;
+        throw new InvalidCastException(
+            $"Could not translate external function type {type} to any internal type");
+    }
     public static Ty From(string lit) => lit switch
     {
         "int" => Ty.Int,
@@ -221,6 +236,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
         }
         return this.Ident.Equals(other.Ident);
     }
+
 }
 
 internal sealed class TextTy : Ty

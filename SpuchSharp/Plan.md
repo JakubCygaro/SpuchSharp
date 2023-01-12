@@ -22,7 +22,7 @@ fun <name>(<type> <name>, <type> <name>){
 }
 
 ```
-# Function return types 
+# Function return types  \/
 ```
 fun x(int a) int {
 	return a + 10;
@@ -57,6 +57,17 @@ a ref argument would require an already existing variable to be passed as an arg
 
 for x in 1 to 0 {
 
+}
+
+for x from 1..10 {
+
+}
+
+# While loops
+
+loop {
+	skip;
+	break;
 }
 
 # If Statements

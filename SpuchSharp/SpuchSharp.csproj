@@ -4,7 +4,8 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <DefineConstants>$(Lexer)</DefineConstants>
+    <DefineConstants>$(lexer)</DefineConstants>
+	<DefineConstants>$(interpreter)</DefineConstants>
   </PropertyGroup>
 
 </Project>

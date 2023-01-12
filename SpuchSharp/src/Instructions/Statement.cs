@@ -25,6 +25,7 @@ internal sealed class Function : Declaration
     public required Ident Name { get; init; }
     public required FunArg[] Args { get; init; }
     public required Instruction[] Block { get; init; }
+    public required Ty ReturnTy { get; init; }
 
     public override string ToString()
     {
@@ -51,4 +52,8 @@ internal sealed class DeleteStatement : Statement
 internal sealed class ImportStatement : Statement
 {
     public required string Path { get; init; }
+}
+internal sealed class ReturnStatement : Statement
+{
+    public required Expression Expr { get; init; }
 }
