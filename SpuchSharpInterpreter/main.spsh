@@ -1,45 +1,7 @@
 ﻿import "STDLib";
 fun main(){
-	println("type smth");
+	println("type");
 	text t = readln();
 	println(t);
-	println("Hello World!");
-	var dzik = add(2,3);
-	println(dzik);
-	dupa(10 + 3, 100 - 100, 1000 + 69);
-	var x = 2 * 2;
-	println(x);
-	test(x);
-	println(x);
-
-	delete x;
-
-	var x = "kurwa chuj";
-	println(x);
-
-	println(2 + 2 + 2);
-	var spucha = true;
-	println(2 + 3);
-}
-fun dupa(int a, int b, int c){
-	println(a + b + c);
-}
-fun chuj(){ }
-fun test(int x){
-	x = x + 10;
-}
-fun syd(){
-	println("floating down");
-	pause(1000);
-	println("the sound resounds");
-	pause(1000);
-	println("around the icy");
-	pause(1000);
-	println("waters underground");
-	pause(1000);
-}
-
-fun add(int x, int y) int { 
-	return x + y;
 }
 

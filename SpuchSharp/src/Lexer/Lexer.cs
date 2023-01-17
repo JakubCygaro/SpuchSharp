@@ -170,8 +170,8 @@ internal sealed class Lexer : IEnumerable<Token>, IEnumerator<Token>
             return null;
         }
     }
-    [Conditional("LEXER_DEBUG")]
-    //[Conditional("DEBUG")]
+    //[Conditional("LEXER_DEBUG")]
+    [Conditional("DEBUG")]
     void PrintToken(Token token) => Console.WriteLine(token);
 
 
