@@ -125,7 +125,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Function = ident,
         };
     }
-    private Instruction ParseExpressionOrStatement(Token token)
+    private Instruction ParseExpressionOrStatement(Token token, bool simple = false)
     {
         SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
 
@@ -149,18 +149,27 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             nextToken = _lexer.Next();
             if (nextToken is Semicolon) return simpleExpression;
         }
+
+        if (simple)
+            return simpleExpression;
+
         if (nextToken is Operator op)
         {
             Expression complex = simpleExpression;
             while (true)
             {
-                var right = ParseRightExpression(_lexer.Next() 
-                    ?? throw new ParserException("Failed to parse to expression", _lexer.Current),
-                        out var @operator);
-                complex = ComplexExpression.From(complex, op, right);
-                if(@operator is null)
+                nextToken = _lexer.Next() ??
+                    throw new ParserException("TODO 01");
+                var rightExpr = ParseExpressionOrStatement(nextToken, simple: true)
+                    as Expression ?? throw new ParserException("TODO 02");
+                complex = ComplexExpression.From(complex, op, rightExpr);
+                var current = _lexer.Current;
+                if (current is Semicolon)
                     return complex;
-                op = @operator;
+                else if (current is Operator op2)
+                    op = op2;
+                else
+                    throw new ParserException("TODO 03");
             }
 
         }
