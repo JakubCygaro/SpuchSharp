@@ -2,12 +2,9 @@
 #define INSTRUCTION
 #define EXPRESSION
 #define SCOPE
+#define LEXER_DEBUG
 #endif
 
-using SpuchSharp.Lexing;
-using SpuchSharp.Parsing;
-using System.IO;
-using System.Text;
 using SpuchSharp.Interpreting;
 
 namespace SpuchSharp;
