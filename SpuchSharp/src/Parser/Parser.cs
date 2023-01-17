@@ -127,17 +127,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseExpressionOrStatement(Token token)
     {
-        SimpleExpression simpleExpression;
-        if (token is Value value)
-        {
-            simpleExpression = new ValueExpression { Val = value };
-        }
-        else if (token is Ident ident)
-        {
-            simpleExpression = new IdentExpression { Ident = ident };
-        }
-        else
-            throw new ParserException("Invalid syntax", token);
+        SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
 
         var nextToken = _lexer.Next();
         if (nextToken is Semicolon or Comma)
@@ -146,17 +136,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             nextToken = _lexer.Next();
         if(nextToken is Semicolon)
             return simpleExpression;
+
         if (nextToken is Assign && simpleExpression is IdentExpression identExpr)
-        {
-            return new Assignment
-            {
-                Expr = ParseExpressionOrStatement(_lexer.Next() ?? 
-                    throw new ParserException("Premature end of input", nextToken))
-                        as Expression ?? throw new ParserException("Failed to parse as expression", 
-                                                                                _lexer.Current),
-                Left = identExpr.Ident
-            };
-        }
+            return ParseAssignment(identExpr.Ident);
+
         else if (nextToken is Round.Open && simpleExpression is IdentExpression identExpr2)
         {
             //return ParseCallExpression(identExpr2.Ident);
@@ -184,26 +167,21 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Syntax error", token);
     }
+    private SimpleExpression ParseIdentOrValueExpression(Token token)
+    {
+        if (token is Value value)
+            return new ValueExpression { Val = value };
+        else if (token is Ident ident)
+            return new IdentExpression { Ident = ident };
+        else
+            throw new ParserException("Invalid token.", token);
+    }
     private Expression ParseRightExpression(Token token, out Operator? op)
     {
         op = null;
-        Expression expr;
-        if (token is Value value)
-        {
-            expr = new ValueExpression { Val = value };
-        }
-        else if (token is Ident ident)
-        {
-            expr = new IdentExpression { Ident = ident };
-        }
-        else
-            throw new ParserException("Syntax error", token);
-
-        
+        Expression expr = ParseIdentOrValueExpression(token);
 
         var nextToken = _lexer.Next();
-        //if (nextToken is Semicolon or Round.Closed or Comma)
-        //    return expr;
         if (nextToken is Semicolon or Comma)
             return expr;
         if (nextToken is Round.Closed)
@@ -222,7 +200,17 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         else
             throw new ParserException("Syntax error", token);
-
+    }
+    private Assignment ParseAssignment(Ident ident)
+    {
+        return new Assignment
+        {
+            Expr = ParseExpressionOrStatement(_lexer.Next() ??
+                throw new ParserException("Premature end of input", _lexer.Current))
+            as Expression ?? throw new ParserException("Failed to parse as expression",
+                                                                    _lexer.Current),
+            Left = ident
+        };
     }
     private Instruction ParseDeclaration(Token token)
     {
@@ -234,10 +222,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Token tok)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            //if (!IsExpressionOrStatement(tok, out var expression))
-            //    throw new ParserException("Invalid token error", tok);
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
             return new Variable()
             {
                 Name = ident.Value,
@@ -253,13 +237,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Token tok)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            //if (!IsExpressionOrStatement(tok, out var expression))
-            //    throw new ParserException("Invalid token error", _lexer.Current);
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
-            //if (ty.Equals(val.Ty))
-            //    throw new ParserException(
-            //        $"Mismatched types, declared type is different than assigned type ({ty} {val.Ty})", val.Ty.Location);
             return new Typed()
             {
                 Name = ident.Value,
@@ -287,8 +264,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if (next is not Curly.Open)
                 throw new ParserException("Invalid token error", _lexer.Current);
             var instructions = ParseFunctionInstructions();
-            //if (_lexer.Next() is not Semicolon)
-            //    throw new ParserException("Invalid token error");
+
             return new Function()
             {
                 Args = arguments,
@@ -336,8 +312,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 break;
             list.Add(ParseInstruction(token));
         }
-
-
         return list.ToArray();
     }
 
