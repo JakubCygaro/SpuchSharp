@@ -10,6 +10,8 @@ using System.Xml.Linq;
 using SpuchSharp.Instructions;
 using SpuchSharp.Lexing;
 using SpuchSharp.Tokens;
+using SpuchSharp;
+using System.IO;
 
 namespace SpuchSharp.Parsing;
 
@@ -43,8 +45,45 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseKeyWordInstruction(keyWord);
         if (firstToken is Ty type)
             return ParseDeclaration(type);
-        else 
-            return ParseExpressionOrStatement(firstToken);
+        if (firstToken is Ident ident)
+        {
+            var secondToken = _lexer.Next();
+            if (secondToken is Assign)
+                return new Assignment
+                {
+                    Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
+                    Left = ident
+                };
+            else if (secondToken is not Semicolon and not null)
+            {
+                var tokens = new List<Token>() 
+                { 
+                    firstToken, 
+                    secondToken
+                };
+                tokens.AddRange(ReadToSemicolon(_lexer));
+                return ParseExpression(tokens.ToTokenStream());
+            }
+            else if (secondToken is Semicolon)
+            {
+                var tokens = new List<Token>() 
+                {
+                    firstToken
+                };
+                return ParseExpression(tokens.ToTokenStream());
+            }
+            else
+                throw new ParserException("TODO 60");
+        }
+        else
+        {
+            var tokens = new List<Token>() 
+            {
+                firstToken,
+            };
+            tokens.AddRange(ReadToSemicolon(_lexer));
+            return ParseExpression(tokens.ToTokenStream());
+        }
     }
     private Instruction ParseKeyWordInstruction(KeyWord keyword)
     {
@@ -63,10 +102,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private ReturnStatement ParseReturn(KeyWord keyword)
     {
-        var expr = ParseExpressionOrStatement(_lexer.Next() ?? 
-            throw new ParserException("Expected an expression", keyword)) 
-                as Expression ??
-            throw new ParserException("Expected an expression", keyword);
+        var expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream());
         return new ReturnStatement
         {
             Expr = expr,
@@ -102,79 +138,80 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             VariableIdent = ident,
         };
     }
-    private CallExpression ParseCallExpression(Ident ident) //
+    private Expression ParseExpression(INullEnumerator<Token> stream)
     {
-        // foo(EXPR, EXPR, EXPR)
-        List<Expression> args = new List<Expression>();
-
-        while(_lexer.Next() is Token token)
+        Expression? ret = null;
+        Operator? currentOperator = null;
+        while(stream.Next() is Token token)
         {
-            if (token is Round.Closed) // no check whether a semicolon is next
-                break;
-            if (token is Comma)
-                continue;
-            var expr = ParseExpressionOrStatement(token) as Expression
-                ?? throw new ParserException("Failed to parse expression", token);
-            args.Add(expr);
-            if (_lexer.Current is Round.Closed or Semicolon) break;
-            if (_lexer.Current is Comma) continue;
+            SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
+
+            var nextToken = stream.Next();
+
+            if (nextToken is Round.Open && simpleExpression is IdentExpression identExpression)
+            {
+                var insideParen = ParseInsideRound(stream);
+                simpleExpression = ParseCall(identExpression.Ident, insideParen);
+                nextToken = stream.Next();
+            }
+            if(currentOperator is not null && ret is not null)
+            {
+                ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
+            }
+            else
+            {
+                ret = simpleExpression;
+            }
+            if (nextToken is Operator nextOperator)
+            {
+                currentOperator = nextOperator;
+            }
+        }
+        return ret ?? 
+            throw new ParserException("Failed to parse an expression");
+    }
+
+    private List<TokenStream> ParseInsideRound(INullEnumerator<Token> stream)
+    {
+        List<TokenStream> streams = new();
+        List<Token> tokens = new();
+        int openParen = 1;
+        while(stream.Next() is Token token)
+        {
+            if (token is Round.Open)
+                openParen += 1;
+            else if (token is Round.Closed)
+                openParen -= 1;
+            else if (token is Comma && openParen == 1)
+            {
+                streams.Add(tokens.ToTokenStream());
+                tokens = new();
+            }
+            else
+                tokens.Add(token);
+            if (openParen == 0)
+            {
+                if(tokens.Count > 0)
+                    streams.Add(tokens.ToTokenStream());
+                return streams;
+            }
+        }
+        throw new ParserException("Unclosed parentheses", stream.Current);
+    }
+    private CallExpression ParseCall(Ident ident, 
+        List<TokenStream> tokenStreams)
+    {
+        List<Expression> expressions = new();
+        foreach(var stream in tokenStreams)
+        {
+            expressions.Add(ParseExpression(stream));
         }
         return new CallExpression
         {
-            Args = args.ToArray(),
+            Args = expressions.ToArray(),
             Function = ident,
+            Location = ident.Location,
         };
-    }
-    private Instruction ParseExpressionOrStatement(Token token, bool simple = false)
-    {
-        SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
-
-        var nextToken = _lexer.Next();
-        if (nextToken is Semicolon or Comma)
-            return simpleExpression;
-        if(nextToken is Round.Closed)
-            nextToken = _lexer.Next();
-        if(nextToken is Semicolon)
-            return simpleExpression;
-
-        if (nextToken is Assign && simpleExpression is IdentExpression identExpr)
-            return ParseAssignment(identExpr.Ident);
-
-        else if (nextToken is Round.Open && simpleExpression is IdentExpression identExpr2)
-        {
-            //return ParseCallExpression(identExpr2.Ident);
-            //this is idiotic but it does work
-            simpleExpression = ParseCallExpression(identExpr2.Ident);
-            if (_lexer.Current is Semicolon) return simpleExpression;
-            nextToken = _lexer.Next();
-            if (nextToken is Semicolon) return simpleExpression;
-        }
-
-        if (simple)
-            return simpleExpression;
-
-        if (nextToken is Operator op)
-        {
-            Expression complex = simpleExpression;
-            while (true)
-            {
-                nextToken = _lexer.Next() ??
-                    throw new ParserException("TODO 01");
-                var rightExpr = ParseExpressionOrStatement(nextToken, simple: true)
-                    as Expression ?? throw new ParserException("TODO 02");
-                complex = ComplexExpression.From(complex, op, rightExpr);
-                var current = _lexer.Current;
-                if (current is Semicolon)
-                    return complex;
-                else if (current is Operator op2)
-                    op = op2;
-                else
-                    throw new ParserException("TODO 03");
-            }
-
-        }
-        else
-            throw new ParserException("Syntax error", token);
     }
     private SimpleExpression ParseIdentOrValueExpression(Token token)
     {
@@ -185,41 +222,40 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Invalid token.", token);
     }
-    private Expression ParseRightExpression(Token token, out Operator? op)
+    private Assignment ParseAssignment(Token token, INullEnumerator<Token> stream)
     {
-        op = null;
-        Expression expr = ParseIdentOrValueExpression(token);
+        if (token is not Ident ident)
+            throw new ParserException("Could not parse to assignment, expected ident", token);
+        if (stream.Next() is not Assign)
+            throw new ParserException("Could not parse to assignment, expected `=`", token);
 
-        var nextToken = _lexer.Next();
-        if (nextToken is Semicolon or Comma)
-            return expr;
-        if (nextToken is Round.Closed)
-            nextToken = _lexer.Next();
-        if (nextToken is Semicolon)
-            return expr;
-
-        else if (nextToken is Round.Open && expr is IdentExpression identExpr2)
-        {
-            return ParseCallExpression(identExpr2.Ident);
-        }
-        else if (nextToken is Operator @operator)
-        {
-            op = @operator;
-            return expr;
-        }
-        else
-            throw new ParserException("Syntax error", token);
-    }
-    private Assignment ParseAssignment(Ident ident)
-    {
         return new Assignment
         {
-            Expr = ParseExpressionOrStatement(_lexer.Next() ??
-                throw new ParserException("Premature end of input", _lexer.Current))
-            as Expression ?? throw new ParserException("Failed to parse as expression",
-                                                                    _lexer.Current),
+            Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Left = ident
         };
+    }
+
+    /// <summary>
+    /// Returns a list of all tokens in a stream before the first encounter of <c>T</c>
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    private List<Token> ReadToSemicolon(INullEnumerator<Token> stream)
+    {
+        return ReadToToken<Semicolon>(stream);
+    }
+    private List<Token> ReadToToken<T>(INullEnumerator<Token> stream)
+        where T: Token
+    {
+        List<Token> tokens = new List<Token>();
+
+        while (stream.Next() is Token token)
+            if (token is not T)
+                tokens.Add(token);
+            else
+                return tokens;
+        throw new ParserException("Premature end of input");
     }
     private Instruction ParseDeclaration(Token token)
     {
@@ -229,13 +265,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Assign)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Token tok)
-                throw new ParserException("Invalid token error", _lexer.Current);
+            //if (_lexer.Next() is not Token tok)
+            //    throw new ParserException("Invalid token error", _lexer.Current);
             return new Variable()
             {
                 Name = ident.Value,
-                Expr = ParseExpressionOrStatement(tok) as Expression ??
-                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
+                Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
             };
         }
         else if (token is Ty ty)
@@ -244,13 +279,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", _lexer.Current);
             if (_lexer.Next() is not Assign)
                 throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Token tok)
-                throw new ParserException("Invalid token error", _lexer.Current);
+            //if (_lexer.Next() is not Token tok)
+            //    throw new ParserException("Invalid token error", _lexer.Current);
             return new Typed()
             {
                 Name = ident.Value,
-                Expr = ParseExpressionOrStatement(tok) as Expression ??
-                        throw new ParserException("Failed to parse declaration instruction", _lexer.Current),
+                Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
                 Type = ty,
             };
         }
@@ -335,6 +369,5 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     {
         _lexer.Reset();
     }
-
     public void Dispose() { }
 }

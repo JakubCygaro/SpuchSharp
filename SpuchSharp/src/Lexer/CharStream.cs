@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SpuchSharp;
 
 namespace SpuchSharp.Lexing;
 
-internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
+internal sealed class CharStream : INullEnumerator<char>, IEnumerable<char>
 {
     private char[][] _lines;
 
@@ -90,17 +91,6 @@ internal sealed class CharStream : IEnumerator<char>, IEnumerable<char>
             return true;
         }
         return false;
-    }
-    public char? Peek()
-    {
-        try
-        {
-            return _lines[_currentLine][_position + 1];
-        }
-        catch
-        {
-            return null;
-        }
     }
     public bool EndOfInput()
     {

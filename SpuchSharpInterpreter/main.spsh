@@ -1,7 +1,12 @@
 ﻿import "STDLib";
 fun main(){
+	chuj(1, 2);
+	println(7 + 2 * 3);
 	println("type");
 	text t = readln();
 	println(t);
+}
+fun chuj(int x, int y) int {
+	return x + y;
 }
 

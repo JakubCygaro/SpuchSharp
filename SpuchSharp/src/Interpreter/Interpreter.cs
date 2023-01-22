@@ -163,7 +163,7 @@ public sealed class Interpreter
         var targetFunction = FindFunction(call.Function, funScope);
         var returnType = targetFunction.ReturnTy;
         if (targetFunction.Args.Length != call.Args.Length)
-            throw new InterpreterException($"Expected {targetFunction.Args.Length + 1} arguments " +
+            throw new InterpreterException($"Expected {targetFunction.Args.Length} arguments " +
                 $"got {call.Args.Length + 1}", call.Function);
         VariableScope variables = new();
         for(int i = 0; i < targetFunction.Args.Length; i++)
