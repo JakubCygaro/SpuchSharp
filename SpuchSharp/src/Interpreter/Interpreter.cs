@@ -44,11 +44,19 @@ public sealed class Interpreter
             IfDeclaration(varScope, funScope, stmt);
             IfAssignment(varScope, funScope, stmt);
             IfDeletion(varScope, funScope, stmt);
+            IfIfStatement(varScope, funScope, stmt);
         }
         if (instruction is Expression expr)
             EvaluateExpression(varScope, funScope, expr);
 
         PrintScope(varScope);
+    }
+    private void ExcecuteBlock(Instruction[] block,
+        VariableScope varScope,
+        FunctionScope funScope)
+    {
+        foreach (var ins in block)
+            ExcecuteInstruction(ins, varScope, funScope);
     }
     public void Run()
     {
@@ -121,6 +129,17 @@ public sealed class Interpreter
             CreateVariable(varScope, funScope, var);
         if (decl is Function fun) 
             CreateFunction(fun, funScope);
+    }
+    private void IfIfStatement(VariableScope varScope, FunctionScope funScope, Statement statement)
+    {
+        if (statement is not IfStatement ifStmt)
+            return;
+        var value = EvaluateExpression(varScope, funScope, ifStmt.Expr);
+        if (value is not BooleanValue boolean)
+            throw new InterpreterException("If statement expression must evaluate to a true/false value");
+        if (boolean)
+            ExcecuteBlock(ifStmt.Block, varScope, funScope);
+
     }
     private void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
     {

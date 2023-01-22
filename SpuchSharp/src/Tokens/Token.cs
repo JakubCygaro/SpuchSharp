@@ -78,7 +78,7 @@ internal abstract class Value : Token
         return left switch
         {
             IntValue iv => new IntValue { Value = iv.Value + ((IntValue)right).Value },
-            //TextTy => new Value { Ty = left.Ty, Val = (string)left.Val + (string)right.Val },
+            TextValue sv => new TextValue { Value = sv.Value + ((TextValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be added!")
         };
     }
@@ -118,24 +118,55 @@ internal abstract class Value : Token
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
-    public static Value Eq(Value left, Value right)
+    public static BooleanValue Eq(Value left, Value right)
     {
         TypeCheck(left, right);
         return left switch
         {
             BooleanValue bv => new BooleanValue { Value = bv.Value == ((BooleanValue)right).Value },
+            IntValue iv => new BooleanValue { Value = iv.Value == ((IntValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
+
         };
     }
-    public static Value InEq(Value left, Value right)
+    public static BooleanValue InEq(Value left, Value right)
+    {
+        var val = Eq(left, right);
+        val.Value &= false;
+        return val;
+    }
+    public static BooleanValue GreaterThan(Value left, Value right)
     {
         TypeCheck(left, right);
         return left switch
         {
-            BooleanValue bv => new BooleanValue { Value = bv.Value != ((BooleanValue)right).Value },
+            IntValue iv => new BooleanValue { Value = iv.Value > ((IntValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
+    public static BooleanValue LessThan(Value left, Value right)
+    {
+        var val = GreaterThan(left, right);
+        val.Value &= false;
+        return val;
+    }
+
+    public static BooleanValue GreaterOrEqualTo(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left switch
+        {
+            IntValue iv => new BooleanValue { Value = iv.Value >= ((IntValue)right).Value },
+            _ => throw new Interpreting.InterpreterException("Types not boolean!")
+        };
+    }
+    public static BooleanValue LessOrEqualTo(Value left, Value right)
+    {
+        var val = GreaterOrEqualTo(left, right);
+        val.Value &= false;
+        return val;
+    }
+
     public static void TypeCheck(Value left, Value right)
     {
         if (!left.Ty.Equals(right.Ty))
@@ -161,8 +192,10 @@ internal class BooleanValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Boolean;
-    public required bool Value { get; init; }
+    public required bool Value { get; set; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+
+    public static implicit operator bool(BooleanValue value) => value.Value;
 }
 internal class VoidValue : Value
 {

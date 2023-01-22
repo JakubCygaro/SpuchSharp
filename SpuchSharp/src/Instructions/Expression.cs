@@ -12,6 +12,23 @@ namespace SpuchSharp.Instructions;
 internal abstract class Expression : Instruction 
 {
     public abstract string Display();
+    /// <summary>
+    /// Ensures that all expressions in a complex expression are of expression type <c>T</c>
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="complexExpression"></param>
+    /// <returns></returns>
+    public static bool EnsureAll<T>(ComplexExpression complexExpression)
+        where T : Expression
+    {
+        if (complexExpression is not T)
+            return false;
+        if (complexExpression.Left is ComplexExpression complexLeft)
+            return EnsureAll<T>(complexLeft);
+        if (complexExpression.Right is ComplexExpression complexRight)
+            return EnsureAll<T>(complexRight);
+        return true;
+    }
 
 }
 /// <summary>

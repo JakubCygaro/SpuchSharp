@@ -15,6 +15,8 @@ internal abstract class KeyWord : Token
         "delete" => new Delete(),
         "import" => new Import(),
         "return" => new Return(),
+        "if" => new If(),
+        "else" => new Else(),
         _ => throw new System.Diagnostics.UnreachableException(),
     };
 }
@@ -39,5 +41,13 @@ internal sealed class Import : KeyWord
 internal sealed class Return : KeyWord
 {
     public override string Stringify() => "return";
+}
+internal sealed class If : KeyWord
+{
+    public override string Stringify() => "if";
+}
+internal sealed class Else : KeyWord
+{
+    public override string Stringify() => "else";
 }
 

@@ -32,26 +32,26 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         foreach(Token token in _lexer)
         {
             var location = token.Location;
-            _currentInstruction = ParseInstruction(token);
+            _currentInstruction = ParseInstruction(token, _lexer);
             _currentInstruction.Location = location;
             return true;
         }
         return false;
 
     }
-    private Instruction ParseInstruction(Token firstToken)
+    private Instruction ParseInstruction(Token firstToken, INullEnumerator<Token> stream)
     {
         if (firstToken is KeyWord keyWord)
-            return ParseKeyWordInstruction(keyWord);
+            return ParseKeyWordInstruction(keyWord, stream);
         if (firstToken is Ty type)
-            return ParseDeclaration(type);
+            return ParseDeclaration(type, stream);
         if (firstToken is Ident ident)
         {
-            var secondToken = _lexer.Next();
+            var secondToken = stream.Next();
             if (secondToken is Assign)
                 return new Assignment
                 {
-                    Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
+                    Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
                     Left = ident
                 };
             else if (secondToken is not Semicolon and not null)
@@ -61,7 +61,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     firstToken, 
                     secondToken
                 };
-                tokens.AddRange(ReadToSemicolon(_lexer));
+                tokens.AddRange(ReadToSemicolon(stream));
                 return ParseExpression(tokens.ToTokenStream());
             }
             else if (secondToken is Semicolon)
@@ -81,22 +81,24 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             {
                 firstToken,
             };
-            tokens.AddRange(ReadToSemicolon(_lexer));
+            tokens.AddRange(ReadToSemicolon(stream));
             return ParseExpression(tokens.ToTokenStream());
         }
     }
-    private Instruction ParseKeyWordInstruction(KeyWord keyword)
+    private Instruction ParseKeyWordInstruction(KeyWord keyword, INullEnumerator<Token> stream)
     {
         if (keyword is Fun)
-            return ParseDeclaration(keyword);
+            return ParseDeclaration(keyword, stream);
         else if (keyword is Var)
-            return ParseDeclaration(keyword);
+            return ParseDeclaration(keyword, stream);
         else if (keyword is Delete)
             return ParseDelete(keyword);
         else if (keyword is Import)
             return ParseImport(keyword);
         else if (keyword is Return)
             return ParseReturn(keyword);
+        else if (keyword is If)
+            return ParseIfStatement(keyword, stream);
         else
             throw new ParserException("Failed to parse keyword instruction!", keyword);
     }
@@ -108,6 +110,34 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Expr = expr,
             Location = keyword.Location,
         };
+    }
+    private IfStatement ParseIfStatement(KeyWord keyWord, INullEnumerator<Token> stream)
+    {
+        if (keyWord is not If)
+            throw ParserException.Unexpected<If>(keyWord);
+        if (stream.Next() is not Round.Open)
+            throw ParserException.Unexpected<Round.Open>(keyWord);
+        var expressions = ParseInsideRound(stream);
+        if (expressions.Count != 1)
+            throw new ParserException("An if statement clause must be only a single logical expression",
+                stream.Current);
+
+        var expressionStream = expressions[0];
+        var expr = ParseExpression(expressionStream);
+
+        if (stream.Next() is not Curly.Open)
+            throw new ParserException("An if statement requires a block of instructions in curly braces",
+                stream.Current);
+
+        var block = ParseFunctionInstructions(stream);
+
+        return new IfStatement
+        {
+            Expr = expr,
+            Location = keyWord.Location,
+            Block = block,
+        };
+
     }
     private Instruction ParseImport(KeyWord Keyword)
     {
@@ -178,26 +208,28 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         int openParen = 1;
         while(stream.Next() is Token token)
         {
+            // gotta fix this so it does not ommit inner ()
             if (token is Round.Open)
                 openParen += 1;
-            else if (token is Round.Closed)
+            if (token is Round.Closed)
                 openParen -= 1;
-            else if (token is Comma && openParen == 1)
-            {
-                streams.Add(tokens.ToTokenStream());
-                tokens = new();
-            }
-            else
-                tokens.Add(token);
             if (openParen == 0)
             {
                 if(tokens.Count > 0)
                     streams.Add(tokens.ToTokenStream());
                 return streams;
             }
+            if (token is Comma && openParen == 1)
+            {
+                streams.Add(tokens.ToTokenStream());
+                tokens = new();
+            }
+            else
+                tokens.Add(token);
         }
         throw new ParserException("Unclosed parentheses", stream.Current);
     }
+    
     private CallExpression ParseCall(Ident ident, 
         List<TokenStream> tokenStreams)
     {
@@ -257,56 +289,56 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 return tokens;
         throw new ParserException("Premature end of input");
     }
-    private Instruction ParseDeclaration(Token token)
+    private Instruction ParseDeclaration(Token token, INullEnumerator<Token> stream)
     {
         if (token is Var var)
         {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assign)
-                throw new ParserException("Invalid token error", _lexer.Current);
+            if (stream.Next() is not Ident ident)
+                throw new ParserException("Invalid token error", stream.Current);
+            if (stream.Next() is not Assign)
+                throw new ParserException("Invalid token error", stream.Current);
             //if (_lexer.Next() is not Token tok)
             //    throw new ParserException("Invalid token error", _lexer.Current);
             return new Variable()
             {
                 Name = ident.Value,
-                Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
+                Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             };
         }
         else if (token is Ty ty)
         {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Assign)
-                throw new ParserException("Invalid token error", _lexer.Current);
+            if (stream.Next() is not Ident ident)
+                throw new ParserException("Invalid token error", stream.Current);
+            if (stream.Next() is not Assign)
+                throw new ParserException("Invalid token error", stream.Current);
             //if (_lexer.Next() is not Token tok)
             //    throw new ParserException("Invalid token error", _lexer.Current);
             return new Typed()
             {
                 Name = ident.Value,
-                Expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream()),
+                Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
                 Type = ty,
             };
         }
         else if (token is Fun fun)
         {
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            if (_lexer.Next() is not Round.Open)
-                throw new ParserException("Invalid token error", _lexer.Current);
+            if (stream.Next() is not Ident ident)
+                throw new ParserException("Invalid token error", stream.Current);
+            if (stream.Next() is not Round.Open)
+                throw new ParserException("Invalid token error", stream.Current);
             //parse function args
-            var arguments = ParseFunctionArguments();
+            var arguments = ParseFunctionArguments(stream);
 
-            var next = _lexer.Next();
+            var next = stream.Next();
             Ty type = Ty.Void;
             if(next is Ty typeName)
             {
                 type = typeName;
-                next = _lexer.Next();
+                next = stream.Next();
             }
             if (next is not Curly.Open)
-                throw new ParserException("Invalid token error", _lexer.Current);
-            var instructions = ParseFunctionInstructions();
+                throw new ParserException("Invalid token error", stream.Current);
+            var instructions = ParseFunctionInstructions(stream);
 
             return new Function()
             {
@@ -319,10 +351,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Invalid syntax error!", token);
     }
-    private FunArg[] ParseFunctionArguments()
+    private FunArg[] ParseFunctionArguments(INullEnumerator<Token> stream)
     {
         List<FunArg> args = new List<FunArg>();
-        while(_lexer.Next() is Token token)
+        while(stream.Next() is Token token)
         {
             if (token is Round.Closed)
                 break;
@@ -330,9 +362,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 continue;
             if (token is not Ty type)
                 throw new ParserException(
-                    $"Invalid function argument declaration, not a type: {_lexer.Current}", _lexer.Current);
-            if (_lexer.Next() is not Ident ident)
-                throw new ParserException("Invalid function argument declaration", _lexer.Current);
+                    $"Invalid function argument declaration, not a type: {stream.Current}", stream.Current);
+            if (stream.Next() is not Ident ident)
+                throw new ParserException("Invalid function argument declaration", stream.Current);
             var arg = new FunArg()
             {
                 Name = ident,
@@ -346,14 +378,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return args.ToArray();
     }
-    private Instruction[] ParseFunctionInstructions()
+    private Instruction[] ParseFunctionInstructions(INullEnumerator<Token> stream)
     {
         List<Instruction> list = new List<Instruction>();
-        while(_lexer.Next() is Token token)
+        while(stream.Next() is Token token)
         {
             if (token is Curly.Closed)
                 break;
-            list.Add(ParseInstruction(token));
+            list.Add(ParseInstruction(token, stream));
         }
         return list.ToArray();
     }

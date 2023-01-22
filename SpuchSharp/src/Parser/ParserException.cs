@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace SpuchSharp.Parsing;
 
 [Serializable]
-public class ParserException : Exception
+public class ParserException: Exception
 {
     public ParserException() { }
     public ParserException(string message, Location? location = default) 
@@ -17,6 +17,15 @@ public class ParserException : Exception
     }
     public ParserException(string message, Token token)
         : base($"{message}. {token.Location} | Type: {token} Str: {token.Stringify()}") { }
+    public ParserException(string message, Token expected, Token token)
+        : base($"{message}, expected: `{expected.Stringify()}`. " +
+            $"{token.Location} | Type: {token} Str: {token.Stringify()}") { }
+    public static ParserException Unexpected<T>(Token wrongToken)
+        where T: Token, new()
+    {
+        var message = $"Unrecognized token `{wrongToken.Stringify()}`, expected {new T().Stringify()}";
+        return new ParserException(message, wrongToken);
+    }
     public ParserException(string message) : base(message) { }
     public ParserException(string message, Exception inner) : base(message, inner) { }
     protected ParserException(

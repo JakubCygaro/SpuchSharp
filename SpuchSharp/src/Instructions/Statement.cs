@@ -57,3 +57,10 @@ internal sealed class ReturnStatement : Statement
 {
     public required Expression Expr { get; init; }
 }
+internal sealed class IfStatement : Statement
+{
+    // if (<expr>) { }
+    public required Expression Expr { get; init; }
+    public required Instruction[] Block { get; init; }
+
+}
