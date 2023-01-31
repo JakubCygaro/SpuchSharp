@@ -110,10 +110,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private ReturnStatement ParseReturn(KeyWord keyword, TokenStream stream)
     {
-        var expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream());
+        var tokens = ReadToSemicolon(stream);
+        //var expr = ParseExpression(tokens.ToTokenStream());
         return new ReturnStatement
         {
-            Expr = expr,
+            Expr = tokens.Count > 0 ? 
+                    ParseExpression(tokens.ToTokenStream()) : new ValueExpression { Val = Value.Void },
             Location = keyword.Location,
         };
     }

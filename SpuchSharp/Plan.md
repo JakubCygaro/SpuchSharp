@@ -54,7 +54,7 @@ a ref argument would require an already existing variable to be passed as an arg
 
 
 # For Loops
-
+```
 for x in 1 to 0 {
 
 }
@@ -62,21 +62,73 @@ for x in 1 to 0 {
 for x from 1..10 {
 
 }
-
+```
 # While loops
-
+```
 loop {
 	skip;
 	break;
 }
-
-# If Statements
-
+```
+# If Statements \/
+```
 if (<expr>) {
 	<block>
 } else {
 	<block>
 }
+```
+# If Statement return support 
+```
+fun boo() <type> {
+	if (<expr>) {
+		<block>
+		<return> <expr>
+	}
+}
+```
+# Ident rework and module support 
+
+Identifiers should support the :: operator, allowing for functions and variables to be declared
+inside modules
+```
+class Ident {
+	segments: List<string>
+}
+spucha::boo()
+
+```
+
+
+```
+mod <modname>;
+use <modname>;
+
+mod spucha -> spucha.spsh
+```
+
+The environment should load all .spsh files and create module objects from them
+and create some kind of tree structure i guess
+
+class Module {
+	Ident,
+	VariableScope,
+	FunctionScope,
+	SubModules,
+}
+
+root-mod -> main, the file must contain the main() function
+	  |-sub-mod-1 -> main::sub-mod-1
+	  |-sub-mod-2 -> main::sub-mod-2
+	  |-sub-mod-3 -> main::sub-mod-3
+	         |-sub-sub-mod-1 -> main::sub-mod-3::sub-sub-mod-1
+			 |-sub-sub-mod-2 -> main::sub-mod-3::sub-sub-mod-2
+
+
+then when a module wants to import a different module the environment would find the imported module
+in the loaded modules tree and bring all of it's Variables and Functions into the the scope of the importing
+module
+
 
 # Functions
 a function object has to have it's own variable scope that is a copy of the global variable scope,
