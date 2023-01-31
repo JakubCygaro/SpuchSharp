@@ -20,11 +20,21 @@ public class ParserException: Exception
     public ParserException(string message, Token expected, Token token)
         : base($"{message}, expected: `{expected.Stringify()}`. " +
             $"{token.Location} | Type: {token} Str: {token.Stringify()}") { }
-    public static ParserException Unexpected<T>(Token wrongToken)
+    public static ParserException Expected<T>(Token wrongToken)
         where T: Token, new()
     {
         var message = $"Unrecognized token `{wrongToken.Stringify()}`, expected {new T().Stringify()}";
         return new ParserException(message, wrongToken);
+    }
+    public static ParserException PrematureEndOfInput(Location? location= default)
+    {
+        var message = $"Premature end of input";
+        return new ParserException(message, location);
+    }
+    public static ParserException UnexpectedToken(Token token)
+    {
+        var message = $"Unexpected token";
+        return new ParserException(message, token);
     }
     public ParserException(string message) : base(message) { }
     public ParserException(string message, Exception inner) : base(message, inner) { }

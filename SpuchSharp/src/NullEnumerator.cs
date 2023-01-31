@@ -25,3 +25,11 @@ internal interface INullEnumerator<T> : IEnumerator<T>, IEnumerable<T>
         }
     }
 }
+internal interface ICloneable<T>
+{
+    T Clone();
+}
+internal interface IPeakable<T> : INullEnumerator<T>
+{
+    T? Peek();
+}

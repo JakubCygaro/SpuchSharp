@@ -139,6 +139,8 @@ public sealed class Interpreter
             throw new InterpreterException("If statement expression must evaluate to a true/false value");
         if (boolean)
             ExcecuteBlock(ifStmt.Block, varScope, funScope);
+        else if(ifStmt.ElseBlock is Instruction[] elseBlock)
+            ExcecuteBlock(elseBlock, varScope, funScope);
 
     }
     private void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
@@ -243,7 +245,11 @@ public sealed class Interpreter
             OrExpr => Value.Or(left, right),
             EqExpr => Value.Eq(left, right),
             InEqExpr => Value.InEq(left, right),
-            _ => throw new InterpreterException("FUCK")
+            GreaterThanExpr => Value.GreaterThan(left, right),
+            LessThanExpr => Value.LessThan(left, right),
+            GreaterOrEqToExpr => Value.GreaterOrEqualTo(left, right),
+            LessOrEqToExpr => Value.LessOrEqualTo(left, right),
+            _ => throw new InterpreterException("Unrecognized expression type", expr)
         };
     }
     private SVariable FindVariable(Ident ident, VariableScope scope)
@@ -357,7 +363,7 @@ public sealed class Interpreter
             StringBuilder sb = new StringBuilder();
             foreach (var (ident, sfun) in _globalFunctionScope)
             {
-                sb.AppendLine($"[{ident.Stringify()}, {sfun.Display()}]");
+                sb.AppendLine($"{ident.Stringify()}, {sfun.Display()}");
             }
             return sb.ToString();
         }

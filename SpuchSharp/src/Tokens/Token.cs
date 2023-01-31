@@ -61,6 +61,15 @@ internal abstract class Value : Token
     static Value _void = new VoidValue();
     public static Value Void => _void;
 
+    /// <summary>
+    /// Creates a spuch# <c>Value</c> from a c# object
+    /// </summary>
+    /// <param name="obj"></param>
+    /// <returns></returns>
+    /// <remarks>
+    /// Throws <c>InvalidCastException</c> if there is no corresponding spuch# Type for provided c# obcject
+    /// </remarks>
+    /// <exception cref="InvalidCastException"></exception>
     public static Value FromObject(object? obj)
     {
         return obj switch
@@ -125,6 +134,7 @@ internal abstract class Value : Token
         {
             BooleanValue bv => new BooleanValue { Value = bv.Value == ((BooleanValue)right).Value },
             IntValue iv => new BooleanValue { Value = iv.Value == ((IntValue)right).Value },
+            TextValue tv => new BooleanValue { Value = tv.Value == ((TextValue)right).Value},
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
 
         };

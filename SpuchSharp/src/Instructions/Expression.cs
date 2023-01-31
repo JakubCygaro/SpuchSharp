@@ -62,6 +62,10 @@ internal abstract class ComplexExpression : Expression
                 Or => new OrExpr { Left = left, Right = expr },
                 Equality => new EqExpr { Left = left, Right = expr },
                 InEquality => new InEqExpr { Left = left, Right = expr },
+                Greater => new GreaterThanExpr { Left = left, Right = expr },
+                Less => new LessThanExpr { Left = left, Right = expr },
+                GreaterOrEq => new GreaterOrEqToExpr { Left = left, Right = expr },
+                LessOrEq => new LessOrEqToExpr { Left = left, Right = expr },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             _ => throw new ParserException("Unrecognized expression type? wtf?")
@@ -101,6 +105,22 @@ sealed class EqExpr : LogicalExpression
 sealed class InEqExpr : LogicalExpression
 {
     public override string Display() => $"[{Left.Display()} != {Right.Display()}]";
+}
+sealed class GreaterThanExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} > {Right.Display()}]";
+}
+sealed class LessThanExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} < {Right.Display()}]";
+}
+sealed class GreaterOrEqToExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} >= {Right.Display()}]";
+}
+sealed class LessOrEqToExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} <= {Right.Display()}]";
 }
 
 internal abstract class SimpleExpression : Expression { }

@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
 
-internal class TokenStream : INullEnumerator<Token>
+internal class TokenStream : INullEnumerator<Token>, 
+    ICloneable<TokenStream>, 
+    ICloneable<INullEnumerator<Token>>,
+    IPeakable<Token>
 {
     private int _position = -1;
     private readonly List<Token> _stream;
@@ -28,6 +31,28 @@ internal class TokenStream : INullEnumerator<Token>
         _position++;
         return true;
     }
+    public Token? Peek()
+    {
+        if(_position + 1 >= _stream.Count())
+        {
+            return null;
+        } 
+        else
+        {
+            return _stream[_position + 1];
+        }
+    }
+    public Token? Next()
+    {
+        if (MoveNext())
+        {
+            return Current;
+        }
+        else
+        {
+            return null;
+        }
+    }
 
 
 
@@ -42,6 +67,15 @@ internal class TokenStream : INullEnumerator<Token>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return this;
+    }
+
+    public TokenStream Clone()
+    {
+        return new TokenStream(new List<Token>(_stream));
+    }
+    INullEnumerator<Token>  ICloneable<INullEnumerator<Token>>.Clone()
+    {
+        return this.Clone();
     }
 }
 

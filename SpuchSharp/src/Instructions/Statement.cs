@@ -62,5 +62,6 @@ internal sealed class IfStatement : Statement
     // if (<expr>) { }
     public required Expression Expr { get; init; }
     public required Instruction[] Block { get; init; }
+    public required Instruction[]? ElseBlock { get; init; } = null;
 
 }

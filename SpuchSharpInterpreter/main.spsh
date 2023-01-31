@@ -1,16 +1,19 @@
 ﻿import "STDLib";
 fun main(){
-	println("type test...");
-	println(readln());
-
-	if(giveTrue()){
-		println("chuj");
+	println("Napisz coś dla mnie");
+	text input = readln();
+	if(checkPies(input)) {
+		println("napisałeś pies, jak ja ci dziękuję");
+	}
+	else {
+		println("gówno mnie to obchodzi");
 	}
 }
-fun giveTrue() bool {
-	return true;
-}
-fun chuj(int x, int y) int {
-	return x + y;
+fun checkPies(text maybePies) bool {
+	if (maybePies == "pies") {
+		return true;
+	} else {
+		return false;
+	}
 }
 

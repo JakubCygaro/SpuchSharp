@@ -21,25 +21,31 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     object IEnumerator.Current => _currentInstruction;
 
     private Instruction _currentInstruction = default!;
-    private readonly Lexer _lexer;
+    //private readonly Lexer _lexer;
+    private readonly TokenStream _tokenStream;
     public Parser(Lexer lexer) 
     {
-        _lexer = lexer;
+        //_lexer = lexer;
+        var tokens = new List<Token>();
+        foreach(var lexeme in lexer)
+            tokens.Add(lexeme);
+        _tokenStream = new TokenStream(tokens);
     }
 
     private bool Parse()
     {
-        foreach(Token token in _lexer)
+        
+        foreach(Token token in _tokenStream)
         {
             var location = token.Location;
-            _currentInstruction = ParseInstruction(token, _lexer);
+            _currentInstruction = ParseInstruction(token, _tokenStream);
             _currentInstruction.Location = location;
             return true;
         }
         return false;
 
     }
-    private Instruction ParseInstruction(Token firstToken, INullEnumerator<Token> stream)
+    private Instruction ParseInstruction(Token firstToken, TokenStream stream)
     {
         if (firstToken is KeyWord keyWord)
             return ParseKeyWordInstruction(keyWord, stream);
@@ -85,38 +91,38 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseExpression(tokens.ToTokenStream());
         }
     }
-    private Instruction ParseKeyWordInstruction(KeyWord keyword, INullEnumerator<Token> stream)
+    private Instruction ParseKeyWordInstruction(KeyWord keyword, TokenStream stream)
     {
         if (keyword is Fun)
             return ParseDeclaration(keyword, stream);
         else if (keyword is Var)
             return ParseDeclaration(keyword, stream);
         else if (keyword is Delete)
-            return ParseDelete(keyword);
+            return ParseDelete(keyword, stream);
         else if (keyword is Import)
-            return ParseImport(keyword);
+            return ParseImport(keyword, stream);
         else if (keyword is Return)
-            return ParseReturn(keyword);
+            return ParseReturn(keyword, stream);
         else if (keyword is If)
             return ParseIfStatement(keyword, stream);
         else
             throw new ParserException("Failed to parse keyword instruction!", keyword);
     }
-    private ReturnStatement ParseReturn(KeyWord keyword)
+    private ReturnStatement ParseReturn(KeyWord keyword, TokenStream stream)
     {
-        var expr = ParseExpression(ReadToSemicolon(_lexer).ToTokenStream());
+        var expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream());
         return new ReturnStatement
         {
             Expr = expr,
             Location = keyword.Location,
         };
     }
-    private IfStatement ParseIfStatement(KeyWord keyWord, INullEnumerator<Token> stream)
+    private IfStatement ParseIfStatement(KeyWord keyWord, TokenStream stream)
     {
         if (keyWord is not If)
-            throw ParserException.Unexpected<If>(keyWord);
+            throw ParserException.Expected<If>(keyWord);
         if (stream.Next() is not Round.Open)
-            throw ParserException.Unexpected<Round.Open>(keyWord);
+            throw ParserException.Expected<Round.Open>(keyWord);
         var expressions = ParseInsideRound(stream);
         if (expressions.Count != 1)
             throw new ParserException("An if statement clause must be only a single logical expression",
@@ -131,38 +137,59 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         var block = ParseFunctionInstructions(stream);
 
+        // the last token in the stream now is '}'
+        Instruction[]? elseBlock = null;
+        if (stream.Peek() is Else)
+        {
+            var elseToken = stream.Next() as Else;
+            elseBlock = ParseElseBlock(elseToken!, stream);
+        }
+
         return new IfStatement
         {
             Expr = expr,
             Location = keyWord.Location,
             Block = block,
+            ElseBlock = elseBlock,
         };
 
     }
-    private Instruction ParseImport(KeyWord Keyword)
+    private Instruction[] ParseElseBlock(Else elseToken, TokenStream stream)
     {
-        if (_lexer.Next() is not TextValue value)
+        var nextToken = stream.Next();
+        if (nextToken is null)
+            throw ParserException.PrematureEndOfInput(elseToken.Location);
+        if (nextToken is Curly.Open)
+            return ParseFunctionInstructions(stream);
+        if (nextToken is If ifToken)
+            return new Instruction[] { ParseIfStatement(ifToken, stream) };
+
+        throw ParserException.UnexpectedToken(nextToken);
+    }
+    private Instruction ParseImport(KeyWord Keyword, TokenStream stream)
+    {
+        if (stream.Next() is not TextValue value)
             throw new ParserException("An import statement takes an external library path as an argument.",
-                _lexer.Current);
+                stream.Current);
         if (!value.Ty.Equals(Ty.Text))
             throw new ParserException("The path to an external library must be a string value.",
-                _lexer.Current);
-        if (_lexer.Next() is not Semicolon)
+                stream.Current);
+        if (stream.Next() is not Semicolon)
             throw new ParserException("Expected semicolon.",
-                _lexer.Current);
+                stream.Current);
         return new ImportStatement
         {
             Path = value.Value,
         };
     }
-    private Instruction ParseDelete(KeyWord keyWord)
+    private Instruction ParseDelete(KeyWord keyWord, TokenStream stream)
     {
-        if (_lexer.Next() is not Ident ident)
+        if (stream.Next() is not Ident ident)
             throw new ParserException("A delete statement takes a variable name as a parameter.",
-                _lexer.Current);
-        if(_lexer.Next() is not Semicolon)
+                stream.Current);
+        if(stream.Next() is not Semicolon)
             throw new ParserException("Expected semicolon.",
-                _lexer.Current);
+                stream.Current);
         return new DeleteStatement
         {
             VariableIdent = ident,
@@ -289,7 +316,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 return tokens;
         throw new ParserException("Premature end of input");
     }
-    private Instruction ParseDeclaration(Token token, INullEnumerator<Token> stream)
+    private Instruction ParseDeclaration(Token token, TokenStream stream)
     {
         if (token is Var var)
         {
@@ -378,7 +405,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return args.ToArray();
     }
-    private Instruction[] ParseFunctionInstructions(INullEnumerator<Token> stream)
+    private Instruction[] ParseFunctionInstructions(TokenStream stream)
     {
         List<Instruction> list = new List<Instruction>();
         while(stream.Next() is Token token)
@@ -399,7 +426,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
     public void Reset()
     {
-        _lexer.Reset();
+        _tokenStream.Reset();
     }
     public void Dispose() { }
 }
+
+

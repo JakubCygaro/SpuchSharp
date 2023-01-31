@@ -18,4 +18,11 @@ public static class STD
 
     [Function("readln")]
     public static string ReadLine() => Console.ReadLine() ?? "";
+
+    [Function("stoi")]
+    public static int Stoi(string input) => int.Parse(input);
+
+    [Function("toString")]
+    public static string ToString(object obj) => obj.ToString() ?? "";
+
 }

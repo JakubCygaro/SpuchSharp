@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SpuchSharp.API;
 using SpuchSharp.Instructions;
 using SpuchSharp.Tokens;
 
@@ -47,14 +48,28 @@ internal class ExternalFunction : SFunction
     public required System.Reflection.MethodInfo MethodInfo { private get; init; }
     public Value Invoke(object[] arguments)
     {
-        var ret = MethodInfo.Invoke(null, arguments);
+        object? ret = null;
+        try
+        {
+            ret = MethodInfo.Invoke(null, arguments);
+        }
+        catch(Exception ex) 
+        {
+            throw new ExternalLibraryException(ex.Message, ex);
+        }
         // schizo type marshalling back into spuch#
         return Value.FromObject(ret);
     }
     public override string Display()
     {
-        Console.WriteLine("EXTERNAL FUNCTION");
-        return base.Display();
+        Console.WriteLine("[EXTERNAL FUNCTION]");
+        StringBuilder sb = new();
+        sb.AppendLine($"{MethodInfo.Name}");
+        sb.Append('(');
+        foreach (var arg in Args)
+            sb.Append($"{arg.Ty} {arg.Name},");
+        sb.Append(')');
+        return sb.ToString();
     }
 }
 
