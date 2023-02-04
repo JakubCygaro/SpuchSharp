@@ -22,7 +22,10 @@ public static class STD
     [Function("stoi")]
     public static int Stoi(string input) => int.Parse(input);
 
-    [Function("toString")]
-    public static string ToString(object obj) => obj.ToString() ?? "";
+    [Function("toText")]
+    public static string ToText(object obj) => obj.ToString() ?? "";
+
+    [Function("randInt")]
+    public static int RandomInt(int start, int end) => Random.Shared.Next(start, end);
 
 }

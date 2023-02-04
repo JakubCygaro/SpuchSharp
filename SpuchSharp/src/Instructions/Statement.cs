@@ -65,3 +65,9 @@ internal sealed class IfStatement : Statement
     public required Instruction[]? ElseBlock { get; init; } = null;
 
 }
+internal sealed class LoopStatement : Statement
+{
+    public required Instruction[] Block { get; init; }
+}
+internal sealed class BreakStatement : Statement { }
+internal sealed class SkipStatement : Statement { }

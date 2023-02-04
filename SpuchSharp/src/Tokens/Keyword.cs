@@ -17,7 +17,10 @@ internal abstract class KeyWord : Token
         "return" => new Return(),
         "if" => new If(),
         "else" => new Else(),
-        _ => throw new System.Diagnostics.UnreachableException(),
+        "break" => new Break(),
+        "skip" => new Skip(),
+        "loop" => new Loop(),
+        _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
     };
 }
 internal sealed class Var : KeyWord 
@@ -49,5 +52,20 @@ internal sealed class If : KeyWord
 internal sealed class Else : KeyWord
 {
     public override string Stringify() => "else";
+}
+internal sealed class Loop : KeyWord
+{
+    public override string Stringify() => "loop";
+
+}
+internal sealed class Skip : KeyWord
+{
+    public override string Stringify() => "skip";
+
+}
+internal sealed class Break : KeyWord
+{
+    public override string Stringify() => "break";
+
 }
 

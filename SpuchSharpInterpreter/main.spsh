@@ -1,5 +1,7 @@
 ﻿import "STDLib";
 fun main(){
+	testLoop();
+	prematureReturn();
 	println("Napisz coś dla mnie");
 	text input = readln();
 	if(checkPies(input)) {
@@ -14,6 +16,20 @@ fun checkPies(text maybePies) bool {
 		return true;
 	} else {
 		return false;
+	}
+}
+fun prematureReturn(){
+	return;
+	println("Spucha");
+}
+fun testLoop(){
+	var x = 0;
+	loop {
+		println(x);
+		x = x + 1;
+		if(x > 10) {
+			break;
+		}
 	}
 }
 

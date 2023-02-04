@@ -63,6 +63,25 @@ for x from 1..10 {
 
 }
 ```
+
+# Arrays 
+
+```
+// array initialization
+[<type>] <ident> = { <expr>, <expr>, <expr> };
+[<type>] <ident>  = [<expr=int>]; // <- an array of lenth <expr=int> initialized to default values
+<ident>[<expr=int>] -> Index Expression that either returns a value or can be assigned to
+
+import "STDLib";
+fun main() {
+	[int] a = { 1, 2, 3, 4 };
+	for x in 0 to len(a) {
+		println(a[x]);
+	}
+}
+
+```
+
 # While loops
 ```
 loop {
@@ -78,7 +97,7 @@ if (<expr>) {
 	<block>
 }
 ```
-# If Statement return support 
+# If Statement return support \/
 ```
 fun boo() <type> {
 	if (<expr>) {

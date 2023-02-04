@@ -34,29 +34,78 @@ public sealed class Interpreter
     {
         return new Parser(new Lexing.Lexer(File.ReadAllLines(path, Encoding.UTF8)));
     }
-    private void ExcecuteInstruction(Instruction instruction, 
+    private Value? ExcecuteInstruction(Instruction instruction, 
         VariableScope varScope, 
-        FunctionScope funScope)
+        FunctionScope funScope,
+        LoopContext? loopContext = default)
     {
+        //debug
+        PrintScope(varScope);
+
         PrintInstruction(instruction);
         if(instruction is Statement stmt)
         {
             IfDeclaration(varScope, funScope, stmt);
             IfAssignment(varScope, funScope, stmt);
             IfDeletion(varScope, funScope, stmt);
-            IfIfStatement(varScope, funScope, stmt);
+            if (stmt is IfStatement ifStatement)
+                return IfIfStatement(varScope, funScope, ifStatement, loopContext: loopContext);
+            if (stmt is ReturnStatement returnStatement)
+                return EvaluateReturn(varScope, funScope, returnStatement);
+            if (stmt is LoopStatement loopStatement)
+                return EvaluateLoop(varScope, funScope, loopStatement);
+            if (stmt is BreakStatement breakStatement)
+                return EvaluateBreak(breakStatement, loopContext);
+            if (stmt is SkipStatement skipStatement)
+                throw InterpreterException.UnsuportedInstruction(skipStatement);
         }
         if (instruction is Expression expr)
             EvaluateExpression(varScope, funScope, expr);
 
-        PrintScope(varScope);
+        return null;
     }
-    private void ExcecuteBlock(Instruction[] block,
+    private Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
+    {
+        if (loopContext is null)
+            throw new InterpreterException("Break statement outside of a loop block", breakStmt);
+        loopContext.ShouldBreak = true;
+        return null;
+    }
+    private Value? EvaluateLoop(VariableScope varScope, 
+        FunctionScope funScope, 
+        LoopStatement loopStatement)
+    {
+        var block = loopStatement.Block;
+        var context = new LoopContext();
+        Value? returnValue = null;
+        while (!context.ShouldBreak)
+            ExcecuteBlock(block, varScope, funScope, loopContext: context);
+        return returnValue;
+    }
+
+
+    /// <summary>
+    /// Excecuted the provided block of instructions
+    /// </summary>
+    /// <remarks>
+    /// Returns a non-null <c>Value</c> if any of the instructions returned a value
+    /// </remarks>
+    /// <param name="block"></param>
+    /// <param name="varScope"></param>
+    /// <param name="funScope"></param>
+    /// <returns></returns>
+    private Value? ExcecuteBlock(Instruction[] block,
         VariableScope varScope,
-        FunctionScope funScope)
+        FunctionScope funScope,
+        LoopContext? loopContext = default)
     {
         foreach (var ins in block)
-            ExcecuteInstruction(ins, varScope, funScope);
+        {
+            var returnValue = ExcecuteInstruction(ins, varScope, funScope, loopContext: loopContext);
+            if (returnValue is not null)
+                return returnValue;
+        }
+        return null;
     }
     public void Run()
     {
@@ -85,6 +134,12 @@ public sealed class Interpreter
         else
             throw new InterpreterException($"Only variable and function declarations can happen in" +
                 $" the global scope.", instruction);
+    }
+    private Value EvaluateReturn(VariableScope varScope, 
+        FunctionScope funScope, 
+        ReturnStatement returnStatement)
+    {
+        return EvaluateExpression(varScope, funScope, returnStatement.Expr);
     }
     private void IfImport(Statement instruction, FunctionScope funScope)
     {
@@ -130,18 +185,28 @@ public sealed class Interpreter
         if (decl is Function fun) 
             CreateFunction(fun, funScope);
     }
-    private void IfIfStatement(VariableScope varScope, FunctionScope funScope, Statement statement)
+    /// <summary>
+    /// Will return a non-null <c>Value</c> if any of the contained instructions
+    /// was a <c>return</c> statement
+    /// </summary>
+    /// <param name="varScope"></param>
+    /// <param name="funScope"></param>
+    /// <param name="ifStmt"></param>
+    /// <returns></returns>
+    /// <exception cref="InterpreterException"></exception>
+    private Value? IfIfStatement(VariableScope varScope, 
+        FunctionScope funScope, 
+        IfStatement ifStmt,
+        LoopContext? loopContext = default)
     {
-        if (statement is not IfStatement ifStmt)
-            return;
         var value = EvaluateExpression(varScope, funScope, ifStmt.Expr);
         if (value is not BooleanValue boolean)
             throw new InterpreterException("If statement expression must evaluate to a true/false value");
         if (boolean)
-            ExcecuteBlock(ifStmt.Block, varScope, funScope);
+            return ExcecuteBlock(ifStmt.Block, varScope, funScope, loopContext: loopContext);
         else if(ifStmt.ElseBlock is Instruction[] elseBlock)
-            ExcecuteBlock(elseBlock, varScope, funScope);
-
+            return ExcecuteBlock(elseBlock, varScope, funScope, loopContext: loopContext);
+        return null;
     }
     private void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
     {
@@ -204,23 +269,30 @@ public sealed class Interpreter
         variables.Extend(_globalVariableScope);
         var newFunScope = new FunctionScope();
         newFunScope.Extend(_globalFunctionScope);
+        
 
-        var retValue = Value.Void;
+        //var retValue = Value.Void;
 
-        foreach (var instruction in targetFunction.Block)
-        {
-            if(instruction is not ReturnStatement ret)
-                ExcecuteInstruction(instruction, variables, newFunScope);
-            else
-            {
-                retValue = EvaluateExpression(variables, newFunScope, ret.Expr);
-                if (returnType is VoidTy)
-                    throw new InterpreterException(
-                        "A function that does not have a return type cannot have a return statement!",
-                        ret);
-                break;
-            }
-        }
+        //foreach (var instruction in targetFunction.Block)
+        //{
+        //    if(instruction is not ReturnStatement ret)
+        //        ExcecuteInstruction(instruction, variables, newFunScope);
+        //    else
+        //    {
+        //        retValue = EvaluateExpression(variables, newFunScope, ret.Expr);
+        //        if (returnType is VoidTy)
+        //            throw new InterpreterException(
+        //                "A function that does not have a return type cannot have a return statement!",
+        //                ret);
+        //        break;
+        //    }
+        //}
+
+        var retValue = ExcecuteBlock(targetFunction.Block, variables, newFunScope);
+        //if (possibleRet is not null)
+        //    retValue = possibleRet;
+        retValue ??= Value.Void;
+
         if (!retValue.Ty.Equals(returnType))
             throw new InterpreterException(
                 $"Return statement type does not match " +

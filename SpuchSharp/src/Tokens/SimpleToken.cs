@@ -44,9 +44,12 @@ sealed class Comma : SimpleToken
     public override string Stringify() => ",";
 }
 
-abstract class Paren : SimpleToken { }
 
-abstract class Round: Paren 
+abstract class Paren : SimpleToken
+{
+}
+
+abstract class Round: Paren
 {
     internal sealed class Open : Round
     {
@@ -63,7 +66,7 @@ abstract class Round: Paren
         }
     }
 }
-abstract class Curly : Paren 
+abstract class Curly : Paren
 {
     internal sealed class Open : Curly
     {
@@ -95,7 +98,9 @@ abstract class Operator : SimpleToken
         "-" => new Sub(),
         "*" => new Mult(),
         "/" => new Div(),
+        "&" => new Ampersand(),
         "&&" => new And(),
+        "|" => new Pipe(),
         "||" => new Or(),
         _ => throw new Lexing.LexerException($"Failed to tokenize into Operator `{value}`"),
     };
@@ -156,3 +161,15 @@ sealed class Div : ValOperator
 {
     public override string Stringify() => "/";
 }
+
+internal abstract class BitOperator : Operator { }
+
+sealed class Ampersand : BitOperator
+{
+    public override string Stringify() => "&";
+}
+sealed class Pipe : BitOperator
+{
+    public override string Stringify() => "|";
+}
+

@@ -93,20 +93,64 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseKeyWordInstruction(KeyWord keyword, TokenStream stream)
     {
-        if (keyword is Fun)
-            return ParseDeclaration(keyword, stream);
-        else if (keyword is Var)
-            return ParseDeclaration(keyword, stream);
-        else if (keyword is Delete)
-            return ParseDelete(keyword, stream);
-        else if (keyword is Import)
-            return ParseImport(keyword, stream);
-        else if (keyword is Return)
-            return ParseReturn(keyword, stream);
-        else if (keyword is If)
-            return ParseIfStatement(keyword, stream);
-        else
-            throw new ParserException("Failed to parse keyword instruction!", keyword);
+        //if (keyword is Fun)
+        //    return ParseDeclaration(keyword, stream);
+        //else if (keyword is Var)
+        //    return ParseDeclaration(keyword, stream);
+        //else if (keyword is Delete)
+        //    return ParseDelete(keyword, stream);
+        //else if (keyword is Import)
+        //    return ParseImport(keyword, stream);
+        //else if (keyword is Return)
+        //    return ParseReturn(keyword, stream);
+        //else if (keyword is If)
+        //    return ParseIfStatement(keyword, stream);
+        //else
+        //    throw new ParserException("Failed to parse keyword instruction!", keyword);
+        return keyword switch
+        {
+            Fun => ParseDeclaration(keyword, stream),
+            Var => ParseDeclaration(keyword, stream),
+            Delete => ParseDelete(keyword, stream),
+            Import => ParseImport(keyword, stream),
+            Return => ParseReturn(keyword, stream),
+            If => ParseIfStatement(keyword, stream),
+            Loop loop => ParseLoop(loop, stream),
+            Break brek => ParseBreak(brek, stream),
+            Skip skip => ParseSkip(skip, stream),
+            _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+        };
+
+    }
+    private LoopStatement ParseLoop(Loop loopKeyword, TokenStream stream)
+    {
+        var nextToken = stream.Next() ?? 
+            throw ParserException.PrematureEndOfInput(loopKeyword.Location);
+        if (nextToken is not Curly.Open)
+            throw ParserException.Expected<Curly.Open>(nextToken);
+        return new LoopStatement
+        {
+            Block = ParseFunctionInstructions(stream),
+            Location = loopKeyword.Location,
+        };
+    }
+    private BreakStatement ParseBreak(Break breakKeyword, TokenStream stream)
+    {
+        if (stream.Next() is not Semicolon)
+            throw ParserException.Expected<Semicolon>(stream.Current);
+        return new BreakStatement
+        {
+            Location = breakKeyword.Location,
+        };
+    }
+    private SkipStatement ParseSkip(Skip skipKeyword, TokenStream stream)
+    {
+        if (stream.Next() is not Semicolon)
+            throw ParserException.Expected<Semicolon>(stream.Current);
+        return new SkipStatement
+        {
+            Location = skipKeyword.Location,
+        };
     }
     private ReturnStatement ParseReturn(KeyWord keyword, TokenStream stream)
     {
@@ -417,6 +461,37 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             list.Add(ParseInstruction(token, stream));
         }
         return list.ToArray();
+    }
+    /// <summary>
+    /// Collects all tokens between the specified <c>Paren</c> types into a new <c>TokenStream</c>.
+    /// It ignores commas.
+    /// </summary>
+    /// <remarks>
+    /// Do not advance the stream before calling this method, as opposite to the <c>ReadInsideRound()</c> method
+    /// </remarks>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    private TokenStream ReadBetweenParen<TOpen, TClosed>(TokenStream stream)
+        where TOpen : Paren
+        where TClosed : Paren
+    {
+        List<Token> tokens = new();
+        int openParen = 1;
+        while (stream.Next() is Token token)
+        {
+            if (token is TOpen)
+                openParen += 1;
+            if (token is TClosed)
+                openParen -= 1;
+            if (openParen == 0)
+            {
+                return tokens.ToTokenStream();
+            }
+            else
+                tokens.Add(token);
+        }
+        throw new ParserException("Unclosed parentheses", stream.Current);
     }
 
 
