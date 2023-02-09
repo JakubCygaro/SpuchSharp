@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpuchSharp.Lexing;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
 
-internal class TokenStream : INullEnumerator<Token>, 
+public class TokenStream : INullEnumerator<Token>, 
     ICloneable<TokenStream>, 
     ICloneable<INullEnumerator<Token>>,
     IPeakable<Token>
@@ -15,7 +16,7 @@ internal class TokenStream : INullEnumerator<Token>,
     private int _position = -1;
     private readonly List<Token> _stream;
 
-    public TokenStream(List<Token> tokens) => _stream = tokens;
+    internal TokenStream(List<Token> tokens) => _stream = tokens;
 
     public Token Current => _stream[_position];
     object IEnumerator.Current => Current;
@@ -76,6 +77,11 @@ internal class TokenStream : INullEnumerator<Token>,
     INullEnumerator<Token>  ICloneable<INullEnumerator<Token>>.Clone()
     {
         return this.Clone();
+    }
+    public static TokenStream ParseFromQuote(string quote)
+    {
+        var lexer = new Lexer(new string[] { quote });
+        return lexer.ToList().ToTokenStream();
     }
 }
 

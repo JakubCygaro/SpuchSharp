@@ -24,8 +24,8 @@ internal abstract class Value : Token
     //public Value(Ty type, object val) => (Ty , Val) = (type, val);
     //public override string Stringify() => $"{Ty.Ident.Value} {Val}";
 
-    static Value _void = new VoidValue();
-    public static Value Void => _void;
+    public static Value Void = new VoidValue();
+    public static Value Nothing = new NothingValue();
 
     /// <summary>
     /// Creates a spuch# <c>Value</c> from a c# object
@@ -185,4 +185,10 @@ internal class AnyValue : Value
     public override Ty Ty => Ty.Any;
     public required object Value { get; init; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+}
+internal class NothingValue : Value
+{
+    public override object ValueAsObject => null!;
+    public override Ty Ty => Ty.Nothing;
+    public override string Stringify() => $"{Ty.Stringify()} <NOVALUE>";
 }

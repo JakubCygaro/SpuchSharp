@@ -72,6 +72,9 @@ for x from 1..10 {
 [<type>] <ident>  = [<expr=int>]; // <- an array of lenth <expr=int> initialized to default values
 <ident>[<expr=int>] -> Index Expression that either returns a value or can be assigned to
 
+[int] intArr = { 1, 2, 3, 4 };
+[text] textArr = { "chuj", "dupa", "palec" };
+
 import "STDLib";
 fun main() {
 	[int] a = { 1, 2, 3, 4 };
@@ -174,9 +177,11 @@ RunFunction(functionScope, expressionBlock);
 # Objects?
 
 ```
-struct <name>{
+struct <name> {
 	<type> <fieldname> ;
 }
+
+var dupa = new <name>;
 ```
 
 this would require a global struct scope where all struct templates would be held for future instantiation

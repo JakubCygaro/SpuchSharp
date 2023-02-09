@@ -7,6 +7,7 @@ using System.Collections;
 using System.Linq.Expressions;
 using System.Diagnostics;
 using SpuchSharp;
+using SpuchSharp.Parsing;
 
 namespace SpuchSharp.Lexing;
 
@@ -198,4 +199,6 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
     {
         return GetEnumerator();
     }
+
+    
 }

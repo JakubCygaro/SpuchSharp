@@ -13,6 +13,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
     public static BooleanTy Boolean = new BooleanTy();
     public static VoidTy Void = new VoidTy();
     public static AnyTy Any = new AnyTy();
+    public static NothingTy Nothing = new NothingTy();
     public abstract Ident Ident { get; }
     public static Ty FromValue(string lit)
     {
@@ -91,5 +92,10 @@ internal sealed class VoidTy : Ty
 internal sealed class AnyTy : Ty
 {
     static Ident _ident = new Ident() { Value = "any" };
+    public override Ident Ident => _ident;
+}
+internal sealed class NothingTy : Ty
+{
+    static Ident _ident = new Ident() { Value = "nothing_type" };
     public override Ident Ident => _ident;
 }
