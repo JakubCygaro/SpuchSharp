@@ -25,6 +25,12 @@ public class InterpreterException : Exception
 		var message = "Instruction is not yet supported by the interpreter";
 		return new InterpreterException(message, ins);
 	}
+	internal static InterpreterException TypeMismatch<TExpected>(Ty ty)
+		where TExpected : Ty
+	{
+		var message = $"Type mismatch, expected {nameof(TExpected)}, got {ty.Ident}";
+		return new InterpreterException(message, ty);
+	}
 	public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(
 	  System.Runtime.Serialization.SerializationInfo info,

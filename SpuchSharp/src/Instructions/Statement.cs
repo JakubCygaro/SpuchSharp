@@ -71,3 +71,16 @@ internal sealed class LoopStatement : Statement
 }
 internal sealed class BreakStatement : Statement { }
 internal sealed class SkipStatement : Statement { }
+
+internal sealed class ForLoopStatement : Statement 
+{
+    public required Ident VariableIdent { get; init; } 
+    public required Expression From { get; init; }
+    public required Expression To { get; init; }
+    public required Instruction[] Block { get; init; }
+}
+internal sealed class WhileStatement : Statement
+{
+    public required Expression Condition { get; init; }
+    public required Instruction[] Block { get; init;}
+}

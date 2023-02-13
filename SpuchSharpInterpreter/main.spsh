@@ -1,6 +1,6 @@
 ﻿import "STDLib";
 fun main(){
-	testSkip();
+	testWhile();
 	prematureReturn();
 	return;
 	println("Napisz coś dla mnie");
@@ -46,6 +46,25 @@ fun testSkip(){
 			println("break!");
 			break;
 		}
+	}
+}
+fun testFor(){
+	var sum = 0;
+	for x from 0 to 10 {
+		sum = x + sum;
+		println(x);
+		break;
+	}
+	println("chuj");
+	println(sum);
+}
+fun testWhile() {
+	var x = 0;
+	println(x < 10);
+	while(x < 10) {
+		print(x);
+		x = x + 1;
+		pause(500);
 	}
 }
 

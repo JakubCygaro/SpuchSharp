@@ -55,8 +55,6 @@ public class TokenStream : INullEnumerator<Token>,
         }
     }
 
-
-
     public void Dispose()
     { }
 
@@ -78,9 +76,9 @@ public class TokenStream : INullEnumerator<Token>,
     {
         return this.Clone();
     }
-    public static TokenStream ParseFromQuote(string quote)
+    public static TokenStream ParseFromQuote(string[] quote)
     {
-        var lexer = new Lexer(new string[] { quote });
+        var lexer = new Lexer(quote);
         return lexer.ToList().ToTokenStream();
     }
 }

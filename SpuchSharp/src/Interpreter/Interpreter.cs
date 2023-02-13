@@ -58,11 +58,67 @@ public sealed class Interpreter
                 return EvaluateBreak(breakStatement, loopContext);
             if (stmt is SkipStatement skipStatement)
                 return EvaluateSkip(skipStatement, loopContext);
+            if (stmt is ForLoopStatement forLoopStatement)
+                return EvaluateForLoop(varScope, funScope, forLoopStatement);
+            if (stmt is WhileStatement whileStatement)
+                return EvaluateWhileLoop(varScope, funScope, whileStatement);
         }
         if (instruction is Expression expr)
             EvaluateExpression(varScope, funScope, expr);
 
         return null;
+    }
+    private Value? EvaluateWhileLoop(VariableScope varScope,
+        FunctionScope funScope,
+        WhileStatement whileStatement)
+    {
+        var block = whileStatement.Block;
+        var context = new LoopContext();
+        Value? returnValue = null;
+
+        while(EvaluateCondition() && !context.ShouldBreak)
+            returnValue = ExcecuteBlock(block, varScope, funScope, loopContext: context);
+        return returnValue;
+
+        bool EvaluateCondition()
+        {
+            return EvaluateExpression(varScope, funScope, whileStatement.Condition)
+            as BooleanValue ??
+            throw new InterpreterException("The condition of a while statement must evaluate to a boolean value",
+            whileStatement.Condition);
+        }
+    }
+    private Value? EvaluateForLoop(VariableScope varScope, 
+        FunctionScope funScope, 
+        ForLoopStatement forLoopStmt)
+    {
+        var block = forLoopStmt.Block;
+        var context = new LoopContext();
+        Value? returnValue = null;
+        var from = EvaluateExpression(varScope, funScope, forLoopStmt.From) as IntValue ??
+            throw new InterpreterException("Expected int value");
+        var to = EvaluateExpression(varScope, funScope, forLoopStmt.To) as IntValue ??
+            throw new InterpreterException("Expected int value");
+
+        var increase = from > to ? -1 : 1;
+
+        var newVarScope = varScope.Clone();
+        var variableValue = (IntValue)from.Clone();
+        var variable = new SVariable
+        {
+            Ident = forLoopStmt.VariableIdent,
+            Value = variableValue,
+        };
+        newVarScope.Add(variable);
+
+        for(int x = from; x <= to; x += increase)
+        {
+            if (context.ShouldBreak)
+                break;
+            variableValue.Value = x;
+            returnValue = ExcecuteBlock(block, newVarScope, funScope, loopContext: context);
+        }
+        return returnValue;
     }
     private Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
     {
@@ -108,7 +164,7 @@ public sealed class Interpreter
         foreach (var ins in block)
         {
             var returnValue = ExcecuteInstruction(ins, varScope, funScope, loopContext: loopContext);
-            if (returnValue is not null)
+            if (returnValue is not null and not NothingValue)
                 return returnValue;
         }
         return null;
@@ -481,5 +537,11 @@ internal static class ScopeExt
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
                     $"Function {pair.Key.Stringify()} already declared ", pair.Key);
+    }
+    public static void Add(this VariableScope scope, SVariable variable)
+    {
+        if(!scope.TryAdd(variable.Ident, variable))
+            throw new InterpreterException(
+                    $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
     }
 }

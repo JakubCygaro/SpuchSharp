@@ -15,16 +15,16 @@ public class ParserException: Exception
         : base($"{message}. {location}")
     {
     }
-    public ParserException(string message, Token token)
-        : base($"{message}. {token.Location} | Type: {token} Str: {token.Stringify()}") { }
+    public ParserException(string message, Token? token)
+        : base($"{message}. {token?.Location} | Type: {token} Str: {token?.Stringify()}") { }
     public ParserException(string message, Token expected, Token token)
         : base($"{message}, expected: `{expected.Stringify()}`. " +
             $"{token.Location} | Type: {token} Str: {token.Stringify()}") { }
-    public static ParserException Expected<T>(Token wrongToken)
-        where T: Token, new()
+    public static ParserException Expected<T>(Token? wrongToken)
+        where T: Token
     {
-        var message = $"Unrecognized token `{wrongToken.Stringify()}`, expected {new T().Stringify()}";
-        return new ParserException(message, wrongToken);
+        var message = $"Unrecognized token `{wrongToken?.Stringify()}`, expected {nameof(T)}";
+        return new ParserException(message, wrongToken!);
     }
     public static ParserException PrematureEndOfInput(Location? location= default)
     {

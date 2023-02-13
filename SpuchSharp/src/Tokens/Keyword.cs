@@ -20,6 +20,10 @@ internal abstract class KeyWord : Token
         "break" => new Break(),
         "skip" => new Skip(),
         "loop" => new Loop(),
+        "for" => new For(),
+        "from" => new From(),
+        "to" => new To(),
+        "while" => new While(),
         _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
     };
 }
@@ -66,6 +70,26 @@ internal sealed class Skip : KeyWord
 internal sealed class Break : KeyWord
 {
     public override string Stringify() => "break";
+
+}
+internal sealed class For : KeyWord
+{
+    public override string Stringify() => "for";
+
+}
+internal sealed class From : KeyWord
+{
+    public override string Stringify() => "from";
+
+}
+internal sealed class To : KeyWord
+{
+    public override string Stringify() => "to";
+
+}
+internal sealed class While : KeyWord
+{
+    public override string Stringify() => "while";
 
 }
 

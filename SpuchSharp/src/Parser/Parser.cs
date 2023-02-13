@@ -21,17 +21,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     object IEnumerator.Current => _currentInstruction;
 
     private Instruction _currentInstruction = default!;
-    //private readonly Lexer _lexer;
     private readonly TokenStream _tokenStream;
     public Parser(Lexer lexer) 
     {
-        //_lexer = lexer;
-        var tokens = new List<Token>();
-        foreach(var lexeme in lexer)
-            tokens.Add(lexeme);
+        var tokens = lexer.ToList();
         _tokenStream = new TokenStream(tokens);
     }
-
     private bool Parse()
     {
         
@@ -93,20 +88,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseKeyWordInstruction(KeyWord keyword, TokenStream stream)
     {
-        //if (keyword is Fun)
-        //    return ParseDeclaration(keyword, stream);
-        //else if (keyword is Var)
-        //    return ParseDeclaration(keyword, stream);
-        //else if (keyword is Delete)
-        //    return ParseDelete(keyword, stream);
-        //else if (keyword is Import)
-        //    return ParseImport(keyword, stream);
-        //else if (keyword is Return)
-        //    return ParseReturn(keyword, stream);
-        //else if (keyword is If)
-        //    return ParseIfStatement(keyword, stream);
-        //else
-        //    throw new ParserException("Failed to parse keyword instruction!", keyword);
         return keyword switch
         {
             Fun => ParseDeclaration(keyword, stream),
@@ -118,7 +99,45 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Loop loop => ParseLoop(loop, stream),
             Break brek => ParseBreak(brek, stream),
             Skip skip => ParseSkip(skip, stream),
+            For @for => ParseFor(@for, stream),
+            While @while => ParseWhile(@while, stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+        };
+    }
+    private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)
+    {
+        var tokens = ReadBetweenParen<Round.Open, Round.Closed>(stream);
+        var expression = ParseExpression(tokens);
+        var nextToken = stream.Next();
+        if (nextToken is not Curly.Open)
+            throw ParserException.Expected<Curly.Open>(nextToken);
+        var block = ParseFunctionInstructions(stream);
+        return new WhileStatement
+        {
+            Block = block,
+            Condition = expression,
+        };
+    }
+    private ForLoopStatement ParseFor(For forKeyword, TokenStream stream)
+    {
+        // for x from <expr> to <expr> {
+        var nextToken = stream.Next();
+        if (nextToken is not Ident ident)
+            throw ParserException.Expected<Ident>(nextToken);
+        nextToken = stream.Next();
+        if (nextToken is not From)
+            throw ParserException.Expected<From>(nextToken);
+        (var tokens, _) = ReadToToken<To>(stream);
+        var expr1 = ParseExpression(tokens.ToTokenStream());
+        (tokens, _) = ReadToToken<Curly.Open>(stream);
+        var expr2 = ParseExpression(tokens.ToTokenStream());
+        var block = ParseFunctionInstructions(stream);
+        return new ForLoopStatement
+        {
+            VariableIdent = ident,
+            From = expr1,
+            To = expr2,
+            Block = block,
         };
 
     }
@@ -348,19 +367,31 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     /// <returns></returns>
     private List<Token> ReadToSemicolon(INullEnumerator<Token> stream)
     {
-        return ReadToToken<Semicolon>(stream);
+        return ReadToToken<Semicolon>(stream).Item1;
     }
-    private List<Token> ReadToToken<T>(INullEnumerator<Token> stream)
+    /// <summary>
+    /// Reads the stream to the first occurence of <c>T</c> and returns a touple containing
+    /// all read tokens and <c>T</c>
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    /// <exception cref="ParserException"></exception>
+    private (List<Token>, T) ReadToToken<T>(INullEnumerator<Token> stream)
         where T: Token
     {
         List<Token> tokens = new List<Token>();
-
+        var location = default(Location);
         while (stream.Next() is Token token)
+        {
+            if (token.Location is not null)
+                location = (Location)token.Location;
             if (token is not T)
                 tokens.Add(token);
-            else
-                return tokens;
-        throw new ParserException("Premature end of input");
+            else if (token is T tokenT)
+                return (tokens, tokenT);
+        }
+        throw new ParserException("Premature end of input", location);
     }
     private Instruction ParseDeclaration(Token token, TokenStream stream)
     {
@@ -451,6 +482,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return args.ToArray();
     }
+    /// <summary>
+    /// Parses the contents of a function in <c>{ }</c>
+    /// </summary>
+    /// <remarks>
+    /// THE FIRST <c>Culry.Open</c> MUST BE CONSUMED BEFORE CALLING THIS METHOD!
+    /// </remarks>
+    /// <param name="stream"></param>
+    /// <returns>The block of instructions for that method</returns>
     private Instruction[] ParseFunctionInstructions(TokenStream stream)
     {
         List<Instruction> list = new List<Instruction>();
@@ -477,19 +516,59 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         where TClosed : Paren
     {
         List<Token> tokens = new();
-        int openParen = 1;
+        int openParen = 0;
         while (stream.Next() is Token token)
         {
             if (token is TOpen)
                 openParen += 1;
-            if (token is TClosed)
+            else if (token is TClosed)
                 openParen -= 1;
+            else 
+                tokens.Add(token);
             if (openParen == 0)
             {
                 return tokens.ToTokenStream();
             }
+        }
+        throw new ParserException("Unclosed parentheses", stream.Current);
+    }
+    /// <summary>
+    /// Collects all tokens between the specified <c>Paren</c> types into a new <c> List of TokenStream</c>
+    /// separated by <c>TSeparator</c>
+    /// </summary>
+    /// <remarks>
+    /// Do not advance the stream before calling this method, as opposite to the <c>ReadInsideRound()</c> method
+    /// </remarks>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    public List<TokenStream> ParseBetweenParenWithSeparator<TOpen, TClosed, TSeparator>(TokenStream stream)
+        where TOpen : Paren
+        where TClosed : Paren
+        where TSeparator : Token
+    {
+        List<TokenStream> streams = new();
+        List<Token> tokens = new();
+        int openParen = 0;
+        while (stream.Next() is Token token)
+        {
+            if (token is TOpen)
+                openParen += 1;
+            else if (token is TClosed)
+                openParen -= 1;
+            else if (token is TSeparator && openParen == 1)
+            {
+                streams.Add(tokens.ToTokenStream());
+                tokens = new();
+            }
             else
                 tokens.Add(token);
+            if (openParen == 0)
+            {
+                if (tokens.Count > 0)
+                    streams.Add(tokens.ToTokenStream());
+                return streams;
+            }
         }
         throw new ParserException("Unclosed parentheses", stream.Current);
     }

@@ -8,6 +8,7 @@ namespace SpuchSharp.Tokens;
 
 internal abstract class Value : Token
 {
+    public abstract Value Clone();
     public abstract Ty Ty { get; }
     public abstract object ValueAsObject { get; }
     //public object Val { get; }
@@ -108,7 +109,7 @@ internal abstract class Value : Token
     public static BooleanValue InEq(Value left, Value right)
     {
         var val = Eq(left, right);
-        val.Value &= false;
+        val.Value = !val.Value;
         return val;
     }
     public static BooleanValue GreaterThan(Value left, Value right)
@@ -123,7 +124,7 @@ internal abstract class Value : Token
     public static BooleanValue LessThan(Value left, Value right)
     {
         var val = GreaterThan(left, right);
-        val.Value &= false;
+        val.Value = !val.Value;
         return val;
     }
 
@@ -139,7 +140,7 @@ internal abstract class Value : Token
     public static BooleanValue LessOrEqualTo(Value left, Value right)
     {
         var val = GreaterOrEqualTo(left, right);
-        val.Value &= false;
+        val.Value = !val.Value;
         return val;
     }
 
@@ -156,13 +157,25 @@ internal class TextValue : Value
     public override Ty Ty => Ty.Text;
     public required string Value { get; init; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new TextValue
+        {
+            Value = this.Value
+        };
 }
 internal class IntValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Int;
-    public required int Value { get; init; }
+    public required int Value { get; set; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new IntValue
+        {
+            Value = this.Value
+        };
+
+    public static implicit operator int(IntValue intV) => intV.Value;
 }
 internal class BooleanValue : Value
 {
@@ -170,6 +183,11 @@ internal class BooleanValue : Value
     public override Ty Ty => Ty.Boolean;
     public required bool Value { get; set; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new BooleanValue
+        {
+            Value = this.Value
+        };
 
     public static implicit operator bool(BooleanValue value) => value.Value;
 }
@@ -178,6 +196,7 @@ internal class VoidValue : Value
     public override object ValueAsObject => null!;
     public override Ty Ty => Ty.Void;
     public override string Stringify() => $"{Ty.Stringify()}";
+    public override Value Clone() => Value.Void;
 }
 internal class AnyValue : Value
 {
@@ -185,10 +204,16 @@ internal class AnyValue : Value
     public override Ty Ty => Ty.Any;
     public required object Value { get; init; }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new AnyValue
+        {
+            Value = this.Value
+        };
 }
 internal class NothingValue : Value
 {
     public override object ValueAsObject => null!;
     public override Ty Ty => Ty.Nothing;
     public override string Stringify() => $"{Ty.Stringify()} <NOVALUE>";
+    public override Value Clone() => Value.Nothing;
 }
