@@ -5,6 +5,14 @@ float
 boolean \/
 maybe arrays
 
+# Operators to add
+* ! -> negation
+* ++
+* --
+* +=
+* +-
+* +.. -> and so on
+
 # Variable Declaration \/
 ```
 var x = 10;
@@ -53,7 +61,7 @@ Basically instead of a new SVariable with a value procured from an expression
 a ref argument would require an already existing variable to be passed as an argument
 
 
-# For Loops
+# For Loops \/
 ```
 for x in 1 to 0 {
 
@@ -85,7 +93,7 @@ fun main() {
 
 ```
 
-# While loops
+# While loops \/
 ```
 loop {
 	skip;

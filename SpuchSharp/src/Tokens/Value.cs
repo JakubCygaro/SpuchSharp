@@ -16,12 +16,18 @@ internal abstract class Value : Token
     {
         return type switch
         {
-            IntTy => new IntValue { Value = int.Parse(literal) },
+            //IntTy => new IntValue { Value = int.Parse(literal) },
             TextTy => new TextValue { Value = literal },
             BooleanTy => new BooleanValue { Value = bool.Parse(literal) },
+            //FloatTy => new FloatValue { Value = float.Parse(literal, 
+             //                       System.Globalization.CultureInfo.InvariantCulture)},
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
+    //public static Value From(string literal)
+    //{
+    //    return literal
+    //}
     //public Value(Ty type, object val) => (Ty , Val) = (type, val);
     //public override string Stringify() => $"{Ty.Ident.Value} {Val}";
 
@@ -55,6 +61,7 @@ internal abstract class Value : Token
         {
             IntValue iv => new IntValue { Value = iv.Value + ((IntValue)right).Value },
             TextValue sv => new TextValue { Value = sv.Value + ((TextValue)right).Value },
+            FloatValue fv => new FloatValue { Value = fv.Value + ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be added!")
         };
     }
@@ -64,6 +71,7 @@ internal abstract class Value : Token
         return left switch
         {
             IntValue iv => new IntValue { Value = iv.Value - ((IntValue)right).Value },
+            FloatValue fv => new FloatValue { Value = fv.Value - ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be subtracted!")
         };
     }
@@ -73,7 +81,18 @@ internal abstract class Value : Token
         return left switch
         {
             IntValue iv => new IntValue { Value = iv.Value * ((IntValue)right).Value },
+            FloatValue fv => new FloatValue { Value = fv.Value * ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types cannot be multiplied!")
+        };
+    }
+    public static Value Div(Value left, Value right)
+    {
+        TypeCheck(left, right);
+        return left switch
+        {
+            IntValue iv => new IntValue { Value = iv.Value / ((IntValue)right).Value },
+            FloatValue fv => new FloatValue { Value = fv.Value / ((FloatValue)right).Value },
+            _ => throw new Interpreting.InterpreterException("Types cannot be divided!")
         };
     }
     public static Value And(Value left, Value right)
@@ -102,6 +121,7 @@ internal abstract class Value : Token
             BooleanValue bv => new BooleanValue { Value = bv.Value == ((BooleanValue)right).Value },
             IntValue iv => new BooleanValue { Value = iv.Value == ((IntValue)right).Value },
             TextValue tv => new BooleanValue { Value = tv.Value == ((TextValue)right).Value },
+            FloatValue fv => new BooleanValue { Value = fv.Value == ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
 
         };
@@ -118,6 +138,7 @@ internal abstract class Value : Token
         return left switch
         {
             IntValue iv => new BooleanValue { Value = iv.Value > ((IntValue)right).Value },
+            FloatValue fv => new BooleanValue { Value = fv.Value > ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
@@ -134,6 +155,7 @@ internal abstract class Value : Token
         return left switch
         {
             IntValue iv => new BooleanValue { Value = iv.Value >= ((IntValue)right).Value },
+            FloatValue fv => new BooleanValue { Value = fv.Value >= ((FloatValue)right).Value },
             _ => throw new Interpreting.InterpreterException("Types not boolean!")
         };
     }
@@ -176,6 +198,18 @@ internal class IntValue : Value
         };
 
     public static implicit operator int(IntValue intV) => intV.Value;
+}
+internal class FloatValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Float;
+    public required float Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new FloatValue
+        {
+            Value = this.Value
+        };
 }
 internal class BooleanValue : Value
 {

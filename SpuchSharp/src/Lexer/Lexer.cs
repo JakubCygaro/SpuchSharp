@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 using System.Diagnostics;
 using SpuchSharp;
 using SpuchSharp.Parsing;
+using System.Globalization;
 
 namespace SpuchSharp.Lexing;
 
@@ -36,6 +37,7 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
             else if (IsText(literal, out var text)) { ret = text; continue; }
             else if (IsSimpleToken(literal, out var simple)) { ret = simple; continue; }
+            else if (IsNumeric(literal, out var numeric)) { ret = numeric; continue; }
             else if (IsValue(literal, out var value)) { ret = value; continue; }
             else
             {
@@ -135,6 +137,56 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
             return true;
         }
         catch { return false; }
+    }
+    private bool IsNumeric(string lit, out Value? value)
+    {
+        value = null;
+        if (!char.IsDigit(lit[0]) || !char.IsDigit(lit.Last())) return false;
+        var literal = lit;
+        var wasDot = false;
+        while (_charStream.Next() is char c)
+        {
+            if (char.IsDigit(c))
+                literal += c;
+            else if (c == '.' && !wasDot)
+            {
+                literal += c;
+                wasDot = true;
+            }
+            else
+            {
+                //Console.WriteLine(literal + "-> chuj");
+                _charStream.MoveBack();
+                break;
+            }
+            //Console.WriteLine(literal + "-> dupa");
+        }
+        //Console.WriteLine(literal + "-> cipa");
+
+        try
+        {
+            if (wasDot)
+            {
+                value = new FloatValue
+                {
+                    Value = float.Parse(literal, CultureInfo.InvariantCulture),
+                };
+            }
+            else
+            {
+                value = new IntValue 
+                {
+                    Value = int.Parse(literal),
+                };
+            }
+            //Console.WriteLine(literal + "-> pierd");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            throw new LexerException($"Failed to parse literal to a float/integer value -> {literal} : {ex.Message}", 
+                _charStream.Line, _charStream.Position);
+        }
     }
     private bool IsText(string lit, out Value? text)
     {

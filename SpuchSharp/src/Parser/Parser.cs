@@ -267,7 +267,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         while(stream.Next() is Token token)
         {
             SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
-
             var nextToken = stream.Next();
 
             if (nextToken is Round.Open && simpleExpression is IdentExpression identExpression)

@@ -10,6 +10,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
 {
     public static TextTy Text = new TextTy();
     public static IntTy Int = new IntTy();
+    public static FloatTy Float = new FloatTy();
     public static BooleanTy Boolean = new BooleanTy();
     public static VoidTy Void = new VoidTy();
     public static AnyTy Any = new AnyTy();
@@ -29,7 +30,9 @@ internal abstract class Ty : Token, IEquatable<Ty>
         {
             return Ty.Boolean;
         }
-        throw new Lexing.LexerException("Failed to parse to Ty");
+        if (float.TryParse(lit, out float _))
+            return Ty.Float;
+        throw new Lexing.LexerException($"Failed to parse to Ty -> {lit}");
     }
     public static Ty FromCSharpType(Type type)
     {
@@ -37,6 +40,8 @@ internal abstract class Ty : Token, IEquatable<Ty>
             return Ty.Text;
         else if (type == typeof(int))
             return Ty.Int;
+        else if (type == typeof(float))
+            return Ty.Float;
         else if (type == typeof(bool))
             return Ty.Boolean;
         else if (type == typeof(void))
@@ -52,6 +57,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
         "text" => Ty.Text,
         "bool" => Ty.Boolean,
         "void" => Ty.Void,
+        "float" => Ty.Float,
         _ => throw new Lexing.LexerException("Failed to parse to Ty"),
     };
     public override string Stringify() => Ident.Value;
@@ -97,5 +103,10 @@ internal sealed class AnyTy : Ty
 internal sealed class NothingTy : Ty
 {
     static Ident _ident = new Ident() { Value = "nothing_type" };
+    public override Ident Ident => _ident;
+}
+internal sealed class FloatTy : Ty
+{
+    static Ident _ident = new Ident() { Value = "float" };
     public override Ident Ident => _ident;
 }

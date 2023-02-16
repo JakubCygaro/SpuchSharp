@@ -14,7 +14,7 @@ public class LexerException : Exception
 	private readonly int _column = 0;
 
 	public LexerException(string message, int line, int column) : 
-		base($"{message}. ({line}:{column})")
+		base($"{message} . ({line}:{column})")
 	{
 		_line = line;
 		_column = column;

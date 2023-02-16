@@ -1,16 +1,7 @@
 ﻿import "STDLib";
 fun main(){
-	testWhile();
-	prematureReturn();
-	return;
-	println("Napisz coś dla mnie");
-	text input = readln();
-	if(checkPies(input)) {
-		println("napisałeś pies, jak ja ci dziękuję");
-	}
-	else {
-		println("gówno mnie to obchodzi");
-	}
+	float chuj = 2.01;
+	println(chuj);
 }
 fun checkPies(text maybePies) bool {
 	if (maybePies == "pies") {

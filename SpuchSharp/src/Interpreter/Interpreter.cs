@@ -351,22 +351,29 @@ public sealed class Interpreter
     {
         var left = EvaluateExpression(scope, funScope, expr.Left);
         var right = EvaluateExpression(scope, funScope, expr.Right);
-
-        return expr switch
+        try
         {
-            AddExpr => Value.Add(left, right),
-            SubExpr => Value.Sub(left, right),
-            MulExpr => Value.Mul(left, right),
-            AndExpr => Value.And(left, right),
-            OrExpr => Value.Or(left, right),
-            EqExpr => Value.Eq(left, right),
-            InEqExpr => Value.InEq(left, right),
-            GreaterThanExpr => Value.GreaterThan(left, right),
-            LessThanExpr => Value.LessThan(left, right),
-            GreaterOrEqToExpr => Value.GreaterOrEqualTo(left, right),
-            LessOrEqToExpr => Value.LessOrEqualTo(left, right),
-            _ => throw new InterpreterException("Unrecognized expression type", expr)
-        };
+            return expr switch
+            {
+                AddExpr => Value.Add(left, right),
+                SubExpr => Value.Sub(left, right),
+                MulExpr => Value.Mul(left, right),
+                DivExpr => Value.Div(left, right),
+                AndExpr => Value.And(left, right),
+                OrExpr => Value.Or(left, right),
+                EqExpr => Value.Eq(left, right),
+                InEqExpr => Value.InEq(left, right),
+                GreaterThanExpr => Value.GreaterThan(left, right),
+                LessThanExpr => Value.LessThan(left, right),
+                GreaterOrEqToExpr => Value.GreaterOrEqualTo(left, right),
+                LessOrEqToExpr => Value.LessOrEqualTo(left, right),
+                _ => throw new InterpreterException("Unrecognized expression type", expr)
+            };
+        }
+        catch(Exception ex) 
+        {
+            throw new InterpreterException(ex.Message, ex);
+        }
     }
     private SVariable FindVariable(Ident ident, VariableScope scope)
     {
