@@ -16,8 +16,11 @@ internal abstract class SimpleToken : Token
         ")" => new Round.Closed(),
         "{" => new Curly.Open(),
         "}" => new Curly.Closed(),
+        "[" => new Square.Open(),
+        "]" => new Square.Closed(),
         "." => new Dot(),
         ":" => new Colon(),
+        "::" => new Colon2(),
         "," => new Comma(),
         _ => Operator.From(value),
     };
@@ -34,6 +37,10 @@ sealed class Semicolon: SimpleToken
 sealed class Colon : SimpleToken
 {
     public override string Stringify() => ":";
+}
+sealed class Colon2 : SimpleToken
+{
+    public override string Stringify() => "::";
 }
 sealed class Dot : SimpleToken 
 {
@@ -83,6 +90,25 @@ abstract class Curly : Paren
         }
     }
 }
+abstract class Brackets : SimpleToken { }
+internal abstract class Square : Brackets
+{
+    internal sealed class Open : Square
+    {
+        public override string Stringify()
+        {
+            return "[";
+        }
+    }
+    internal sealed class Closed : Square
+    {
+        public override string Stringify()
+        {
+            return "]";
+        }
+    }
+}
+
 
 abstract class Operator : SimpleToken
 {

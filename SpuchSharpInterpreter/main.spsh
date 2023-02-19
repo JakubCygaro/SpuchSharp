@@ -1,7 +1,9 @@
 ﻿import "STDLib";
 fun main(){
-	float chuj = 2.01;
-	println(chuj);
+	[int] stefan = { 1, 2, 3, 4 };
+	for x from 0 to len(stefan) - 1 {
+		println(stefan[x]);
+	}
 }
 fun checkPies(text maybePies) bool {
 	if (maybePies == "pies") {

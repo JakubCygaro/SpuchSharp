@@ -19,6 +19,15 @@ internal sealed class Typed : Variable
 {
     public required Ty Type { get; init; }
 }
+internal class ArrayDecl : Declaration
+{
+    public required string Name { get; set; }
+    public required Expression[] Expressions { get; set; } 
+}
+internal class TypedArrayDecl : ArrayDecl
+{
+    public required Ty Type { get; init; }
+}
 
 internal sealed class Function : Declaration
 {

@@ -104,7 +104,7 @@ public sealed class Interpreter
 
         var newVarScope = varScope.Clone();
         var variableValue = (IntValue)from.Clone();
-        var variable = new SVariable
+        var variable = new SSimpleVariable
         {
             Ident = forLoopStmt.VariableIdent,
             Value = variableValue,
@@ -246,7 +246,41 @@ public sealed class Interpreter
             CreateVariable(varScope, funScope, var);
         if (decl is Function fun) 
             CreateFunction(fun, funScope);
+        if (decl is ArrayDecl arr)
+            CreateArray(varScope, funScope, arr);
+
     }
+    private void CreateArray(VariableScope varScope, FunctionScope funScope, ArrayDecl arrayDecl)
+    {
+        var values = new List<Value>();
+        foreach (var expr in arrayDecl.Expressions)
+        {
+            values.Add(EvaluateExpression(varScope, funScope, expr));
+        }
+        if (values.Count == 0)
+            throw new InterpreterException("Empty array declaration", arrayDecl);
+        var declType = arrayDecl switch
+        {
+            TypedArrayDecl typed => typed.Type,
+            _ => values.First().Ty,
+        };
+
+        if (values.Any(v => !v.Ty.Equals(declType)))
+            throw new InterpreterException("TODO ARRAYS");
+        var array = new SArray(declType, values.Count)
+        {
+            Ident = new Ident() { Value = arrayDecl.Name },
+        };
+        var index = 0;
+        foreach (var value in values)
+        {
+            array.Set(index, value);
+            index++;
+        }
+        varScope.Add(array);
+    }
+
+
     /// <summary>
     /// Will return a non-null <c>Value</c> if any of the contained instructions
     /// was a <c>return</c> statement
@@ -274,7 +308,7 @@ public sealed class Interpreter
     {
         if (stmt is not DeleteStatement delete)
             return;
-        var sVar = FindVariable(delete.VariableIdent, varScope);
+        var sVar = FindSimpleVariable(delete.VariableIdent, varScope);
         DeleteVariable(sVar.Ident, varScope);
     }
     private void DeleteVariable(Ident ident, VariableScope varScope)
@@ -296,15 +330,36 @@ public sealed class Interpreter
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    private Value EvaluateSimple(VariableScope scope, FunctionScope funScope, SimpleExpression expr)
+    private Value EvaluateSimple(VariableScope varScope, FunctionScope funScope, SimpleExpression expr)
     {
         return expr switch
         {
             ValueExpression v => v.Val,
-            IdentExpression i => FindVariable(i.Ident, scope).Value,
-            CallExpression c => EvaluateCall(scope, funScope, c),
+            IdentExpression i => FindVariable(varScope, i.Ident).Value,
+            CallExpression c => EvaluateCall(varScope, funScope, c),
+            IndexerExpression id => EvaluateIndexer(varScope, funScope, id),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    private Value EvaluateIndexer(VariableScope varScope, FunctionScope funScope, IndexerExpression expr)
+    {
+        var array = FindArray(varScope, funScope, expr.Ident);
+        var index = EvaluateExpression(varScope, funScope, expr.IndexExpression) as IntValue
+            ?? throw new InterpreterException("An array index must be of integer type", expr);
+        return array.Get<Value>(index);
+    }
+    private SVariable FindVariable(VariableScope varScope, Ident ident)
+    {
+        if (varScope.TryGetValue(ident, out var arr))
+            return arr;
+        throw InterpreterException.VariableNotFound(ident);
+    }
+    private SArray FindArray(VariableScope varScope, FunctionScope funScope, Ident ident)
+    {
+        if (varScope.TryGetValue(ident, out var arr))
+            return arr as SArray ??
+                throw new InterpreterException("Tried indexing into a non array type", ident);
+        throw InterpreterException.VariableNotFound(ident);
     }
     private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
     {
@@ -319,7 +374,7 @@ public sealed class Interpreter
             var value = EvaluateExpression(scope, funScope, call.Args[i]);
             if (!targetFunction.Args[i].Ty.Equals(value.Ty))
                 throw new InterpreterException("Mismatched argument type!", call.Function);
-            variables.Add(targetFunction.Args[i].Name, new SVariable
+            variables.Add(targetFunction.Args[i].Name, new SSimpleVariable
             {
                 Ident = targetFunction.Args[i].Name,
                 Value = value,
@@ -375,11 +430,12 @@ public sealed class Interpreter
             throw new InterpreterException(ex.Message, ex);
         }
     }
-    private SVariable FindVariable(Ident ident, VariableScope scope)
+    private SSimpleVariable FindSimpleVariable(Ident ident, VariableScope scope)
     {
         if (scope.TryGetValue(ident, out var v))
         {
-            return v;
+            return v as SSimpleVariable ??
+                throw new InterpreterException($"Value {ident.Value} is not a variable", ident);
         }
         else throw new InterpreterException($"No variable {ident.Value} declared in this scope", ident);
         
@@ -400,7 +456,7 @@ public sealed class Interpreter
             if (!typed.Type.Equals(value.Ty))
                 throw new InterpreterException(
                     "Mismatched types, assigned type is different from declared type.", typed.Type);
-        SVariable newVariable = new()
+        SSimpleVariable newVariable = new()
         {
             Ident = new Ident { Value = var.Name },
             Value = value,
@@ -410,7 +466,7 @@ public sealed class Interpreter
     }
     private void AssignValue(VariableScope scope, FunctionScope funScope, Assignment ass)
     {
-        var svar = FindVariable(ass.Left, scope);
+        var svar = FindSimpleVariable(ass.Left, scope);
         var val = EvaluateExpression(scope, funScope, ass.Expr);
         if (!svar.Value.Ty.Equals(val.Ty))
             throw new InterpreterException("Mismatched types!");
@@ -477,7 +533,7 @@ public sealed class Interpreter
             StringBuilder sb = new StringBuilder();
             foreach (var (ident, svar) in _globalVariableScope)
             {
-                sb.AppendLine($"[{ident.Stringify()}, {svar.Value.Stringify()}]");
+                sb.AppendLine($"[{ident.Stringify()}, {svar.Display()}]");
             }
             return sb.ToString();
         }
@@ -503,7 +559,7 @@ public sealed class Interpreter
         Console.WriteLine("VARIABLE SCOPE:");
         foreach(var (i, V) in variableScope)
         {
-            Console.WriteLine($"[{i.Stringify()} {V.Value.Stringify()}]");
+            Console.WriteLine($"[{i.Stringify()} {V.Display()}]");
         }
         Console.WriteLine("=================");
     }

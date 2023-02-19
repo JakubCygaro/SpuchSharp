@@ -167,4 +167,10 @@ internal sealed class IdentExpression : SimpleExpression
     public override string Display() => $"[{Ident.Stringify()}]";
     public required Ident Ident { get; init; }
 }
+internal sealed class IndexerExpression : SimpleExpression
+{
+    public override string Display() => $"[{Ident.Stringify()}[{IndexExpression.Display()}]]";
+    public required Ident Ident { get; init; }
+    public required Expression IndexExpression { get; init; }
+}
 

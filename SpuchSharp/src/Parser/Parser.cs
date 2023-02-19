@@ -46,6 +46,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseKeyWordInstruction(keyWord, stream);
         if (firstToken is Ty type)
             return ParseDeclaration(type, stream);
+        if (firstToken is Square.Open squareOpen)
+            return ParseArrayDeclaration(squareOpen, stream);
         if (firstToken is Ident ident)
         {
             var secondToken = stream.Next();
@@ -102,6 +104,44 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             For @for => ParseFor(@for, stream),
             While @while => ParseWhile(@while, stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+        };
+    }
+    private Declaration ParseArrayDeclaration(Square.Open squareOpen, TokenStream stream)
+    {
+        var nextToken = stream.Next();
+        if (nextToken is not Ty ty)
+            throw ParserException.Expected<Ty>(nextToken);
+
+        nextToken = stream.Next();
+        if (nextToken is not Square.Closed)
+            throw ParserException.Expected<Square.Closed>(nextToken);
+
+        nextToken = stream.Next();
+        if (nextToken is not Ident ident)
+            throw ParserException.Expected<Square.Closed>(nextToken);
+
+        nextToken = stream.Next();
+        if (nextToken is not Assign)
+            throw ParserException.Expected<Assign>(nextToken);
+
+        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
+        Expression[] expressions = new Expression[tokens.Count];
+        var i = 0;
+        foreach(var tokenStream in tokens)
+        {
+            expressions[i] = ParseExpression(tokenStream);
+            i++;
+        }
+
+        nextToken = stream.Next();
+        if (nextToken is not Semicolon)
+            throw ParserException.Expected<Semicolon>(nextToken);
+
+        return new TypedArrayDecl
+        {
+            Type = ty,
+            Expressions = expressions,
+            Name = ident.Value,
         };
     }
     private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)
@@ -275,6 +315,17 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
                 nextToken = stream.Next();
             }
+            if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
+            {
+                var (tokens, _) = ReadToToken<Square.Closed>(stream);
+                var indexerExpression = ParseExpression(tokens.ToTokenStream());
+                simpleExpression = new IndexerExpression
+                {
+                    Ident = identForIndex.Ident,
+                    IndexExpression = indexerExpression,
+                };
+                nextToken = stream.Next();
+            }
             if(currentOperator is not null && ret is not null)
             {
                 ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
@@ -392,6 +443,27 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         throw new ParserException("Premature end of input", location);
     }
+    private Declaration ParseUntypedArrayDecl(Ident ident, TokenStream stream)
+    {
+        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
+        Expression[] expressions = new Expression[tokens.Count];
+        var i = 0;
+        foreach (var tokenStream in tokens)
+        {
+            expressions[0] = ParseExpression(tokenStream);
+            i++;
+        }
+
+        var nextToken = stream.Next();
+        if (nextToken is not Semicolon)
+            throw ParserException.Expected<Semicolon>(nextToken);
+
+        return new ArrayDecl
+        {
+            Expressions = expressions,
+            Name = ident.Value,
+        };
+    }
     private Instruction ParseDeclaration(Token token, TokenStream stream)
     {
         if (token is Var var)
@@ -400,8 +472,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Next() is not Assign)
                 throw new ParserException("Invalid token error", stream.Current);
-            //if (_lexer.Next() is not Token tok)
-            //    throw new ParserException("Invalid token error", _lexer.Current);
+            if (stream.Peek() is Curly.Open)
+                return ParseUntypedArrayDecl(ident, stream);
             return new Variable()
             {
                 Name = ident.Value,

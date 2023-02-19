@@ -22,7 +22,7 @@ public class InterpreterException : Exception
 	{ }
 	internal static InterpreterException UnsuportedInstruction(Instruction ins)
 	{
-		var message = "Instruction is not yet supported by the interpreter";
+		var message = $"Instruction is not yet supported by the interpreter: {ins}";
 		return new InterpreterException(message, ins);
 	}
 	internal static InterpreterException TypeMismatch<TExpected>(Ty ty)
@@ -30,6 +30,11 @@ public class InterpreterException : Exception
 	{
 		var message = $"Type mismatch, expected {nameof(TExpected)}, got {ty.Ident}";
 		return new InterpreterException(message, ty);
+	}
+	internal static InterpreterException VariableNotFound(Ident ident)
+	{
+		var message = $"Variable {ident.Value} not found in present scope.";
+		return new InterpreterException(message, ident);
 	}
 	public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(

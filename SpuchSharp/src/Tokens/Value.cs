@@ -173,7 +173,7 @@ internal abstract class Value : Token
                 $"Type mismatch! {left.Ty.Stringify()} and {right.Ty.Stringify()}", left);
     }
 }
-internal class TextValue : Value
+internal sealed class TextValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Text;
@@ -185,7 +185,7 @@ internal class TextValue : Value
             Value = this.Value
         };
 }
-internal class IntValue : Value
+internal sealed class IntValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Int;
@@ -199,7 +199,7 @@ internal class IntValue : Value
 
     public static implicit operator int(IntValue intV) => intV.Value;
 }
-internal class FloatValue : Value
+internal sealed class FloatValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Float;
@@ -211,7 +211,7 @@ internal class FloatValue : Value
             Value = this.Value
         };
 }
-internal class BooleanValue : Value
+internal sealed class BooleanValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Boolean;
@@ -225,14 +225,14 @@ internal class BooleanValue : Value
 
     public static implicit operator bool(BooleanValue value) => value.Value;
 }
-internal class VoidValue : Value
+internal sealed class VoidValue : Value
 {
     public override object ValueAsObject => null!;
     public override Ty Ty => Ty.Void;
     public override string Stringify() => $"{Ty.Stringify()}";
     public override Value Clone() => Value.Void;
 }
-internal class AnyValue : Value
+internal sealed class AnyValue : Value
 {
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Any;
@@ -244,10 +244,12 @@ internal class AnyValue : Value
             Value = this.Value
         };
 }
-internal class NothingValue : Value
+internal sealed class NothingValue : Value
 {
     public override object ValueAsObject => null!;
     public override Ty Ty => Ty.Nothing;
     public override string Stringify() => $"{Ty.Stringify()} <NOVALUE>";
     public override Value Clone() => Value.Nothing;
 }
+
+

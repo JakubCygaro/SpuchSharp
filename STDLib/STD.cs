@@ -28,4 +28,7 @@ public static class STD
     [Function("randInt")]
     public static int RandomInt(int start, int end) => Random.Shared.Next(start, end);
 
+    [Function("len")]
+    public static int Length(object[] array) => array.Length; 
+
 }

@@ -38,16 +38,32 @@ internal abstract class Ty : Token, IEquatable<Ty>
     {
         if (type == typeof(string))
             return Ty.Text;
+        else if (type == typeof(string[]))
+            return ArrayTy.Text;
+
         else if (type == typeof(int))
             return Ty.Int;
+        else if (type == typeof(int[]))
+            return ArrayTy.Int;
+
         else if (type == typeof(float))
             return Ty.Float;
+        else if (type == typeof(float[]))
+            return ArrayTy.Float;
+
         else if (type == typeof(bool))
             return Ty.Boolean;
+        else if (type == typeof(bool[]))
+            return ArrayTy.Boolean;
+
         else if (type == typeof(void))
             return Ty.Void;
+
         else if (type == typeof(object))
             return Ty.Any;
+        else if (type == typeof(object[]))
+            return ArrayTy.Any;
+
         throw new InvalidCastException(
             $"Could not translate external function type {type} to any internal type");
     }
@@ -64,13 +80,23 @@ internal abstract class Ty : Token, IEquatable<Ty>
 
     public bool Equals(Ty? other)
     {
-        if (this is AnyTy)
-            return true;
         if (other is null)
         {
             return false;
         }
+        if (this is AnyTy)
+            return true;
+        if (this is ArrayTy arr)
+            return ArrayTyEquals(arr, other);
         return this.Ident.Equals(other.Ident);
+    }
+    private bool ArrayTyEquals(ArrayTy arr, Ty other)
+    {
+        if (other is not ArrayTy otherArray)
+            return false;
+        if (otherArray.OfType.Equals(ArrayTy.Any))
+            return true;
+        return arr.OfType.Equals(otherArray.OfType);
     }
 
 }
@@ -109,4 +135,35 @@ internal sealed class FloatTy : Ty
 {
     static Ident _ident = new Ident() { Value = "float" };
     public override Ident Ident => _ident;
+}
+internal sealed class ArrayTy : Ty
+{
+    private Ty _type;
+    public Ty OfType => _type;
+
+    private Ident _ident;
+    public override Ident Ident => _ident;
+    public static ArrayTy ArrayOf(Ty type)
+    {
+        return type switch
+        {
+            IntTy => Int,
+            FloatTy => Float,
+            BooleanTy => Boolean,
+            TextTy => Text,
+            AnyTy => Any,
+            _ =>  new ArrayTy(type)
+        };
+    }
+    private ArrayTy(Ty type)
+    {
+        _type = type;
+        _ident = new Ident() { Value = $"[{_type.Ident.Value}]" };
+    }
+
+    new public static ArrayTy Int = new ArrayTy(Ty.Int);
+    new public static ArrayTy Float = new ArrayTy(Ty.Float);
+    new public static ArrayTy Boolean = new ArrayTy(Ty.Boolean);
+    new public static ArrayTy Text = new ArrayTy(Ty.Text);
+    new public static ArrayTy Any = new ArrayTy(Ty.Any);
 }
