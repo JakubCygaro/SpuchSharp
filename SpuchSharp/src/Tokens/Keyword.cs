@@ -24,6 +24,7 @@ internal abstract class KeyWord : Token
         "from" => new From(),
         "to" => new To(),
         "while" => new While(),
+        "ref" => new Ref(),
         _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
     };
 }
@@ -91,5 +92,9 @@ internal sealed class While : KeyWord
 {
     public override string Stringify() => "while";
 
+}
+internal sealed class Ref : KeyWord
+{
+    public override string Stringify() => "ref";
 }
 

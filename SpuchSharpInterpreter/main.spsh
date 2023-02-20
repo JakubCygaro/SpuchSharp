@@ -1,9 +1,20 @@
 ﻿import "STDLib";
 fun main(){
-	[int] stefan = { 1, 2, 3, 4 };
-	for x from 0 to len(stefan) - 1 {
-		println(stefan[x]);
+	var stefan = { 1, 2, 3, 4 };
+	println(sum(stefan));
+}
+fun sum(ref [int] array) int {
+	var sum = 0;
+	for x from 0 to len(array) - 1 {
+		sum = sum + array[x];
 	}
+	return sum;
+}
+fun intByRef(ref int chuj){
+	chuj = chuj + 1;
+}
+fun intByValue(int chuj){
+	chuj = chuj + 1;
 }
 fun checkPies(text maybePies) bool {
 	if (maybePies == "pies") {

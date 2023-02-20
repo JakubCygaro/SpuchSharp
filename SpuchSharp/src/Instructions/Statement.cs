@@ -27,6 +27,7 @@ internal class ArrayDecl : Declaration
 internal class TypedArrayDecl : ArrayDecl
 {
     public required Ty Type { get; init; }
+    public required Expression? Sized { get; set; }
 }
 
 internal sealed class Function : Declaration

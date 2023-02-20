@@ -1,17 +1,8 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using SpuchSharp.Instructions;
 using SpuchSharp.Lexing;
 using SpuchSharp.Tokens;
-using SpuchSharp;
-using System.IO;
 
 namespace SpuchSharp.Parsing;
 
@@ -124,6 +115,20 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         if (nextToken is not Assign)
             throw ParserException.Expected<Assign>(nextToken);
 
+        if (stream.Peek() is Square.Open)
+        {
+            stream.Next();
+            var sized = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
+            if (stream.Next() is not Semicolon)
+                throw ParserException.Expected<Semicolon>(stream.Current);
+            return new TypedArrayDecl
+            {
+                Type = ty,
+                Name = ident.Value,
+                Expressions = Array.Empty<Expression>(),
+                Sized = sized
+            };
+        }
         var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
         Expression[] expressions = new Expression[tokens.Count];
         var i = 0;
@@ -142,6 +147,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Type = ty,
             Expressions = expressions,
             Name = ident.Value,
+            Sized = null,
         };
     }
     private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)
@@ -450,7 +456,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         var i = 0;
         foreach (var tokenStream in tokens)
         {
-            expressions[0] = ParseExpression(tokenStream);
+            expressions[i] = ParseExpression(tokenStream);
             i++;
         }
 
@@ -486,8 +492,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Next() is not Assign)
                 throw new ParserException("Invalid token error", stream.Current);
-            //if (_lexer.Next() is not Token tok)
-            //    throw new ParserException("Invalid token error", _lexer.Current);
+
             return new Typed()
             {
                 Name = ident.Value,
@@ -499,8 +504,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (stream.Next() is not Ident ident)
                 throw new ParserException("Invalid token error", stream.Current);
-            if (stream.Next() is not Round.Open)
-                throw new ParserException("Invalid token error", stream.Current);
+            //if (stream.Next() is not Round.Open)
+            //    throw new ParserException("Invalid token error", stream.Current);
             //parse function args
             var arguments = ParseFunctionArguments(stream);
 
@@ -526,32 +531,53 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Invalid syntax error!", token);
     }
-    private FunArg[] ParseFunctionArguments(INullEnumerator<Token> stream)
+    private FunArg[] ParseFunctionArguments(TokenStream stream)
     {
-        List<FunArg> args = new List<FunArg>();
-        while(stream.Next() is Token token)
-        {
-            if (token is Round.Closed)
-                break;
-            if (token is Comma)
-                continue;
-            if (token is not Ty type)
-                throw new ParserException(
-                    $"Invalid function argument declaration, not a type: {stream.Current}", stream.Current);
-            if (stream.Next() is not Ident ident)
-                throw new ParserException("Invalid function argument declaration", stream.Current);
-            var arg = new FunArg()
-            {
-                Name = ident,
-                Ty = type,
-                Location = ident.Location,
-            };
-            if (args.Any(a => a.Name.Equals(ident)))
-                throw new ParserException($"Function arguments cannot have repeating names", ident);
-            args.Add(arg);
-        }
+        HashSet<FunArg> args = new HashSet<FunArg>();
+        var tokensList = ParseBetweenParenWithSeparator<Round.Open, Round.Closed, Comma>(stream);
 
+        foreach (var tokens in tokensList)
+            if (!args.Add(ParseFunctionArgument(tokens)))
+                throw new ParserException("Repeating argument names", tokens.Current);
         return args.ToArray();
+    }
+    private FunArg ParseFunctionArgument(TokenStream stream)
+    {
+        var @ref = false;
+        Ty type;
+        var nextToken = stream.Next();
+        if (nextToken is Ref)
+        {
+            @ref = true;
+            nextToken = stream.Next();
+        }
+        if (nextToken is Ty ty)
+        {
+            type = ty;
+            nextToken = stream.Next();
+        }
+        else if (nextToken is Square.Open)
+        {
+            if (stream.Next() is not Ty arrayTy)
+                throw new ParserException("Failed to parse argument array type", stream.Current);
+            if (stream.Next() is not Square.Closed)
+                throw new ParserException("Failed to parse argument array, missing closing bracket", 
+                    stream.Current);
+            type = ArrayTy.ArrayOf(arrayTy);
+            nextToken = stream.Next();
+        }
+        else 
+            throw new ParserException("Could not determine function argument type", stream.Current);
+
+        if (nextToken is not Ident ident)
+            throw new ParserException("Failed to parse function argument name", stream.Current);
+        return new FunArg
+        {
+            Name = ident,
+            Ref = @ref,
+            Ty = type,
+            Location = ident.Location
+        };
     }
     /// <summary>
     /// Parses the contents of a function in <c>{ }</c>

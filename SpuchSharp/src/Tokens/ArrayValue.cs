@@ -28,6 +28,8 @@ internal sealed class ArrayValue : Value
         _arrayTy = ArrayTy.ArrayOf(type);
         Size = size;
         Values = new Value[Size];
+        for (int i = 0; i < size; i++)
+            Values[i] = Value.Default(ValueTy);
     }
     public override string Stringify()
     {

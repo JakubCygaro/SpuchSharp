@@ -252,6 +252,18 @@ public sealed class Interpreter
     }
     private void CreateArray(VariableScope varScope, FunctionScope funScope, ArrayDecl arrayDecl)
     {
+        if (arrayDecl is TypedArrayDecl typedArr)
+            if (typedArr.Sized is not null)
+            {
+                var size = EvaluateExpression(varScope, funScope, typedArr.Sized) as IntValue ??
+                    throw new InterpreterException("Size of an array must be an interger type value", 
+                    typedArr.Sized);
+                varScope.Add(new SArray(typedArr.Type, size)
+                {
+                    Ident = new Ident { Value = typedArr.Name },
+                });
+                return;
+            }
         var values = new List<Value>();
         foreach (var expr in arrayDecl.Expressions)
         {
@@ -374,11 +386,19 @@ public sealed class Interpreter
             var value = EvaluateExpression(scope, funScope, call.Args[i]);
             if (!targetFunction.Args[i].Ty.Equals(value.Ty))
                 throw new InterpreterException("Mismatched argument type!", call.Function);
-            variables.Add(targetFunction.Args[i].Name, new SSimpleVariable
+            if (targetFunction.Args[i].Ref)
             {
-                Ident = targetFunction.Args[i].Name,
-                Value = value,
-            });
+                if (call.Args[i] is not IdentExpression identExpression)
+                    throw new InterpreterException("A ref argument can only be a variable name", call.Args[i]);
+                var variable = FindVariable(scope, identExpression.Ident);
+                variables.Add(targetFunction.Args[i].Name, variable);
+            }
+            else
+                variables.Add(targetFunction.Args[i].Name, new SSimpleVariable
+                {
+                    Ident = targetFunction.Args[i].Name,
+                    Value = value,
+                });
         }
         if (targetFunction is ExternalFunction ext)
             return CallExternalFunction(ext, variables.Values.ToList());

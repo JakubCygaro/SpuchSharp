@@ -86,7 +86,8 @@ internal static class Importer
                 functionInfo.Args.Add(new FunArg
                 {
                     Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.FromCSharpType(paramType)
+                    Ty = Ty.FromCSharpType(paramType),
+                    Ref = false
                 });
             }
             catch

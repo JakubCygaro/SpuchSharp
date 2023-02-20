@@ -172,6 +172,18 @@ internal abstract class Value : Token
             throw new Interpreting.InterpreterException(
                 $"Type mismatch! {left.Ty.Stringify()} and {right.Ty.Stringify()}", left);
     }
+    public static Value Default(Ty ty)
+    {
+        return ty switch
+        {
+            IntTy => new IntValue { Value = 0 },
+            FloatTy => new FloatValue { Value = 0f },
+            TextTy => new TextValue { Value = string.Empty },
+            BooleanTy => new BooleanValue { Value = false },
+            AnyTy => new AnyValue { Value = new object() },
+            _ => throw new System.Diagnostics.UnreachableException(),
+        };
+    }
 }
 internal sealed class TextValue : Value
 {
