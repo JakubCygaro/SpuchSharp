@@ -1,17 +1,10 @@
 ﻿import "STDLib";
 fun main(){
-	int size = 5;
-	[int] array = [size];
-	for x from 0 to size - 1 {
-		print("index: ");
-		print(x);
-		print(" value: ");
-		print(x);
-		array[x] = x;
-		println("");
-	}
-	println("=====");
+	var array = { 1, 2, 3, 4 };
 	println(array);
+	mod(array);
+	println(array);
+	readln();
 }
 fun sum(ref [int] array) int {
 	var sum = 0;
@@ -19,6 +12,9 @@ fun sum(ref [int] array) int {
 		sum = sum + array[x];
 	}
 	return sum;
+}
+fun mod(ref [int] array) void {
+	array[0] = 10;
 }
 fun intByRef(ref int chuj){
 	chuj = chuj + 1;

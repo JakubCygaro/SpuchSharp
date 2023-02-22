@@ -393,7 +393,17 @@ public sealed class Interpreter
                 var variable = FindVariable(scope, identExpression.Ident);
                 variables.Add(targetFunction.Args[i].Name, variable);
             }
-            else
+            else if (targetFunction.Args[i].Ty is ArrayTy arrayTy)
+            {
+                var valueAsArray = value as ArrayValue
+                    ?? throw new InterpreterException("Type mismatch, call argument was not an array", call.Args[i]);
+                variables.Add(targetFunction.Args[i].Name, new SArray(arrayTy.OfType, (valueAsArray).Size)
+                { 
+                    Ident = targetFunction.Args[i].Name,
+                    Value = valueAsArray.Clone()
+                });
+            }
+            else 
                 variables.Add(targetFunction.Args[i].Name, new SSimpleVariable
                 {
                     Ident = targetFunction.Args[i].Name,
