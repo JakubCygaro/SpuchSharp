@@ -496,19 +496,22 @@ public sealed class Interpreter
             _ => throw new System.Diagnostics.UnreachableException()
         };
 
-        if (!targetVar.Value.Ty.Equals(val.Ty))
-            throw new InterpreterException("Mismatched types!");
         if (targetVar is SSimpleVariable simpleVar)
         {
+            if (!simpleVar.Value.Ty.Equals(val.Ty))
+                throw new InterpreterException("Mismatched types!", simpleVar.Ident);
             simpleVar.Value = val;
         }
         if (targetVar is SArray arrayVar)
         {
+            if (!arrayVar.Ty.Equals(val.Ty))
+                throw new InterpreterException("Mismatched types!", arrayVar.Ident);
             var indexTarget = ass.Left as ArrayIndexTarget
                 ?? throw new InterpreterException("TODO ArrayIndexTarget missing");
             var index = EvaluateExpression(scope, funScope, indexTarget.IndexExpression) as IntValue
                 ?? throw new InterpreterException("TODO Index not an integer value");
-            arrayVar.Set(index, val);
+
+            arrayVar.Set(index, val.Clone());
         }
 
     }

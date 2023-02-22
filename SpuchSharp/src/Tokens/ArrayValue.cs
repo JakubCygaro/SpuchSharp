@@ -20,7 +20,9 @@ internal sealed class ArrayValue : Value
     private Ty _arrayTy;
     public int Size { get; }
     public Value[] Values { get; }
-    public Value this[int index] { get => Values[index]; set=> Values[index] = value; }
+    public Value this[int index] { get => Values[index]; set => Values[index] = value; }
+
+
 
     public ArrayValue(Ty type, int size)
     {
@@ -30,20 +32,13 @@ internal sealed class ArrayValue : Value
         Values = new Value[Size];
         for (int i = 0; i < size; i++)
             Values[i] = Value.Default(ValueTy);
+
     }
     public override string Stringify()
     {
         return $"{Ty.Stringify()}";
     }
-    //public override object ValueAsObject => Values switch 
-    //{
-    //    IntValue[] i => i.Select(i => i.ValueAsObject ).ToArray(),
-    //    FloatValue[] f => f.Select(f => f.ValueAsObject).ToArray(),
-    //    TextValue[] t => t.Select(t => t.ValueAsObject).ToArray(),
-    //    BooleanValue[] b => b.Select(b => b.ValueAsObject).ToArray(),
-    //    AnyValue[] a => a.Select(a => a.ValueAsObject).ToArray(),
-    //    _ => throw new Interpreting.InterpreterException("ValueArray object translation failed")
-    //};
+
     public override object ValueAsObject => Values.Select(x => x.ValueAsObject).ToArray();
     public override Value Clone()
     {

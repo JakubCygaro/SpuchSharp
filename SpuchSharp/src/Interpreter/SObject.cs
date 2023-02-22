@@ -50,7 +50,7 @@ internal class SArray : SVariable
                     $"cannot be held in an array of type {Ty.Stringify()}");
             _arrayValue[index] = value;
         }
-        catch(InterpreterException ie)
+        catch (InterpreterException ie)
         {
             throw ie;
         }

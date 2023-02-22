@@ -1,11 +1,17 @@
 ﻿import "STDLib";
 fun main(){
-	var cipa = 11;
-	println("passed");
-	var chuj = 11;
-	println("passed");
-	chuj = 12;
-	println(chuj);
+	int size = 5;
+	[int] array = [size];
+	for x from 0 to size - 1 {
+		print("index: ");
+		print(x);
+		print(" value: ");
+		print(x);
+		array[x] = x;
+		println("");
+	}
+	println("=====");
+	println(array);
 }
 fun sum(ref [int] array) int {
 	var sum = 0;
