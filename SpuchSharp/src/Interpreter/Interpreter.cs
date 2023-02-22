@@ -43,6 +43,7 @@ public sealed class Interpreter
         PrintScope(varScope);
         PrintInstruction(instruction);
 
+
         if(instruction is Statement stmt)
         {
             IfDeclaration(varScope, funScope, stmt);
@@ -219,7 +220,6 @@ public sealed class Interpreter
         {
             throw new InterpreterException(ex.Message, ex);
         }
-
     }
     private void RunMain()
     {
@@ -320,7 +320,7 @@ public sealed class Interpreter
     {
         if (stmt is not DeleteStatement delete)
             return;
-        var sVar = FindSimpleVariable(delete.VariableIdent, varScope);
+        var sVar = FindVariable(varScope, delete.VariableIdent);
         DeleteVariable(sVar.Ident, varScope);
     }
     private void DeleteVariable(Ident ident, VariableScope varScope)
@@ -486,11 +486,31 @@ public sealed class Interpreter
     }
     private void AssignValue(VariableScope scope, FunctionScope funScope, Assignment ass)
     {
-        var svar = FindSimpleVariable(ass.Left, scope);
+        //var svar = FindSimpleVariable(ass.Left.Ident, scope);
         var val = EvaluateExpression(scope, funScope, ass.Expr);
-        if (!svar.Value.Ty.Equals(val.Ty))
+
+        SVariable targetVar = ass.Left switch
+        {
+            IdentTarget it =>  FindSimpleVariable(it.Ident, scope),
+            ArrayIndexTarget at => FindArray(scope, funScope, at.Ident),
+            _ => throw new System.Diagnostics.UnreachableException()
+        };
+
+        if (!targetVar.Value.Ty.Equals(val.Ty))
             throw new InterpreterException("Mismatched types!");
-        svar.Value = val;
+        if (targetVar is SSimpleVariable simpleVar)
+        {
+            simpleVar.Value = val;
+        }
+        if (targetVar is SArray arrayVar)
+        {
+            var indexTarget = ass.Left as ArrayIndexTarget
+                ?? throw new InterpreterException("TODO ArrayIndexTarget missing");
+            var index = EvaluateExpression(scope, funScope, indexTarget.IndexExpression) as IntValue
+                ?? throw new InterpreterException("TODO Index not an integer value");
+            arrayVar.Set(index, val);
+        }
+
     }
     private void CreateFunction(Function fun, FunctionScope funScope)
     {

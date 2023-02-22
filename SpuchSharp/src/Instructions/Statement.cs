@@ -52,8 +52,20 @@ internal sealed class Function : Declaration
 //assignment
 internal sealed class Assignment : Statement
 {
-    public required Ident Left { get; set; }
-    public required Expression Expr { get; set; }
+    public required AssignTarget Left { get; init; }
+    public required Expression Expr { get; init; }
+}
+internal abstract class AssignTarget 
+{
+    public required Ident Ident { get; init; }
+}
+internal sealed class ArrayIndexTarget : AssignTarget
+{
+    public required Expression IndexExpression { get; init; }
+}
+internal sealed class IdentTarget : AssignTarget
+{
+
 }
 internal sealed class DeleteStatement : Statement
 {

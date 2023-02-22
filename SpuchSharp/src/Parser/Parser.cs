@@ -39,45 +39,95 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseDeclaration(type, stream);
         if (firstToken is Square.Open squareOpen)
             return ParseArrayDeclaration(squareOpen, stream);
-        if (firstToken is Ident ident)
+
+        var remainder = new List<Token> { firstToken };
+        remainder.AddRange(ReadToSemicolon(stream));
+
+
+        return ParseExpressionOrAssignment(remainder.ToTokenStream());
+        //if (firstToken is Ident ident)
+        //{
+        //    var secondToken = stream.Next();
+        //    if (secondToken is Assign)
+        //        return new Assignment
+        //        {
+        //            Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
+        //            Left = ident
+        //        };
+        //    else if (secondToken is not Semicolon and not null)
+        //    {
+        //        var tokens = new List<Token>() 
+        //        { 
+        //            firstToken, 
+        //            secondToken
+        //        };
+        //        tokens.AddRange(ReadToSemicolon(stream));
+        //        return ParseExpression(tokens.ToTokenStream());
+        //    }
+        //    else if (secondToken is Semicolon)
+        //    {
+        //        var tokens = new List<Token>() 
+        //        {
+        //            firstToken
+        //        };
+        //        return ParseExpression(tokens.ToTokenStream());
+        //    }
+        //    else
+        //        throw new ParserException("TODO 60");
+        //}
+        //else
+        //{
+        //    var tokens = new List<Token>() 
+        //    {
+        //        firstToken,
+        //    };
+        //    tokens.AddRange(ReadToSemicolon(stream));
+        //    return ParseExpression(tokens.ToTokenStream());
+        //}
+    }
+    private Instruction ParseExpressionOrAssignment(TokenStream stream)
+    {
+        if (stream.Has<Assign>())
         {
-            var secondToken = stream.Next();
-            if (secondToken is Assign)
-                return new Assignment
-                {
-                    Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
-                    Left = ident
-                };
-            else if (secondToken is not Semicolon and not null)
-            {
-                var tokens = new List<Token>() 
-                { 
-                    firstToken, 
-                    secondToken
-                };
-                tokens.AddRange(ReadToSemicolon(stream));
-                return ParseExpression(tokens.ToTokenStream());
-            }
-            else if (secondToken is Semicolon)
-            {
-                var tokens = new List<Token>() 
-                {
-                    firstToken
-                };
-                return ParseExpression(tokens.ToTokenStream());
-            }
-            else
-                throw new ParserException("TODO 60");
+            //Console.WriteLine($"ASS {stream.Count()}");
+            //stream.Reset();
+            //foreach(var token in stream)
+            //    Console.WriteLine(token.Stringify());
+            return ParseAssignment(stream);
         }
         else
         {
-            var tokens = new List<Token>() 
-            {
-                firstToken,
-            };
-            tokens.AddRange(ReadToSemicolon(stream));
-            return ParseExpression(tokens.ToTokenStream());
+            return ParseExpression(stream);
         }
+    }
+    private Assignment ParseAssignment(TokenStream stream)
+    {
+        (var unparsedTarget, _) = ReadToToken<Assign>(stream);
+        var expression = ParseExpression(stream);
+        var target = ParseExpression(unparsedTarget.ToTokenStream());
+        return target switch
+        {
+            IdentExpression ie => new Assignment 
+            { 
+                Expr = expression,
+                Left = new IdentTarget 
+                {  
+                    Ident = ie.Ident, 
+                }
+            },
+            IndexerExpression ix => new Assignment 
+            { 
+                Expr = expression,
+                Left = new ArrayIndexTarget 
+                { 
+                    Ident = ix.Ident,
+                    IndexExpression = ix.IndexExpression,
+                }
+            },
+            _ => throw new ParserException("This expression cannot be a target for an assignment", 
+                target.Location) 
+        };
+        
     }
     private Instruction ParseKeyWordInstruction(KeyWord keyword, TokenStream stream)
     {
@@ -321,7 +371,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
                 nextToken = stream.Next();
             }
-            if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
+            else if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
             {
                 var (tokens, _) = ReadToToken<Square.Closed>(stream);
                 var indexerExpression = ParseExpression(tokens.ToTokenStream());
@@ -343,6 +393,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if (nextToken is Operator nextOperator)
             {
                 currentOperator = nextOperator;
+            }
+            else if (nextToken is not null)
+            {
+                throw ParserException.UnexpectedToken(nextToken);
             }
         }
         return ret ?? 
@@ -402,22 +456,22 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Invalid token.", token);
     }
-    private Assignment ParseAssignment(Token token, INullEnumerator<Token> stream)
-    {
-        if (token is not Ident ident)
-            throw new ParserException("Could not parse to assignment, expected ident", token);
-        if (stream.Next() is not Assign)
-            throw new ParserException("Could not parse to assignment, expected `=`", token);
+    //private Assignment ParseAssignment(Token token, INullEnumerator<Token> stream)
+    //{
+    //    if (token is not Ident ident)
+    //        throw new ParserException("Could not parse to assignment, expected ident", token);
+    //    if (stream.Next() is not Assign)
+    //        throw new ParserException("Could not parse to assignment, expected `=`", token);
 
-        return new Assignment
-        {
-            Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
-            Left = ident
-        };
-    }
+    //    return new Assignment
+    //    {
+    //        Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
+    //        Left = ident
+    //    };
+    //}
 
     /// <summary>
-    /// Returns a list of all tokens in a stream before the first encounter of <c>T</c>
+    /// Returns a list of all tokens in a stream before the first encounter of <c>Semicolon</c>
     /// </summary>
     /// <param name="stream"></param>
     /// <returns></returns>

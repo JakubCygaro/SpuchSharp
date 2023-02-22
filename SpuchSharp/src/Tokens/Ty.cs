@@ -98,7 +98,6 @@ internal abstract class Ty : Token, IEquatable<Ty>
             return true;
         return arr.OfType.Equals(otherArray.OfType);
     }
-
 }
 
 internal sealed class TextTy : Ty

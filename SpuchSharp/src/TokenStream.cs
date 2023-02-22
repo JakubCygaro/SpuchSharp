@@ -81,6 +81,13 @@ public class TokenStream : INullEnumerator<Token>,
         var lexer = new Lexer(quote);
         return lexer.ToList().ToTokenStream();
     }
+    public bool Has<T>()
+        where T: Token
+    {
+        var ret =  _stream.Find(t => t is T) is not null;
+        this.Reset();
+        return ret;
+    }
 }
 
 internal static class TokenStreamExt

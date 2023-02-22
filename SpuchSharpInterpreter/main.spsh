@@ -1,7 +1,11 @@
 ﻿import "STDLib";
 fun main(){
-	var stefan = { 1, 2, 3, 4 };
-	println(sum(stefan));
+	var cipa = 11;
+	println("passed");
+	var chuj = 11;
+	println("passed");
+	chuj = 12;
+	println(chuj);
 }
 fun sum(ref [int] array) int {
 	var sum = 0;
