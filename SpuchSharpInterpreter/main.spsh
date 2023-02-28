@@ -1,80 +1,24 @@
 ﻿import "STDLib";
 fun main(){
-	var array = { 1, 2, 3, 4 };
+	knur(wieprz(30));
+
+
+	var array = { "chuj", "dupa", "palec" };
+	printArray(array);
+
+	[[int]] intArray = { { 1, 2 }, { 3, 4 } };
+	printArray(intArray);
+
+}
+fun printArray(ref [text] array){
 	println(array);
-	mod(array);
-	println(array);
-	readln();
 }
-fun sum(ref [int] array) int {
-	var sum = 0;
-	for x from 0 to len(array) - 1 {
-		sum = sum + array[x];
-	}
-	return sum;
+
+
+fun wieprz(int x) int {
+	return x;
 }
-fun mod(ref [int] array) void {
-	array[0] = 10;
-}
-fun intByRef(ref int chuj){
-	chuj = chuj + 1;
-}
-fun intByValue(int chuj){
-	chuj = chuj + 1;
-}
-fun checkPies(text maybePies) bool {
-	if (maybePies == "pies") {
-		return true;
-	} else {
-		return false;
-	}
-}
-fun prematureReturn(){
-	return;
-	println("Spucha");
-}
-fun testLoop(){
-	var x = 0;
-	loop {
-		println(x);
-		x = x + 1;
-		if(x > 10) {
-			break;
-		}
-	}
-}
-fun testSkip(){
-	var x = 0;
-	loop {
-		x = x + 1;
-		if (x == 2) {
-			println("skipped!");
-			skip;
-		}
-		println(x);
-		if(x >= 10) {
-			println("break!");
-			break;
-		}
-	}
-}
-fun testFor(){
-	var sum = 0;
-	for x from 0 to 10 {
-		sum = x + sum;
-		println(x);
-		break;
-	}
-	println("chuj");
-	println(sum);
-}
-fun testWhile() {
-	var x = 0;
-	println(x < 10);
-	while(x < 10) {
-		print(x);
-		x = x + 1;
-		pause(500);
-	}
+fun knur(int chuj) {
+	println(chuj);
 }
 

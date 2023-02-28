@@ -19,7 +19,7 @@ internal sealed class ArrayValue : Value
 
     private Ty _arrayTy;
     public int Size { get; }
-    public Value[] Values { get; }
+    public Value[] Values { get; init; }
     public Value this[int index] { get => Values[index]; set => Values[index] = value; }
 
 
@@ -31,7 +31,7 @@ internal sealed class ArrayValue : Value
         Size = size;
         Values = new Value[Size];
         for (int i = 0; i < size; i++)
-            Values[i] = Value.Default(ValueTy);
+            Values[i] = Value.Default(ValueTy, size);
 
     }
     public override string Stringify()

@@ -5,6 +5,9 @@ float
 boolean \/
 maybe arrays
 
+# Change Type parsing from manual to procedural so that this is possible
+[[int]] -> array of int arrays
+
 # Operators to add
 * ! -> negation
 * ++
@@ -12,6 +15,7 @@ maybe arrays
 * +=
 * +-
 * +.. -> and so on
+
 
 # Variable Declaration \/
 ```
@@ -42,7 +46,7 @@ fun <name>(<type> <name>, <type> <name>) <type>{
 	<body>
 }
 ```
-# Function parameters as ref?
+# Function parameters as ref? \/
 ```
 fun main(){
 	int x = 10;
@@ -72,7 +76,7 @@ for x from 1..10 {
 }
 ```
 
-# Arrays 
+# Arrays PARTIALLY IMPLEMENTED
 
 ```
 // array initialization
@@ -86,7 +90,7 @@ for x from 1..10 {
 import "STDLib";
 fun main() {
 	[int] a = { 1, 2, 3, 4 };
-	for x in 0 to len(a) {
+	for x in 0 to len(a) - 1 {
 		println(a[x]);
 	}
 }
@@ -160,7 +164,7 @@ in the loaded modules tree and bring all of it's Variables and Functions into th
 module
 
 
-# Functions
+# Functions \/
 a function object has to have it's own variable scope that is a copy of the global variable scope,
 the interpreter would go through all the expressions inside a functions Block and execute them on the 
 function's local variable scope - that way each time a function is called a new scope is created 
@@ -211,7 +215,7 @@ struct Dupsko {
 	int woda;
 }
 
-fun Test(Dupsko dupsko) {
+fun test(ref Dupsko dupsko) {
 	dupsko.woda = 10;
 }
 ```

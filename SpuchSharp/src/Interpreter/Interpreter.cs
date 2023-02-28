@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -264,31 +263,33 @@ public sealed class Interpreter
                 });
                 return;
             }
-        var values = new List<Value>();
-        foreach (var expr in arrayDecl.Expressions)
-        {
-            values.Add(EvaluateExpression(varScope, funScope, expr));
-        }
-        if (values.Count == 0)
-            throw new InterpreterException("Empty array declaration", arrayDecl);
+        //var values = new List<Value>();
+        //foreach (var expr in arrayDecl.Expressions)
+        //{
+        //    values.Add(EvaluateExpression(varScope, funScope, expr));
+        //}
+        //if (values.Count == 0)
+        //    throw new InterpreterException("Empty array declaration", arrayDecl);
+        var arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, arrayDecl.ArrayExpression);
         var declType = arrayDecl switch
         {
             TypedArrayDecl typed => typed.Type,
-            _ => values.First().Ty,
+            _ => arrayValue.ValueTy,
         };
 
-        if (values.Any(v => !v.Ty.Equals(declType)))
-            throw new InterpreterException("TODO ARRAYS");
-        var array = new SArray(declType, values.Count)
+        if (!arrayValue.ValueTy.Equals(declType))
+            throw new InterpreterException("Array type does not match the assigned value", arrayValue);
+        var array = new SArray(declType, arrayValue.Size)
         {
             Ident = new Ident() { Value = arrayDecl.Name },
+            Value = arrayValue,
         };
-        var index = 0;
-        foreach (var value in values)
-        {
-            array.Set(index, value);
-            index++;
-        }
+        //var index = 0;
+        //foreach (var value in values)
+        //{
+        //    array.Set(index, value);
+        //    index++;
+        //}
         varScope.Add(array);
     }
 
@@ -350,12 +351,28 @@ public sealed class Interpreter
             IdentExpression i => FindVariable(varScope, i.Ident).Value,
             CallExpression c => EvaluateCall(varScope, funScope, c),
             IndexerExpression id => EvaluateIndexer(varScope, funScope, id),
+            ArrayExpression ae => EvalueArrayExpression(varScope, funScope, ae),
             _ => throw new System.Diagnostics.UnreachableException(),
+        };
+    }
+    private Value EvalueArrayExpression(VariableScope varScope, 
+        FunctionScope funScope, 
+        ArrayExpression arrayExpression)
+    {
+        var expressions = arrayExpression.Expressions;
+        var values = expressions.Select(expr => EvaluateExpression(varScope, funScope, expr))
+                                .ToArray();
+        var size = values.Count();
+        if (size == 0)
+            throw new InterpreterException("An empty array cannot be initialized");
+        return new ArrayValue(values[0].Ty, size)
+        {
+            Values = values,
         };
     }
     private Value EvaluateIndexer(VariableScope varScope, FunctionScope funScope, IndexerExpression expr)
     {
-        var array = FindArray(varScope, funScope, expr.Ident);
+        var array = FindArray(varScope, expr.Ident);
         var index = EvaluateExpression(varScope, funScope, expr.IndexExpression) as IntValue
             ?? throw new InterpreterException("An array index must be of integer type", expr);
         return array.Get<Value>(index);
@@ -366,7 +383,7 @@ public sealed class Interpreter
             return arr;
         throw InterpreterException.VariableNotFound(ident);
     }
-    private SArray FindArray(VariableScope varScope, FunctionScope funScope, Ident ident)
+    private SArray FindArray(VariableScope varScope, Ident ident)
     {
         if (varScope.TryGetValue(ident, out var arr))
             return arr as SArray ??
@@ -420,6 +437,7 @@ public sealed class Interpreter
         var retValue = ExcecuteBlock(targetFunction.Block, variables, newFunScope);
         if (retValue is NothingValue)
             retValue = null;
+
         retValue ??= Value.Void;
 
         if (!retValue.Ty.Equals(returnType))
@@ -486,45 +504,56 @@ public sealed class Interpreter
             if (!typed.Type.Equals(value.Ty))
                 throw new InterpreterException(
                     "Mismatched types, assigned type is different from declared type.", typed.Type);
-        SSimpleVariable newVariable = new()
+        SVariable newVariable = value switch
         {
-            Ident = new Ident { Value = var.Name },
-            Value = value,
+            ArrayValue arrayValue => new SArray(arrayValue.ValueTy, arrayValue.Size) 
+            { 
+                Ident = new Ident { Value = var.Name },
+                Value = arrayValue,
+            },
+            Value otherValue => new SSimpleVariable 
+            { 
+                Ident = new Ident { Value = var.Name },
+                Value = otherValue,
+            }
         };
+
         if (!scope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
-    private void AssignValue(VariableScope scope, FunctionScope funScope, Assignment ass)
+    private void AssignValue(VariableScope varScope, FunctionScope funScope, Assignment ass)
     {
         //var svar = FindSimpleVariable(ass.Left.Ident, scope);
-        var val = EvaluateExpression(scope, funScope, ass.Expr);
+        var val = EvaluateExpression(varScope, funScope, ass.Expr);
 
-        SVariable targetVar = ass.Left switch
-        {
-            IdentTarget it =>  FindSimpleVariable(it.Ident, scope),
-            ArrayIndexTarget at => FindArray(scope, funScope, at.Ident),
-            _ => throw new System.Diagnostics.UnreachableException()
-        };
-
-        if (targetVar is SSimpleVariable simpleVar)
-        {
-            if (!simpleVar.Value.Ty.Equals(val.Ty))
-                throw new InterpreterException("Mismatched types!", simpleVar.Ident);
-            simpleVar.Value = val;
-        }
-        if (targetVar is SArray arrayVar)
-        {
-            if (!arrayVar.Ty.Equals(val.Ty))
-                throw new InterpreterException("Mismatched types!", arrayVar.Ident);
-            var indexTarget = ass.Left as ArrayIndexTarget
-                ?? throw new InterpreterException("TODO ArrayIndexTarget missing");
-            var index = EvaluateExpression(scope, funScope, indexTarget.IndexExpression) as IntValue
-                ?? throw new InterpreterException("TODO Index not an integer value");
-
-            arrayVar.Set(index, val.Clone());
-        }
-
+        if (ass.Left is ArrayIndexTarget arrayIndexTarget)
+            AssignIndex(varScope, funScope, arrayIndexTarget, val);
+        else if(ass.Left is IdentTarget identTarget)
+            AssignVariable(varScope, identTarget, val);
     }
+    private void AssignIndex(VariableScope varScope, 
+        FunctionScope funScope, 
+        ArrayIndexTarget arrayIndexTarget,
+        Value assignedValue)
+    {
+        var array = FindArray(varScope, arrayIndexTarget.Ident);
+        var index = EvaluateExpression(varScope, funScope, arrayIndexTarget.IndexExpression)
+                    as IntValue
+                    ?? throw new InterpreterException("TODO Index not an integer value");
+        array.Set(index, assignedValue.Clone());
+    }
+    private void AssignVariable(VariableScope varScope,
+        IdentTarget identTarget,
+        Value assignedValue)
+    {
+        var variable = FindVariable(varScope, identTarget.Ident);
+        if(!variable.Value.Ty.Equals(assignedValue.Ty))
+            throw new InterpreterException("Mismatched types", identTarget.Ident);
+        variable.Value = assignedValue;
+    }
+
+
+
     private void CreateFunction(Function fun, FunctionScope funScope)
     {
         if (funScope.ContainsKey(fun.Name))

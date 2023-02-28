@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using SpuchSharp.Instructions;
+using SpuchSharp.Interpreting;
 using SpuchSharp.Lexing;
 using SpuchSharp.Tokens;
 
@@ -43,56 +44,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         var remainder = new List<Token> { firstToken };
         remainder.AddRange(ReadToSemicolon(stream));
 
-
         return ParseExpressionOrAssignment(remainder.ToTokenStream());
-        //if (firstToken is Ident ident)
-        //{
-        //    var secondToken = stream.Next();
-        //    if (secondToken is Assign)
-        //        return new Assignment
-        //        {
-        //            Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
-        //            Left = ident
-        //        };
-        //    else if (secondToken is not Semicolon and not null)
-        //    {
-        //        var tokens = new List<Token>() 
-        //        { 
-        //            firstToken, 
-        //            secondToken
-        //        };
-        //        tokens.AddRange(ReadToSemicolon(stream));
-        //        return ParseExpression(tokens.ToTokenStream());
-        //    }
-        //    else if (secondToken is Semicolon)
-        //    {
-        //        var tokens = new List<Token>() 
-        //        {
-        //            firstToken
-        //        };
-        //        return ParseExpression(tokens.ToTokenStream());
-        //    }
-        //    else
-        //        throw new ParserException("TODO 60");
-        //}
-        //else
-        //{
-        //    var tokens = new List<Token>() 
-        //    {
-        //        firstToken,
-        //    };
-        //    tokens.AddRange(ReadToSemicolon(stream));
-        //    return ParseExpression(tokens.ToTokenStream());
-        //}
     }
     private Instruction ParseExpressionOrAssignment(TokenStream stream)
     {
         if (stream.Has<Assign>())
         {
-            //Console.WriteLine($"ASS {stream.Count()}");
-            //stream.Reset();
-            //foreach(var token in stream)
-            //    Console.WriteLine(token.Stringify());
             return ParseAssignment(stream);
         }
         else
@@ -147,13 +104,26 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
         };
     }
+    private Ty ParseType(TokenStream stream)
+    {
+        var firstToken = stream.Next();
+        if (firstToken is Ty normalTy)
+            return normalTy;
+        else if (firstToken is Square.Open)
+        {
+            var arrayTy = ParseType(stream);
+            if (stream.Next() is not Square.Closed)
+                throw ParserException.Expected<Square.Closed>(stream.Current);
+            return ArrayTy.ArrayOf(arrayTy);
+        }
+        else
+            throw new ParserException("Failed to parse to type", stream.Current);
+    }
     private Declaration ParseArrayDeclaration(Square.Open squareOpen, TokenStream stream)
     {
-        var nextToken = stream.Next();
-        if (nextToken is not Ty ty)
-            throw ParserException.Expected<Ty>(nextToken);
+        var ty = ParseType(stream);
 
-        nextToken = stream.Next();
+        var nextToken = stream.Next();
         if (nextToken is not Square.Closed)
             throw ParserException.Expected<Square.Closed>(nextToken);
 
@@ -175,27 +145,27 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             {
                 Type = ty,
                 Name = ident.Value,
-                Expressions = Array.Empty<Expression>(),
+                ArrayExpression = ArrayExpression.Empty,
                 Sized = sized
             };
         }
-        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
-        Expression[] expressions = new Expression[tokens.Count];
-        var i = 0;
-        foreach(var tokenStream in tokens)
-        {
-            expressions[i] = ParseExpression(tokenStream);
-            i++;
-        }
+        //var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
+        //Expression[] expressions = new Expression[tokens.Count];
+        //var i = 0;
+        //foreach(var tokenStream in tokens)
+        //{
+        //    expressions[i] = ParseExpression(tokenStream);
+        //    i++;
+        //}
 
-        nextToken = stream.Next();
-        if (nextToken is not Semicolon)
-            throw ParserException.Expected<Semicolon>(nextToken);
+        //nextToken = stream.Next();
+        //if (nextToken is not Semicolon)
+        //    throw ParserException.Expected<Semicolon>(nextToken);
 
         return new TypedArrayDecl
         {
             Type = ty,
-            Expressions = expressions,
+            ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
             Sized = null,
         };
@@ -356,12 +326,20 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             VariableIdent = ident,
         };
     }
-    private Expression ParseExpression(INullEnumerator<Token> stream)
+    private Expression ParseExpression(TokenStream stream)
     {
         Expression? ret = null;
         Operator? currentOperator = null;
         while(stream.Next() is Token token)
         {
+            if (token is Curly.Open)
+            {
+                ret = ParseArrayExpression(stream);
+                if (stream.Next() is not null)
+                    throw new ParserException(
+                        "Array initialisation expression cannot be used with operators or other expressions");
+                break;
+            }
             SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
             var nextToken = stream.Next();
 
@@ -402,6 +380,27 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return ret ?? 
             throw new ParserException("Failed to parse an expression");
     }
+    private ArrayExpression ParseArrayExpression(TokenStream stream)
+    {
+        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);
+        List<Expression> expressions = new();
+
+        //foreach(var tokenStream in tokens)
+        //{
+        //    foreach(var token in tokenStream)
+        //        Console.WriteLine(token.Stringify());
+        //    tokenStream.Reset();
+        //}
+
+        foreach(var tokenStream in tokens)
+        {
+            expressions.Add(ParseExpression(tokenStream));
+        }
+        return new ArrayExpression
+        {
+            Expressions = expressions.ToArray(),
+        };
+    }
 
     private List<TokenStream> ParseInsideRound(INullEnumerator<Token> stream)
     {
@@ -413,22 +412,24 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             // gotta fix this so it does not ommit inner ()
             if (token is Round.Open)
                 openParen += 1;
-            if (token is Round.Closed)
+            else if (token is Round.Closed)
                 openParen -= 1;
+            else if (token is Comma && openParen == 1)
+            {
+                streams.Add(tokens.ToTokenStream());
+                tokens = new();
+            }
             if (openParen == 0)
             {
                 if(tokens.Count > 0)
                     streams.Add(tokens.ToTokenStream());
                 return streams;
             }
-            if (token is Comma && openParen == 1)
-            {
-                streams.Add(tokens.ToTokenStream());
-                tokens = new();
-            }
             else
                 tokens.Add(token);
         }
+        foreach (var stream2 in streams)
+            stream2.Print();
         throw new ParserException("Unclosed parentheses", stream.Current);
     }
     
@@ -456,19 +457,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Invalid token.", token);
     }
-    //private Assignment ParseAssignment(Token token, INullEnumerator<Token> stream)
-    //{
-    //    if (token is not Ident ident)
-    //        throw new ParserException("Could not parse to assignment, expected ident", token);
-    //    if (stream.Next() is not Assign)
-    //        throw new ParserException("Could not parse to assignment, expected `=`", token);
 
-    //    return new Assignment
-    //    {
-    //        Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
-    //        Left = ident
-    //    };
-    //}
 
     /// <summary>
     /// Returns a list of all tokens in a stream before the first encounter of <c>Semicolon</c>
@@ -483,10 +472,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     /// Reads the stream to the first occurence of <c>T</c> and returns a touple containing
     /// all read tokens and <c>T</c>
     /// </summary>
+    /// <remarks>
+    /// This function will throw a <c>ParserException</c> if there is no <c>T</c> in the stream.
+    /// If this behavior is not desired there is a safe version of this function <c>ReadToTokenOrEnd()</c>
+    /// </remarks>
     /// <typeparam name="T"></typeparam>
     /// <param name="stream"></param>
     /// <returns></returns>
-    /// <exception cref="ParserException"></exception>
+    /// <exception cref="ParserException">Thrown if <c>T</c> is not found before the end of the stream</exception>
     private (List<Token>, T) ReadToToken<T>(INullEnumerator<Token> stream)
         where T: Token
     {
@@ -503,24 +496,46 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         throw new ParserException("Premature end of input", location);
     }
+    /// <summary>
+    /// Does the same as <c>ReadToToken()</c> but does not throw an exception if the <c>T</c> was not encountered before the end of the stream
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    private (List<Token>, T?) ReadToTokenOrEnd<T>(INullEnumerator<Token> stream)
+        where T : Token
+    {
+        List<Token> tokens = new List<Token>();
+        var location = default(Location);
+        while (stream.Next() is Token token)
+        {
+            if (token.Location is not null)
+                location = (Location)token.Location;
+            if (token is not T)
+                tokens.Add(token);
+            else if (token is T tokenT)
+                return (tokens, tokenT);
+        }
+        return (tokens, null);
+    }
     private Declaration ParseUntypedArrayDecl(Ident ident, TokenStream stream)
     {
-        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
-        Expression[] expressions = new Expression[tokens.Count];
-        var i = 0;
-        foreach (var tokenStream in tokens)
-        {
-            expressions[i] = ParseExpression(tokenStream);
-            i++;
-        }
+        //var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
+        //Expression[] expressions = new Expression[tokens.Count];
+        //var i = 0;
+        //foreach (var tokenStream in tokens)
+        //{
+        //    expressions[i] = ParseExpression(tokenStream);
+        //    i++;
+        //}
 
-        var nextToken = stream.Next();
-        if (nextToken is not Semicolon)
-            throw ParserException.Expected<Semicolon>(nextToken);
+        //var nextToken = stream.Next();
+        //if (nextToken is not Semicolon)
+        //    throw ParserException.Expected<Semicolon>(nextToken);
 
         return new ArrayDecl
         {
-            Expressions = expressions,
+            ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
         };
     }
@@ -568,6 +583,16 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if(next is Ty typeName)
             {
                 type = typeName;
+                next = stream.Next();
+            }
+            else if(next is Square.Open)
+            {
+                var type2 = stream.Next() as Ty ??
+                    throw new ParserException("Incorrect function array return type", next);
+                type = ArrayTy.ArrayOf(type2);
+                next = stream.Next();
+                if (next is not Square.Closed)
+                    throw new ParserException("Incorrect function array return type", next);
                 next = stream.Next();
             }
             if (next is not Curly.Open)
@@ -693,20 +718,29 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     /// <typeparam name="T"></typeparam>
     /// <param name="stream"></param>
     /// <returns></returns>
-    public List<TokenStream> ParseBetweenParenWithSeparator<TOpen, TClosed, TSeparator>(TokenStream stream)
+    public List<TokenStream> ParseBetweenParenWithSeparator<TOpen, TClosed, TSeparator>(TokenStream stream,
+        int alreadyopen = 0)
         where TOpen : Paren
         where TClosed : Paren
         where TSeparator : Token
     {
         List<TokenStream> streams = new();
         List<Token> tokens = new();
-        int openParen = 0;
+        int openParen = alreadyopen;
         while (stream.Next() is Token token)
         {
-            if (token is TOpen)
+            if (token is TOpen) 
+            {
                 openParen += 1;
+                if(openParen > 1)
+                    tokens.Add(token);
+            }
             else if (token is TClosed)
+            {
                 openParen -= 1;
+                if (openParen >= 1)
+                    tokens.Add(token);
+            }
             else if (token is TSeparator && openParen == 1)
             {
                 streams.Add(tokens.ToTokenStream());
@@ -723,6 +757,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         throw new ParserException("Unclosed parentheses", stream.Current);
     }
+    
 
 
     public IEnumerator<Instruction> GetEnumerator() => this;

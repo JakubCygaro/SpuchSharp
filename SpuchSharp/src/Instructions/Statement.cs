@@ -22,7 +22,7 @@ internal sealed class Typed : Variable
 internal class ArrayDecl : Declaration
 {
     public required string Name { get; set; }
-    public required Expression[] Expressions { get; set; } 
+    public required Expression ArrayExpression { get; set; } 
 }
 internal class TypedArrayDecl : ArrayDecl
 {

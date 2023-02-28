@@ -88,6 +88,12 @@ public class TokenStream : INullEnumerator<Token>,
         this.Reset();
         return ret;
     }
+    public void Print()
+    {
+        foreach(var token in _stream)
+            Console.WriteLine(token.Stringify());
+        Reset();
+    }
 }
 
 internal static class TokenStreamExt

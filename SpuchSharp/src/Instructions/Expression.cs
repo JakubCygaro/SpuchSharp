@@ -173,4 +173,10 @@ internal sealed class IndexerExpression : SimpleExpression
     public required Ident Ident { get; init; }
     public required Expression IndexExpression { get; init; }
 }
+internal sealed class ArrayExpression : SimpleExpression 
+{
+    public override string Display() => $"";
+    public required Expression[] Expressions { get; init; }
+    public static ArrayExpression Empty = new ArrayExpression { Expressions = Array.Empty<Expression>() };
+}
 

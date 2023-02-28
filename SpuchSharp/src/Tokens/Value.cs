@@ -172,7 +172,7 @@ internal abstract class Value : Token
             throw new Interpreting.InterpreterException(
                 $"Type mismatch! {left.Ty.Stringify()} and {right.Ty.Stringify()}", left);
     }
-    public static Value Default(Ty ty)
+    public static Value Default(Ty ty, int arraySize = 0)
     {
         return ty switch
         {
@@ -181,7 +181,9 @@ internal abstract class Value : Token
             TextTy => new TextValue { Value = string.Empty },
             BooleanTy => new BooleanValue { Value = false },
             AnyTy => new AnyValue { Value = new object() },
-            _ => throw new System.Diagnostics.UnreachableException(),
+            ArrayTy arrayTy => new ArrayValue(arrayTy.OfType, arraySize),
+            _ => throw new Interpreting.InterpreterException(
+                $"The runtime was unable to determine the default value for type: {ty.Ident}"),
         };
     }
 }
