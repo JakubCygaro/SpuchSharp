@@ -50,22 +50,22 @@ internal abstract class ComplexExpression : Expression
         {
             ValOperator vop => vop switch
             {
-                Add => new AddExpr { Left = left, Right = expr },
-                Sub => new SubExpr { Left = left, Right = expr },
-                Mult => new MulExpr { Left = left, Right = expr },
-                Div => new DivExpr { Left = left, Right = expr },
+                Add => new AddExpr { Left = left, Right = expr, Location = left.Location },
+                Sub => new SubExpr { Left = left, Right = expr, Location = left.Location },
+                Mult => new MulExpr { Left = left, Right = expr, Location = left.Location },
+                Div => new DivExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             LogicOperator lop => lop switch
             {
-                And => new AndExpr { Left = left, Right = expr },
-                Or => new OrExpr { Left = left, Right = expr },
-                Equality => new EqExpr { Left = left, Right = expr },
-                InEquality => new InEqExpr { Left = left, Right = expr },
-                Greater => new GreaterThanExpr { Left = left, Right = expr },
-                Less => new LessThanExpr { Left = left, Right = expr },
-                GreaterOrEq => new GreaterOrEqToExpr { Left = left, Right = expr },
-                LessOrEq => new LessOrEqToExpr { Left = left, Right = expr },
+                And => new AndExpr { Left = left, Right = expr, Location = left.Location },
+                Or => new OrExpr { Left = left, Right = expr, Location = left.Location },
+                Equality => new EqExpr { Left = left, Right = expr, Location = left.Location },
+                InEquality => new InEqExpr { Left = left, Right = expr, Location = left.Location },
+                Greater => new GreaterThanExpr { Left = left, Right = expr, Location = left.Location },
+                Less => new LessThanExpr { Left = left, Right = expr, Location = left.Location },
+                GreaterOrEq => new GreaterOrEqToExpr { Left = left, Right = expr, Location = left.Location },
+                LessOrEq => new LessOrEqToExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             _ => throw new ParserException("Unrecognized expression type? wtf?")
@@ -170,13 +170,20 @@ internal sealed class IdentExpression : SimpleExpression
 internal sealed class IndexerExpression : SimpleExpression
 {
     public override string Display() => $"[{Ident.Stringify()}[{IndexExpression.Display()}]]";
-    public required Ident Ident { get; init; }
+
+    // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
+    // inny indexer albo nawet wywołanie \/
+    public required Ident Ident { get; init; } 
     public required Expression IndexExpression { get; init; }
 }
 internal sealed class ArrayExpression : SimpleExpression 
 {
     public override string Display() => $"";
     public required Expression[] Expressions { get; init; }
-    public static ArrayExpression Empty = new ArrayExpression { Expressions = Array.Empty<Expression>() };
+    public static ArrayExpression Empty = new ArrayExpression 
+    { 
+        Expressions = Array.Empty<Expression>(), 
+        Location = null 
+    };
 }
 

@@ -77,7 +77,17 @@ internal abstract class Ty : Token, IEquatable<Ty>
         _ => throw new Lexing.LexerException("Failed to parse to Ty"),
     };
     public override string Stringify() => Ident.Value;
-
+    public override bool Equals(object? obj)
+    {
+        if (obj is Ty other)
+            return this == other;
+        else
+            return base.Equals(obj);
+    }
+    public override int GetHashCode()
+    {
+        return base.GetHashCode();
+    }
     public bool Equals(Ty? other)
     {
         if (other is null)
@@ -90,6 +100,11 @@ internal abstract class Ty : Token, IEquatable<Ty>
             return ArrayTyEquals(arr, other);
         return this.Ident.Equals(other.Ident);
     }
+    public static bool operator == (Ty a, Ty b)
+    {
+        return a.Equals(b);
+    }
+    public static bool operator !=(Ty a, Ty b) => !(a == b);
     private bool ArrayTyEquals(ArrayTy arr, Ty other)
     {
         if (other is not ArrayTy otherArray)

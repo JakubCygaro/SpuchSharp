@@ -1,14 +1,7 @@
 ﻿import "STDLib";
 fun main(){
-	knur(wieprz(30));
 
-
-	var array = { "chuj", "dupa", "palec" };
-	printArray(array);
-
-	[[int]] intArray = { { 1, 2 }, { 3, 4 } };
-	printArray(intArray);
-
+	
 }
 fun printArray(ref [text] array){
 	println(array);

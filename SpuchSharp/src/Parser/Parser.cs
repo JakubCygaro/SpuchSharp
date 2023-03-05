@@ -70,7 +70,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Left = new IdentTarget 
                 {  
                     Ident = ie.Ident, 
-                }
+                },
+                Location = ie.Location
             },
             IndexerExpression ix => new Assignment 
             { 
@@ -79,7 +80,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 { 
                     Ident = ix.Ident,
                     IndexExpression = ix.IndexExpression,
-                }
+                },
+                Location = ix.Location
             },
             _ => throw new ParserException("This expression cannot be a target for an assignment", 
                 target.Location) 
@@ -146,7 +148,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Type = ty,
                 Name = ident.Value,
                 ArrayExpression = ArrayExpression.Empty,
-                Sized = sized
+                Sized = sized,
+                Location = ident.Location,
             };
         }
         //var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
@@ -168,6 +171,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
             Sized = null,
+            Location = ident.Location,
         };
     }
     private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)
@@ -182,6 +186,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             Block = block,
             Condition = expression,
+            Location = whileKeyword.Location,
         };
     }
     private ForLoopStatement ParseFor(For forKeyword, TokenStream stream)
@@ -204,6 +209,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             From = expr1,
             To = expr2,
             Block = block,
+            Location = forKeyword.Location,
         };
 
     }
@@ -244,7 +250,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return new ReturnStatement
         {
             Expr = tokens.Count > 0 ? 
-                    ParseExpression(tokens.ToTokenStream()) : new ValueExpression { Val = Value.Void },
+                    ParseExpression(tokens.ToTokenStream()) : 
+                    new ValueExpression { Val = Value.Void, Location = null, },
             Location = keyword.Location,
         };
     }
@@ -311,6 +318,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return new ImportStatement
         {
             Path = value.Value,
+            Location = Keyword.Location,
         };
     }
     private Instruction ParseDelete(KeyWord keyWord, TokenStream stream)
@@ -324,6 +332,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return new DeleteStatement
         {
             VariableIdent = ident,
+            Location = keyWord.Location,
         };
     }
     private Expression ParseExpression(TokenStream stream)
@@ -357,6 +366,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 {
                     Ident = identForIndex.Ident,
                     IndexExpression = indexerExpression,
+                    Location = identForIndex.Location,
                 };
                 nextToken = stream.Next();
             }
@@ -399,6 +409,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return new ArrayExpression
         {
             Expressions = expressions.ToArray(),
+            Location = null
         };
     }
 
@@ -451,9 +462,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private SimpleExpression ParseIdentOrValueExpression(Token token)
     {
         if (token is Value value)
-            return new ValueExpression { Val = value };
+            return new ValueExpression { Val = value, Location = value.Location };
         else if (token is Ident ident)
-            return new IdentExpression { Ident = ident };
+            return new IdentExpression { Ident = ident, Location = ident.Location };
         else
             throw new ParserException("Invalid token.", token);
     }
@@ -537,6 +548,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
+            Location = ident.Location
         };
     }
     private Instruction ParseDeclaration(Token token, TokenStream stream)
@@ -553,6 +565,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             {
                 Name = ident.Value,
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
+                Location = ident.Location,
             };
         }
         else if (token is Ty ty)
@@ -567,6 +580,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Name = ident.Value,
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
                 Type = ty,
+                Location = ident.Location,
             };
         }
         else if (token is Fun fun)
@@ -605,6 +619,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Block = instructions,
                 Name = ident,
                 ReturnTy = type,
+                Location = ident.Location,
             };
         }
         else

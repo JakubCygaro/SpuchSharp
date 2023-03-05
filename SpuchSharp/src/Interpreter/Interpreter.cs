@@ -235,6 +235,7 @@ public sealed class Interpreter
             {
                 Args = Array.Empty<Expression>(),
                 Function = mainIdent,
+                Location = null,
             });
     }
     private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
@@ -392,41 +393,55 @@ public sealed class Interpreter
     }
     private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
     {
+        //get the function that should be called
         var targetFunction = FindFunction(call.Function, funScope);
+        //get the return type of that function
         var returnType = targetFunction.ReturnTy;
+        //check whether argument amount makes sense
         if (targetFunction.Args.Length != call.Args.Length)
             throw new InterpreterException($"Expected {targetFunction.Args.Length} arguments " +
-                $"got {call.Args.Length + 1}", call.Function);
+                $"got {call.Args.Length}", call.Function);
+        //variable scope for the function
         VariableScope variables = new();
-        for(int i = 0; i < targetFunction.Args.Length; i++)
+
+        foreach(var (argument, index) in call.Args.Select((x, i) => (x, i)))
         {
-            var value = EvaluateExpression(scope, funScope, call.Args[i]);
-            if (!targetFunction.Args[i].Ty.Equals(value.Ty))
-                throw new InterpreterException("Mismatched argument type!", call.Function);
-            if (targetFunction.Args[i].Ref)
+            if (targetFunction.Args[index].Ref)
             {
-                if (call.Args[i] is not IdentExpression identExpression)
-                    throw new InterpreterException("A ref argument can only be a variable name", call.Args[i]);
+                if(argument is not IdentExpression identExpression)
+                    throw new InterpreterException("A ref argument can only be a variable name", argument);
                 var variable = FindVariable(scope, identExpression.Ident);
-                variables.Add(targetFunction.Args[i].Name, variable);
+                if (variable.Value.Ty != targetFunction.Args[index].Ty)
+                    throw new InterpreterException($"Mismatched argument type, " +
+                        $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
+                        $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
+                variables.Add(variable);
+                continue;
             }
-            else if (targetFunction.Args[i].Ty is ArrayTy arrayTy)
+            var value = EvaluateExpression(scope, funScope, argument);
+            if (targetFunction.Args[index].Ty != value.Ty)
+                throw new InterpreterException($"Mismatched argument type, " +
+                        $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
+                        $"but got a variable of type {value.Ty.Stringify()}", argument);
+
+            else if (targetFunction.Args[index].Ty is ArrayTy arrayTy)
             {
                 var valueAsArray = value as ArrayValue
-                    ?? throw new InterpreterException("Type mismatch, call argument was not an array", call.Args[i]);
-                variables.Add(targetFunction.Args[i].Name, new SArray(arrayTy.OfType, (valueAsArray).Size)
-                { 
-                    Ident = targetFunction.Args[i].Name,
+                    ?? throw new InterpreterException("Type mismatch, call argument was not an array", call.Args[index]);
+                variables.Add(targetFunction.Args[index].Name, new SArray(arrayTy.OfType, (valueAsArray).Size)
+                {
+                    Ident = targetFunction.Args[index].Name,
                     Value = valueAsArray.Clone()
                 });
             }
-            else 
-                variables.Add(targetFunction.Args[i].Name, new SSimpleVariable
+            else
+                variables.Add(targetFunction.Args[index].Name, new SSimpleVariable
                 {
-                    Ident = targetFunction.Args[i].Name,
+                    Ident = targetFunction.Args[index].Name,
                     Value = value,
                 });
         }
+
         if (targetFunction is ExternalFunction ext)
             return CallExternalFunction(ext, variables.Values.ToList());
 
@@ -688,5 +703,13 @@ internal static class ScopeExt
         if(!scope.TryAdd(variable.Ident, variable))
             throw new InterpreterException(
                     $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
+    }
+}
+public static class EnumerableExt
+{
+    public static void Each<T>(this IEnumerable<T> ie, Action<T, int> action)
+    {
+        var i = 0;
+        foreach (var e in ie) action(e, i++);
     }
 }
