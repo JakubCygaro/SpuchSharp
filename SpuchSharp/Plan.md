@@ -3,7 +3,31 @@ int \/
 string \/
 float 
 boolean \/
+<<<<<<< Updated upstream
 maybe arrays
+=======
+maybe arrays \/ technically there but with some caveats
+
+# Lexer fix \/
+The column and line of every token must be correct, comments cannot fuck it up, also \t \n and other such shit must 
+be ignored/neutralized 
+maybe externalize the line infromation? create a map of lines and their numbers
+Dictionary<uint(number), string(line)>
+and discard all everything that is commented out?
+
+
+# Change Type parsing from manual to procedural so that this is possible \/
+[[int]] -> array of int arrays
+
+# Operators to add
+* ! -> negation
+* ++
+* --
+* +=
+* +-
+* *.. -> and so on
+
+>>>>>>> Stashed changes
 
 # Variable Declaration \/
 ```

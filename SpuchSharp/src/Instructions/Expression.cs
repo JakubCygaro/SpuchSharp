@@ -130,4 +130,26 @@ internal sealed class IdentExpression : SimpleExpression
     public override string Display() => $"[{Ident.Stringify()}]";
     public required Ident Ident { get; init; }
 }
+<<<<<<< Updated upstream
+=======
+internal sealed class IndexerExpression : SimpleExpression
+{
+    public override string Display() => $"[{Target.Display()}[{IndexExpression.Display()}]]";
+
+    // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
+    // inny indexer albo nawet wywołanie \/
+    public required Expression Target { get; init; } 
+    public required Expression IndexExpression { get; init; }
+}
+internal sealed class ArrayExpression : SimpleExpression 
+{
+    public override string Display() => $"";
+    public required Expression[] Expressions { get; init; }
+    public static ArrayExpression Empty = new ArrayExpression 
+    { 
+        Expressions = Array.Empty<Expression>(), 
+        Location = null 
+    };
+}
+>>>>>>> Stashed changes
 

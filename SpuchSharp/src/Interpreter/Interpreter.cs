@@ -158,6 +158,54 @@ public sealed class Interpreter
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
+    private Value EvalueArrayExpression(VariableScope varScope, 
+        FunctionScope funScope, 
+        ArrayExpression arrayExpression)
+    {
+        var expressions = arrayExpression.Expressions;
+        var values = expressions.Select(expr => EvaluateExpression(varScope, funScope, expr))
+                                .ToArray();
+        var size = values.Count();
+        if (size == 0)
+            throw new InterpreterException("An empty array cannot be initialized");
+        return new ArrayValue(values[0].Ty, size)
+        {
+            Values = values,
+        };
+    }
+    private Value EvaluateIndexer(VariableScope varScope, FunctionScope funScope, IndexerExpression expr)
+    {
+        var target = expr.Target;
+        SArray array;
+        if (target is IdentExpression targetIdent)
+        {
+            array = FindArray(varScope, targetIdent.Ident);
+        }
+        else if (target is IndexerExpression targetIndexer)
+        {
+            targetIndexer.
+        }
+        var targetValue = EvaluateExpression(varScope, funScope, target);
+
+
+
+        var index = EvaluateExpression(varScope, funScope, expr.IndexExpression) as IntValue
+            ?? throw new InterpreterException("An array index must be of integer type", expr);
+        return array.Get<Value>(index);
+    }
+    private SVariable FindVariable(VariableScope varScope, Ident ident)
+    {
+        if (varScope.TryGetValue(ident, out var arr))
+            return arr;
+        throw InterpreterException.VariableNotFound(ident);
+    }
+    private SArray FindArray(VariableScope varScope, Ident ident)
+    {
+        if (varScope.TryGetValue(ident, out var arr))
+            return arr as SArray ??
+                throw new InterpreterException("Tried indexing into a non array type", ident);
+        throw InterpreterException.VariableNotFound(ident);
+    }
     private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
     {
         var targetFunction = FindFunction(call.Function, funScope);

@@ -154,6 +154,34 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
                 nextToken = stream.Next();
             }
+<<<<<<< Updated upstream
+=======
+            else if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
+            {
+                var (tokens, _) = ReadToToken<Square.Closed>(stream);
+                var indexerExpression = ParseExpression(tokens.ToTokenStream());
+                var indexer = new IndexerExpression
+                {
+                    Target = identForIndex,
+                    IndexExpression = indexerExpression,
+                    Location = identForIndex.Location,
+                };
+                simpleExpression = indexer;
+                nextToken = stream.Next();
+                while(nextToken is Square.Open)
+                {
+                    (tokens, _) = ReadToToken<Square.Closed>(stream);
+                    indexerExpression = ParseExpression(tokens.ToTokenStream());
+                    simpleExpression = new IndexerExpression
+                    {
+                        Target = indexer,
+                        IndexExpression = indexerExpression,
+                        Location = indexer.Location,
+                    };
+                    nextToken = stream.Next();
+                }
+            }
+>>>>>>> Stashed changes
             if(currentOperator is not null && ret is not null)
             {
                 ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
@@ -170,6 +198,24 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return ret ?? 
             throw new ParserException("Failed to parse an expression");
     }
+<<<<<<< Updated upstream
+=======
+    private ArrayExpression ParseArrayExpression(TokenStream stream)
+    {
+        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);
+        List<Expression> expressions = new();
+
+        foreach(var tokenStream in tokens)
+        {
+            expressions.Add(ParseExpression(tokenStream));
+        }
+        return new ArrayExpression
+        {
+            Expressions = expressions.ToArray(),
+            Location = null
+        };
+    }
+>>>>>>> Stashed changes
 
     private List<TokenStream> ParseInsideRound(INullEnumerator<Token> stream)
     {
@@ -257,7 +303,42 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 return tokens;
         throw new ParserException("Premature end of input");
     }
+<<<<<<< Updated upstream
     private Instruction ParseDeclaration(Token token)
+=======
+    /// <summary>
+    /// Does the same as <c>ReadToToken()</c> but does not throw an exception if the <c>T</c> was not encountered before the end of the stream
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    private (List<Token>, T?) ReadToTokenOrEnd<T>(INullEnumerator<Token> stream)
+        where T : Token
+    {
+        List<Token> tokens = new List<Token>();
+        var location = default(Location);
+        while (stream.Next() is Token token)
+        {
+            if (token.Location is not null)
+                location = (Location)token.Location;
+            if (token is not T)
+                tokens.Add(token);
+            else if (token is T tokenT)
+                return (tokens, tokenT);
+        }
+        return (tokens, null);
+    }
+    private Declaration ParseUntypedArrayDecl(Ident ident, TokenStream stream)
+    {
+        return new ArrayDecl
+        {
+            ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
+            Name = ident.Value,
+            Location = ident.Location
+        };
+    }
+    private Instruction ParseDeclaration(Token token, TokenStream stream)
+>>>>>>> Stashed changes
     {
         if (token is Var var)
         {

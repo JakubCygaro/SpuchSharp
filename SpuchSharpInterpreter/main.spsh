@@ -1,5 +1,6 @@
 ﻿import "STDLib";
 fun main(){
+<<<<<<< Updated upstream
 	chuj(1, 2);
 	println(7 + 2 * 3);
 	println("type");
@@ -9,4 +10,17 @@ fun main(){
 fun chuj(int x, int y) int {
 	return x + y;
 }
+=======
+	var chuj = {"Adam Papieros", "Jaca", "Kartoniarz" };
+	printArray(chuj);
+		
+}
+fun printArray(ref [text] array){
+	for x from 0 to len(array) - 1 {
+		println(array[x]);
+	}
+}
+
+
+>>>>>>> Stashed changes
 
