@@ -1,10 +1,10 @@
 ﻿import "STDLib";
 fun main(){
-	[int] array = [10];
-	for x from 0 to 9 {
-		array[x] = randInt(1, 10);
-	}
-	println(array);
+	var osiol = produceArray();
+	println(osiol[0]);
+}
+fun produceArray() [text] {
+	return { "dupa", "cipa", "chuj" };
 }
 fun printArray([int] array){
 	for x from 0 to len(array) - 1 {

@@ -20,9 +20,33 @@ internal sealed class ArrayValue : Value
     private Ty _arrayTy;
     public int Size { get; }
     public Value[] Values { get; init; }
-    public Value this[int index] { get => Values[index]; set => Values[index] = value; }
+    public Value this[int index] { get => Get(index); set => Set(index, value); }
 
-
+    private Value Get(int index)
+    {
+        try
+        {
+            return Values[index];
+        }
+        catch (Exception ex) 
+        {
+            throw new Interpreting.InterpreterException(ex.Message);
+        }
+    }
+    private void Set(int index, Value value)
+    {
+        try
+        {
+            if (Values[index].Ty != ValueTy)
+                throw new Interpreting.InterpreterException($"Tried to assing a {value.Ty.Stringify()} " +
+                    $"value to an array of type {ValueTy.Stringify()}");
+            Values[index] = value;
+        }
+        catch (Exception ex)
+        {
+            throw new Interpreting.InterpreterException(ex.Message);
+        }
+    }
 
     public ArrayValue(Ty type, int size)
     {

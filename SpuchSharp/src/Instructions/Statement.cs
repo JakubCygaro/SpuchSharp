@@ -57,7 +57,7 @@ internal sealed class Assignment : Statement
 }
 internal abstract class AssignTarget 
 {
-    public required Ident Ident { get; init; }
+    public required Expression Target { get; init; }
 }
 internal sealed class ArrayIndexTarget : AssignTarget
 {

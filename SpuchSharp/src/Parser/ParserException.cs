@@ -16,10 +16,10 @@ public class ParserException: Exception
     {
     }
     public ParserException(string message, Token? token)
-        : base($"{message}. {token?.Location} | Type: {token} Str: {token?.Stringify()}") { }
+        : base($"{message} `{token?.Stringify()}` {token?.Location}") { }
     public ParserException(string message, Token expected, Token token)
-        : base($"{message}, expected: `{expected.Stringify()}`. " +
-            $"{token.Location} | Type: {token} Str: {token.Stringify()}") { }
+        : base($"{message}, expected: `{expected.Stringify()}` got: `{token.Stringify()}` " +
+            $"{token.Location}") { }
     public static ParserException Expected<T>(Token? wrongToken)
         where T: Token
     {

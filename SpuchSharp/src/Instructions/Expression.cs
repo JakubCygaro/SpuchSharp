@@ -134,7 +134,7 @@ internal abstract class SimpleExpression : Expression { }
 /// </example>
 internal sealed class ValueExpression : SimpleExpression
 {
-    public override string Display() => $"[{Val.Stringify()}]";
+    public override string Display() => $"{Val.Stringify()}";
     public required Value Val { get; init; }
 }
 /// <summary>
@@ -150,7 +150,7 @@ internal sealed class CallExpression : SimpleExpression
     public override string Display()
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append($"[{Function.Stringify()}]");
+        sb.Append($"{Function.Stringify()}");
         sb.Append('(');
         foreach(var expr in Args)
         {
@@ -164,16 +164,22 @@ internal sealed class CallExpression : SimpleExpression
 }
 internal sealed class IdentExpression : SimpleExpression
 {
-    public override string Display() => $"[{Ident.Stringify()}]";
+    public override string Display() => $"{Ident.Stringify()}";
     public required Ident Ident { get; init; }
 }
 internal sealed class IndexerExpression : SimpleExpression
 {
-    public override string Display() => $"[{Ident.Stringify()}[{IndexExpression.Display()}]]";
+    public override string Display() => $"{ArrayProducer.Display()}[{IndexExpression.Display()}]";
 
     // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
     // inny indexer albo nawet wywołanie \/
-    public required Ident Ident { get; init; } 
+    /// <summary>
+    /// this expression must evaluate to an ArrayValue
+    /// </summary>
+    public required Expression ArrayProducer { get; init; } 
+    /// <summary>
+    /// this expression must evaluate to an IntValue
+    /// </summary>
     public required Expression IndexExpression { get; init; }
 }
 internal sealed class ArrayExpression : SimpleExpression 

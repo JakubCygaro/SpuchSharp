@@ -69,7 +69,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Expr = expression,
                 Left = new IdentTarget 
                 {  
-                    Ident = ie.Ident, 
+                    Target = ie, 
                 },
                 Location = ie.Location
             },
@@ -78,7 +78,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Expr = expression,
                 Left = new ArrayIndexTarget 
                 { 
-                    Ident = ix.Ident,
+                    Target = ix,
                     IndexExpression = ix.IndexExpression,
                 },
                 Location = ix.Location
@@ -361,14 +361,29 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             else if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
             {
                 var (tokens, _) = ReadToToken<Square.Closed>(stream);
-                var indexerExpression = ParseExpression(tokens.ToTokenStream());
-                simpleExpression = new IndexerExpression
+                var indexExpression = ParseExpression(tokens.ToTokenStream());
+                var indexer = new IndexerExpression
                 {
-                    Ident = identForIndex.Ident,
-                    IndexExpression = indexerExpression,
+                    ArrayProducer = identForIndex,
+                    IndexExpression = indexExpression,
                     Location = identForIndex.Location,
                 };
+                simpleExpression = indexer;
                 nextToken = stream.Next();
+                while(nextToken is Square.Open)
+                {
+                    (tokens, _) = ReadToToken<Square.Closed>(stream);
+                    indexExpression = ParseExpression(tokens.ToTokenStream());
+                    
+                    indexer = new IndexerExpression
+                    {
+                        ArrayProducer = indexer,
+                        IndexExpression = indexExpression,
+                        Location = simpleExpression.Location,
+                    };
+                    simpleExpression = indexer;
+                    nextToken = stream.Next();
+                }
             }
             if(currentOperator is not null && ret is not null)
             {

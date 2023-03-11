@@ -373,10 +373,14 @@ public sealed class Interpreter
     }
     private Value EvaluateIndexer(VariableScope varScope, FunctionScope funScope, IndexerExpression expr)
     {
-        var array = FindArray(varScope, expr.Ident);
+        //Console.WriteLine("DEBUG INDEXER");
+        //Console.WriteLine(expr.Display());
+        var arrayValue = EvaluateExpression(varScope, funScope, expr.ArrayProducer) as ArrayValue 
+            ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
+
         var index = EvaluateExpression(varScope, funScope, expr.IndexExpression) as IntValue
-            ?? throw new InterpreterException("An array index must be of integer type", expr);
-        return array.Get<Value>(index);
+            ?? throw new InterpreterException("An array index must be of integer type", expr.IndexExpression);
+        return arrayValue[index];
     }
     private SVariable FindVariable(VariableScope varScope, Ident ident)
     {
@@ -555,24 +559,32 @@ public sealed class Interpreter
         ArrayIndexTarget arrayIndexTarget,
         Value assignedValue)
     {
-        var array = FindArray(varScope, arrayIndexTarget.Ident);
+        
+        var indexer = arrayIndexTarget.Target as IndexerExpression 
+            ?? throw new InterpreterException("Left hand side of assingment is not an index expresion",
+            arrayIndexTarget.Target);
+        var arrayValue = EvaluateExpression(varScope, funScope, indexer.ArrayProducer) as ArrayValue
+            ?? throw new InterpreterException("Could not obtain the array for assingment", 
+            indexer.ArrayProducer);
+
         var index = EvaluateExpression(varScope, funScope, arrayIndexTarget.IndexExpression)
                     as IntValue
-                    ?? throw new InterpreterException("TODO Index not an integer value");
-        array.Set(index, assignedValue.Clone());
+                    ?? throw new InterpreterException("Index was not of integer value",
+                    arrayIndexTarget.IndexExpression);
+
+        arrayValue[index] = assignedValue.Clone();
     }
     private void AssignVariable(VariableScope varScope,
         IdentTarget identTarget,
         Value assignedValue)
     {
-        var variable = FindVariable(varScope, identTarget.Ident);
+        var identExpr = identTarget.Target as IdentExpression ??
+            throw new InterpreterException("TODO cannot assing to", identTarget.Target);
+        var variable = FindVariable(varScope, identExpr.Ident);
         if(!variable.Value.Ty.Equals(assignedValue.Ty))
-            throw new InterpreterException("Mismatched types", identTarget.Ident);
+            throw new InterpreterException("Mismatched types", identExpr.Ident);
         variable.Value = assignedValue;
     }
-
-
-
     private void CreateFunction(Function fun, FunctionScope funScope)
     {
         if (funScope.ContainsKey(fun.Name))
