@@ -19,6 +19,16 @@ internal sealed class Typed : Variable
 {
     public required Ty Type { get; init; }
 }
+internal class ArrayDecl : Declaration
+{
+    public required string Name { get; set; }
+    public required Expression ArrayExpression { get; set; } 
+}
+internal class TypedArrayDecl : ArrayDecl
+{
+    public required Ty Type { get; init; }
+    public required Expression? Sized { get; set; }
+}
 
 internal sealed class Function : Declaration
 {
@@ -42,8 +52,20 @@ internal sealed class Function : Declaration
 //assignment
 internal sealed class Assignment : Statement
 {
-    public required Ident Left { get; set; }
-    public required Expression Expr { get; set; }
+    public required AssignTarget Left { get; init; }
+    public required Expression Expr { get; init; }
+}
+internal abstract class AssignTarget 
+{
+    public required Ident Ident { get; init; }
+}
+internal sealed class ArrayIndexTarget : AssignTarget
+{
+    public required Expression IndexExpression { get; init; }
+}
+internal sealed class IdentTarget : AssignTarget
+{
+
 }
 internal sealed class DeleteStatement : Statement
 {
@@ -56,4 +78,31 @@ internal sealed class ImportStatement : Statement
 internal sealed class ReturnStatement : Statement
 {
     public required Expression Expr { get; init; }
+}
+internal sealed class IfStatement : Statement
+{
+    // if (<expr>) { }
+    public required Expression Expr { get; init; }
+    public required Instruction[] Block { get; init; }
+    public required Instruction[]? ElseBlock { get; init; } = null;
+
+}
+internal sealed class LoopStatement : Statement
+{
+    public required Instruction[] Block { get; init; }
+}
+internal sealed class BreakStatement : Statement { }
+internal sealed class SkipStatement : Statement { }
+
+internal sealed class ForLoopStatement : Statement 
+{
+    public required Ident VariableIdent { get; init; } 
+    public required Expression From { get; init; }
+    public required Expression To { get; init; }
+    public required Instruction[] Block { get; init; }
+}
+internal sealed class WhileStatement : Statement
+{
+    public required Expression Condition { get; init; }
+    public required Instruction[] Block { get; init;}
 }

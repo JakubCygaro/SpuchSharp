@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpuchSharp.Lexing;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,12 +8,15 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
 
-internal class TokenStream : INullEnumerator<Token>
+public class TokenStream : INullEnumerator<Token>, 
+    ICloneable<TokenStream>, 
+    ICloneable<INullEnumerator<Token>>,
+    IPeakable<Token>
 {
     private int _position = -1;
     private readonly List<Token> _stream;
 
-    public TokenStream(List<Token> tokens) => _stream = tokens;
+    internal TokenStream(List<Token> tokens) => _stream = tokens;
 
     public Token Current => _stream[_position];
     object IEnumerator.Current => Current;
@@ -28,8 +32,28 @@ internal class TokenStream : INullEnumerator<Token>
         _position++;
         return true;
     }
-
-
+    public Token? Peek()
+    {
+        if(_position + 1 >= _stream.Count())
+        {
+            return null;
+        } 
+        else
+        {
+            return _stream[_position + 1];
+        }
+    }
+    public Token? Next()
+    {
+        if (MoveNext())
+        {
+            return Current;
+        }
+        else
+        {
+            return null;
+        }
+    }
 
     public void Dispose()
     { }
@@ -42,6 +66,33 @@ internal class TokenStream : INullEnumerator<Token>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return this;
+    }
+
+    public TokenStream Clone()
+    {
+        return new TokenStream(new List<Token>(_stream));
+    }
+    INullEnumerator<Token>  ICloneable<INullEnumerator<Token>>.Clone()
+    {
+        return this.Clone();
+    }
+    public static TokenStream ParseFromQuote(string[] quote)
+    {
+        var lexer = new Lexer(quote);
+        return lexer.ToList().ToTokenStream();
+    }
+    public bool Has<T>()
+        where T: Token
+    {
+        var ret =  _stream.Find(t => t is T) is not null;
+        this.Reset();
+        return ret;
+    }
+    public void Print()
+    {
+        foreach(var token in _stream)
+            Console.WriteLine(token.Stringify());
+        Reset();
     }
 }
 

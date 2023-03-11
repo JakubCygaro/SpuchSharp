@@ -7,6 +7,8 @@ using System.Collections;
 using System.Linq.Expressions;
 using System.Diagnostics;
 using SpuchSharp;
+using SpuchSharp.Parsing;
+using System.Globalization;
 
 namespace SpuchSharp.Lexing;
 
@@ -21,7 +23,7 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
 
     public Lexer(string[] lines)
     {
-        _charStream= new CharStream(lines);
+        _charStream = new CharStream(lines);
     }
 
     public bool Lex()
@@ -35,6 +37,7 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
             if (IsIdent(literal, out var ident)) { ret = ident; continue; }
             else if (IsText(literal, out var text)) { ret = text; continue; }
             else if (IsSimpleToken(literal, out var simple)) { ret = simple; continue; }
+            else if (IsNumeric(literal, out var numeric)) { ret = numeric; continue; }
             else if (IsValue(literal, out var value)) { ret = value; continue; }
             else
             {
@@ -66,8 +69,8 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
         {
             ret.Location = new()
             {
-                Line = _charStream.Line + 1,
-                Column = _charStream.Position + 1,
+                Line = _charStream.LineNumber,
+                Column = _charStream.Column,
             };
             _currentToken = ret;
             return true;
@@ -76,8 +79,8 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
         {
             ret.Location = new()
             {
-                Line = _charStream.Line + 1,
-                Column = _charStream.Position + 1,
+                Line = _charStream.LineNumber,
+                Column = _charStream.Column,
             };
             _currentToken = ret;
             return true;
@@ -95,7 +98,7 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
             _charStream.MoveNext();
             throw new LexerException(
                 $"What the fuck is this `{_charStream.Current}` ?", 
-                _charStream.Line + 1, _charStream.Position + 1);
+                _charStream.LineNumber, _charStream.Column);
         }
     }
     private bool IsIdent(string lit, out Ident? ident)
@@ -135,6 +138,56 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
         }
         catch { return false; }
     }
+    private bool IsNumeric(string lit, out Value? value)
+    {
+        value = null;
+        if (!char.IsDigit(lit[0]) || !char.IsDigit(lit.Last())) return false;
+        var literal = lit;
+        var wasDot = false;
+        while (_charStream.Next() is char c)
+        {
+            if (char.IsDigit(c))
+                literal += c;
+            else if (c == '.' && !wasDot)
+            {
+                literal += c;
+                wasDot = true;
+            }
+            else
+            {
+                //Console.WriteLine(literal + "-> chuj");
+                _charStream.MoveBack();
+                break;
+            }
+            //Console.WriteLine(literal + "-> dupa");
+        }
+        //Console.WriteLine(literal + "-> cipa");
+
+        try
+        {
+            if (wasDot)
+            {
+                value = new FloatValue
+                {
+                    Value = float.Parse(literal, CultureInfo.InvariantCulture),
+                };
+            }
+            else
+            {
+                value = new IntValue 
+                {
+                    Value = int.Parse(literal),
+                };
+            }
+            //Console.WriteLine(literal + "-> pierd");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            throw new LexerException($"Failed to parse literal to a float/integer value -> {literal} : {ex.Message}", 
+                _charStream.LineNumber, _charStream.Column);
+        }
+    }
     private bool IsText(string lit, out Value? text)
     {
         text = null;
@@ -152,7 +205,7 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
         }
         if (!literal.EndsWith('"'))
             throw new LexerException(
-                $"Unterminated string", _charStream.Line + 1, _charStream.Position + 1);
+                $"Unterminated string", _charStream.LineNumber, _charStream.Column);
 
         var type = Ty.FromValue(literal);
         text = Value.From(type, content);
@@ -198,4 +251,6 @@ internal sealed class Lexer : IEnumerable<Token>, INullEnumerator<Token>
     {
         return GetEnumerator();
     }
+
+    
 }

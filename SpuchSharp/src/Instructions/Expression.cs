@@ -12,6 +12,23 @@ namespace SpuchSharp.Instructions;
 internal abstract class Expression : Instruction 
 {
     public abstract string Display();
+    /// <summary>
+    /// Ensures that all expressions in a complex expression are of expression type <c>T</c>
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="complexExpression"></param>
+    /// <returns></returns>
+    public static bool EnsureAll<T>(ComplexExpression complexExpression)
+        where T : Expression
+    {
+        if (complexExpression is not T)
+            return false;
+        if (complexExpression.Left is ComplexExpression complexLeft)
+            return EnsureAll<T>(complexLeft);
+        if (complexExpression.Right is ComplexExpression complexRight)
+            return EnsureAll<T>(complexRight);
+        return true;
+    }
 
 }
 /// <summary>
@@ -33,18 +50,22 @@ internal abstract class ComplexExpression : Expression
         {
             ValOperator vop => vop switch
             {
-                Add => new AddExpr { Left = left, Right = expr },
-                Sub => new SubExpr { Left = left, Right = expr },
-                Mult => new MulExpr { Left = left, Right = expr },
-                Div => new DivExpr { Left = left, Right = expr },
+                Add => new AddExpr { Left = left, Right = expr, Location = left.Location },
+                Sub => new SubExpr { Left = left, Right = expr, Location = left.Location },
+                Mult => new MulExpr { Left = left, Right = expr, Location = left.Location },
+                Div => new DivExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             LogicOperator lop => lop switch
             {
-                And => new AndExpr { Left = left, Right = expr },
-                Or => new OrExpr { Left = left, Right = expr },
-                Equality => new EqExpr { Left = left, Right = expr },
-                InEquality => new InEqExpr { Left = left, Right = expr },
+                And => new AndExpr { Left = left, Right = expr, Location = left.Location },
+                Or => new OrExpr { Left = left, Right = expr, Location = left.Location },
+                Equality => new EqExpr { Left = left, Right = expr, Location = left.Location },
+                InEquality => new InEqExpr { Left = left, Right = expr, Location = left.Location },
+                Greater => new GreaterThanExpr { Left = left, Right = expr, Location = left.Location },
+                Less => new LessThanExpr { Left = left, Right = expr, Location = left.Location },
+                GreaterOrEq => new GreaterOrEqToExpr { Left = left, Right = expr, Location = left.Location },
+                LessOrEq => new LessOrEqToExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             _ => throw new ParserException("Unrecognized expression type? wtf?")
@@ -84,6 +105,22 @@ sealed class EqExpr : LogicalExpression
 sealed class InEqExpr : LogicalExpression
 {
     public override string Display() => $"[{Left.Display()} != {Right.Display()}]";
+}
+sealed class GreaterThanExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} > {Right.Display()}]";
+}
+sealed class LessThanExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} < {Right.Display()}]";
+}
+sealed class GreaterOrEqToExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} >= {Right.Display()}]";
+}
+sealed class LessOrEqToExpr : LogicalExpression
+{
+    public override string Display() => $"[{Left.Display()} <= {Right.Display()}]";
 }
 
 internal abstract class SimpleExpression : Expression { }
@@ -129,6 +166,25 @@ internal sealed class IdentExpression : SimpleExpression
 {
     public override string Display() => $"[{Ident.Stringify()}]";
     public required Ident Ident { get; init; }
+}
+internal sealed class IndexerExpression : SimpleExpression
+{
+    public override string Display() => $"[{Ident.Stringify()}[{IndexExpression.Display()}]]";
+
+    // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
+    // inny indexer albo nawet wywołanie \/
+    public required Ident Ident { get; init; } 
+    public required Expression IndexExpression { get; init; }
+}
+internal sealed class ArrayExpression : SimpleExpression 
+{
+    public override string Display() => $"";
+    public required Expression[] Expressions { get; init; }
+    public static ArrayExpression Empty = new ArrayExpression 
+    { 
+        Expressions = Array.Empty<Expression>(), 
+        Location = null 
+    };
 }
 <<<<<<< Updated upstream
 =======

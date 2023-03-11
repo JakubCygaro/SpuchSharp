@@ -9,6 +9,6 @@ namespace SpuchSharp.Instructions;
 
 internal abstract class Instruction 
 {
-    public Location? Location { get; set; }
+    public required Location? Location { get; set; }
 }
 

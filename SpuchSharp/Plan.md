@@ -1,7 +1,7 @@
 ﻿# Types
 int \/
 string \/
-float 
+float \/
 boolean \/
 <<<<<<< Updated upstream
 maybe arrays
@@ -28,6 +28,28 @@ and discard all everything that is commented out?
 * *.. -> and so on
 
 >>>>>>> Stashed changes
+
+# Lexer fix
+The column and line of every token must be correct, comments cannot fuck it up, also \t \n and other such shit must 
+be ignored/neutralized 
+maybe externalize the line infromation? create a map of lines and their numbers
+Dictionary<uint(number), string(line)>
+and discard all everything that is commented out?
+
+
+
+
+# Change Type parsing from manual to procedural so that this is possible
+[[int]] -> array of int arrays
+
+# Operators to add
+* ! -> negation
+* ++
+* --
+* +=
+* +-
+* *.. -> and so on
+
 
 # Variable Declaration \/
 ```
@@ -58,7 +80,7 @@ fun <name>(<type> <name>, <type> <name>) <type>{
 	<body>
 }
 ```
-# Function parameters as ref?
+# Function parameters as ref? \/
 ```
 fun main(){
 	int x = 10;
@@ -77,8 +99,8 @@ Basically instead of a new SVariable with a value procured from an expression
 a ref argument would require an already existing variable to be passed as an argument
 
 
-# For Loops
-
+# For Loops \/
+```
 for x in 1 to 0 {
 
 }
@@ -86,23 +108,97 @@ for x in 1 to 0 {
 for x from 1..10 {
 
 }
+```
 
-# While loops
+# Arrays PARTIALLY IMPLEMENTED
 
+```
+// array initialization
+[<type>] <ident> = { <expr>, <expr>, <expr> };
+[<type>] <ident>  = [<expr=int>]; // <- an array of lenth <expr=int> initialized to default values
+<ident>[<expr=int>] -> Index Expression that either returns a value or can be assigned to
+
+[int] intArr = { 1, 2, 3, 4 };
+[text] textArr = { "chuj", "dupa", "palec" };
+
+import "STDLib";
+fun main() {
+	[int] a = { 1, 2, 3, 4 };
+	for x in 0 to len(a) - 1 {
+		println(a[x]);
+	}
+}
+
+```
+
+# While loops \/
+```
 loop {
 	skip;
 	break;
 }
-
-# If Statements
-
+```
+# If Statements \/
+```
 if (<expr>) {
 	<block>
 } else {
 	<block>
 }
+```
+# If Statement return support \/
+```
+fun boo() <type> {
+	if (<expr>) {
+		<block>
+		<return> <expr>
+	}
+}
+```
+# Ident rework and module support 
 
-# Functions
+Identifiers should support the :: operator, allowing for functions and variables to be declared
+inside modules
+```
+class Ident {
+	segments: List<string>
+}
+spucha::boo()
+
+```
+
+
+```
+mod <modname>;
+use <modname>;
+
+mod spucha -> spucha.spsh
+```
+
+The environment should load all .spsh files and create module objects from them
+and create some kind of tree structure i guess
+
+class Module {
+	Ident,
+	VariableScope,
+	FunctionScope,
+	SubModules,
+}
+
+root-mod -> main, the file must contain the main() function
+	  |-sub-mod-1 -> main::sub-mod-1
+	  |-sub-mod-2 -> main::sub-mod-2
+	  |-sub-mod-3 -> main::sub-mod-3
+	         |-sub-sub-mod-1 -> main::sub-mod-3::sub-sub-mod-1
+			 |-sub-sub-mod-2 -> main::sub-mod-3::sub-sub-mod-2
+
+
+then when a module wants to import a different module the environment would find the imported module
+in the loaded modules tree and bring all of it's Variables and Functions into the the scope of the importing
+module
+
+
+# Functions \/
 a function object has to have it's own variable scope that is a copy of the global variable scope,
 the interpreter would go through all the expressions inside a functions Block and execute them on the 
 function's local variable scope - that way each time a function is called a new scope is created 
@@ -127,9 +223,11 @@ RunFunction(functionScope, expressionBlock);
 # Objects?
 
 ```
-struct <name>{
+struct <name> {
 	<type> <fieldname> ;
 }
+
+var dupa = new <name>;
 ```
 
 this would require a global struct scope where all struct templates would be held for future instantiation
@@ -151,7 +249,7 @@ struct Dupsko {
 	int woda;
 }
 
-fun Test(Dupsko dupsko) {
+fun test(ref Dupsko dupsko) {
 	dupsko.woda = 10;
 }
 ```

@@ -16,8 +16,11 @@ internal abstract class SimpleToken : Token
         ")" => new Round.Closed(),
         "{" => new Curly.Open(),
         "}" => new Curly.Closed(),
+        "[" => new Square.Open(),
+        "]" => new Square.Closed(),
         "." => new Dot(),
         ":" => new Colon(),
+        "::" => new Colon2(),
         "," => new Comma(),
         _ => Operator.From(value),
     };
@@ -35,6 +38,10 @@ sealed class Colon : SimpleToken
 {
     public override string Stringify() => ":";
 }
+sealed class Colon2 : SimpleToken
+{
+    public override string Stringify() => "::";
+}
 sealed class Dot : SimpleToken 
 {
     public override string Stringify() => ".";
@@ -44,9 +51,12 @@ sealed class Comma : SimpleToken
     public override string Stringify() => ",";
 }
 
-abstract class Paren : SimpleToken { }
 
-abstract class Round: Paren 
+abstract class Paren : SimpleToken
+{
+}
+
+abstract class Round: Paren
 {
     internal sealed class Open : Round
     {
@@ -63,7 +73,7 @@ abstract class Round: Paren
         }
     }
 }
-abstract class Curly : Paren 
+abstract class Curly : Paren
 {
     internal sealed class Open : Curly
     {
@@ -80,6 +90,25 @@ abstract class Curly : Paren
         }
     }
 }
+abstract class Brackets : SimpleToken { }
+internal abstract class Square : Brackets
+{
+    internal sealed class Open : Square
+    {
+        public override string Stringify()
+        {
+            return "[";
+        }
+    }
+    internal sealed class Closed : Square
+    {
+        public override string Stringify()
+        {
+            return "]";
+        }
+    }
+}
+
 
 abstract class Operator : SimpleToken
 {
@@ -95,7 +124,9 @@ abstract class Operator : SimpleToken
         "-" => new Sub(),
         "*" => new Mult(),
         "/" => new Div(),
+        "&" => new Ampersand(),
         "&&" => new And(),
+        "|" => new Pipe(),
         "||" => new Or(),
         _ => throw new Lexing.LexerException($"Failed to tokenize into Operator `{value}`"),
     };
@@ -156,3 +187,15 @@ sealed class Div : ValOperator
 {
     public override string Stringify() => "/";
 }
+
+internal abstract class BitOperator : Operator { }
+
+sealed class Ampersand : BitOperator
+{
+    public override string Stringify() => "&";
+}
+sealed class Pipe : BitOperator
+{
+    public override string Stringify() => "|";
+}
+

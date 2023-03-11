@@ -15,7 +15,17 @@ internal abstract class KeyWord : Token
         "delete" => new Delete(),
         "import" => new Import(),
         "return" => new Return(),
-        _ => throw new System.Diagnostics.UnreachableException(),
+        "if" => new If(),
+        "else" => new Else(),
+        "break" => new Break(),
+        "skip" => new Skip(),
+        "loop" => new Loop(),
+        "for" => new For(),
+        "from" => new From(),
+        "to" => new To(),
+        "while" => new While(),
+        "ref" => new Ref(),
+        _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
     };
 }
 internal sealed class Var : KeyWord 
@@ -39,5 +49,52 @@ internal sealed class Import : KeyWord
 internal sealed class Return : KeyWord
 {
     public override string Stringify() => "return";
+}
+internal sealed class If : KeyWord
+{
+    public override string Stringify() => "if";
+}
+internal sealed class Else : KeyWord
+{
+    public override string Stringify() => "else";
+}
+internal sealed class Loop : KeyWord
+{
+    public override string Stringify() => "loop";
+
+}
+internal sealed class Skip : KeyWord
+{
+    public override string Stringify() => "skip";
+
+}
+internal sealed class Break : KeyWord
+{
+    public override string Stringify() => "break";
+
+}
+internal sealed class For : KeyWord
+{
+    public override string Stringify() => "for";
+
+}
+internal sealed class From : KeyWord
+{
+    public override string Stringify() => "from";
+
+}
+internal sealed class To : KeyWord
+{
+    public override string Stringify() => "to";
+
+}
+internal sealed class While : KeyWord
+{
+    public override string Stringify() => "while";
+
+}
+internal sealed class Ref : KeyWord
+{
+    public override string Stringify() => "ref";
 }
 

@@ -77,6 +77,7 @@ internal static class Importer
     }
     static bool Validate(FunctionInfo functionInfo)
     {
+        int i = 0;
         foreach(var parameter in functionInfo.MethodInfo.GetParameters())
         {
             
@@ -85,8 +86,9 @@ internal static class Importer
             {
                 functionInfo.Args.Add(new FunArg
                 {
-                    Name = new Ident { Value = "unnamed" },
-                    Ty = Ty.FromCSharpType(paramType)
+                    Name = new Ident { Value = $"external_function_argument_{i++}" },
+                    Ty = Ty.FromCSharpType(paramType),
+                    Ref = false
                 });
             }
             catch
