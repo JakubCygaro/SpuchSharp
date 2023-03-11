@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <DefineConstants>$(lexer)</DefineConstants>
 	<DefineConstants>$(interpreter)</DefineConstants>
+	<WarningsAsErrors>CS8602</WarningsAsErrors>
   </PropertyGroup>
 
 </Project>

@@ -14,6 +14,7 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using System.Drawing;
 
 namespace SpuchSharp.Interpreting;
 
@@ -255,13 +256,9 @@ public sealed class Interpreter
         if (arrayDecl is TypedArrayDecl typedArr)
             if (typedArr.Sized is not null)
             {
-                var size = EvaluateExpression(varScope, funScope, typedArr.Sized) as IntValue ??
-                    throw new InterpreterException("Size of an array must be an interger type value", 
-                    typedArr.Sized);
-                varScope.Add(new SArray(typedArr.Type, size)
-                {
-                    Ident = new Ident { Value = typedArr.Name },
-                });
+                var sArray = CreateSizedArray(varScope, funScope, typedArr); 
+                
+                varScope.Add(sArray);
                 return;
             }
         //var values = new List<Value>();
@@ -293,11 +290,50 @@ public sealed class Interpreter
         //}
         varScope.Add(array);
     }
+    private SArray CreateSizedArray(VariableScope varScope, 
+        FunctionScope funScope, 
+        TypedArrayDecl typedArr)
+    {
+        var sizes = new LinkedList<(int size, Ty type)>();
+        var arrayType = ArrayTy.ArrayOf(typedArr.Type);
+        foreach (var size in typedArr.Sized!)
+        {
+            var s = EvaluateExpression(varScope, funScope, size)
+                as IntValue
+                ?? throw new InterpreterException("Array size expression must be of integer value", size);
+            var ty = arrayType.OfType;
+            sizes.AddLast((s, ty));
+            arrayType = ArrayTy.ArrayOf(ty);
+        }
+
+        var sArray = new SArray(sizes.First!.Value.type, sizes.First!.Value.size)
+        {
+            Ident = new Ident { Value = typedArr.Name }
+        };
+        sizes.RemoveFirst();
+        var val = (ArrayValue)sArray.Value;
+        FillArrays(ref val, sizes);
+        return sArray;
+    }
+    private void FillArrays(ref ArrayValue arrayValue, LinkedList<(int size, Ty type)> sizes)
+    {
+        if (sizes.Count == 0)
+            return;
+        for(int i = 0; i < arrayValue.Values.Count(); i++)
+            arrayValue.Values[i] = new ArrayValue(sizes.First!.Value.type, sizes.First!.Value.size);
+        sizes.RemoveFirst();
+        foreach (var valueArray in arrayValue.Values)
+        {
+            var val = (ArrayValue)valueArray;
+            FillArrays(ref val, sizes);
+        }
+    }
 
 
     /// <summary>
     /// Will return a non-null <c>Value</c> if any of the contained instructions
-    /// was a <c>return</c> statement
+    /// was a <c>return</c> statement, but will return a <c>NothingValue</c> if a break or skip statement was
+    /// enqountered
     /// </summary>
     /// <param name="varScope"></param>
     /// <param name="funScope"></param>
@@ -560,10 +596,12 @@ public sealed class Interpreter
         Value assignedValue)
     {
         
-        var indexer = arrayIndexTarget.Target as IndexerExpression 
+        var indexer = arrayIndexTarget.Target 
+            as IndexerExpression 
             ?? throw new InterpreterException("Left hand side of assingment is not an index expresion",
             arrayIndexTarget.Target);
-        var arrayValue = EvaluateExpression(varScope, funScope, indexer.ArrayProducer) as ArrayValue
+        var arrayValue = EvaluateExpression(varScope, funScope, indexer.ArrayProducer) 
+            as ArrayValue
             ?? throw new InterpreterException("Could not obtain the array for assingment", 
             indexer.ArrayProducer);
 

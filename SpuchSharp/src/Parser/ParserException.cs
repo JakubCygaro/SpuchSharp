@@ -23,7 +23,7 @@ public class ParserException: Exception
     public static ParserException Expected<T>(Token? wrongToken)
         where T: Token
     {
-        var message = $"Unrecognized token `{wrongToken?.Stringify()}`, expected {typeof(T)}";
+        var message = $"Unexpected token `{wrongToken?.Stringify()}`, expected {typeof(T)}";
         return new ParserException(message, wrongToken!);
     }
     public static ParserException PrematureEndOfInput(Location? location= default)

@@ -123,7 +123,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Declaration ParseArrayDeclaration(Square.Open squareOpen, TokenStream stream)
     {
-        var ty = ParseType(stream);
+        var ty = ParseType(stream) 
+            as ArrayTy 
+            ?? throw new ParserException("Array type not an array type!?");
 
         var nextToken = stream.Next();
         if (nextToken is not Square.Closed)
@@ -140,7 +142,20 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         if (stream.Peek() is Square.Open)
         {
             stream.Next();
-            var sized = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
+            var arrayTy = ArrayTy.ArrayOf(ty);
+            //Console.WriteLine(arrayTy.Stringify());
+            List<Expression> sizes = new();
+            var size = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
+            sizes.Add(size);
+            while(arrayTy.OfType is ArrayTy arrayType)
+            {
+                nextToken = stream.Next();
+                if (nextToken is not Square.Open)
+                    throw ParserException.Expected<Square.Open>(nextToken);
+                size = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
+                sizes.Add(size);
+                arrayTy = arrayType;
+            }
             if (stream.Next() is not Semicolon)
                 throw ParserException.Expected<Semicolon>(stream.Current);
             return new TypedArrayDecl
@@ -148,22 +163,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Type = ty,
                 Name = ident.Value,
                 ArrayExpression = ArrayExpression.Empty,
-                Sized = sized,
+                Sized = sizes,
                 Location = ident.Location,
             };
         }
-        //var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
-        //Expression[] expressions = new Expression[tokens.Count];
-        //var i = 0;
-        //foreach(var tokenStream in tokens)
-        //{
-        //    expressions[i] = ParseExpression(tokenStream);
-        //    i++;
-        //}
-
-        //nextToken = stream.Next();
-        //if (nextToken is not Semicolon)
-        //    throw ParserException.Expected<Semicolon>(nextToken);
 
         return new TypedArrayDecl
         {

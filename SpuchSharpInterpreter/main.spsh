@@ -1,7 +1,12 @@
 ﻿import "STDLib";
 fun main(){
-	var osiol = produceArray()[0];
-	println(osiol);
+	[[int]] cohones = [2][3];
+	for x from 0 to 1 {
+		for y from 0 to 2 {
+			cohones[x][y] = 1;
+		}
+	}
+	println(cohones);
 }
 fun produceArray() [text] {
 	return { "dupa", "cipa", "chuj" };
