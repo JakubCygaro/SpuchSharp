@@ -358,15 +358,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
                 nextToken = stream.Next();
             }
-            else if (nextToken is Square.Open && simpleExpression is IdentExpression identForIndex)
+            if (nextToken is Square.Open/* && simpleExpression is IdentExpression identForIndex*/)
             {
                 var (tokens, _) = ReadToToken<Square.Closed>(stream);
                 var indexExpression = ParseExpression(tokens.ToTokenStream());
                 var indexer = new IndexerExpression
                 {
-                    ArrayProducer = identForIndex,
+                    ArrayProducer = simpleExpression,
                     IndexExpression = indexExpression,
-                    Location = identForIndex.Location,
+                    Location = simpleExpression.Location,
                 };
                 simpleExpression = indexer;
                 nextToken = stream.Next();

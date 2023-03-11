@@ -1,7 +1,7 @@
 ﻿import "STDLib";
 fun main(){
-	var osiol = produceArray();
-	println(osiol[0]);
+	var osiol = produceArray()[0];
+	println(osiol);
 }
 fun produceArray() [text] {
 	return { "dupa", "cipa", "chuj" };
