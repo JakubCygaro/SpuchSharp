@@ -415,7 +415,8 @@ public sealed class Interpreter
                     throw new InterpreterException($"Mismatched argument type, " +
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
                         $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
-                variables.Add(variable);
+
+                variables.Add(targetFunction.Args[index].Name, variable);
                 continue;
             }
             var value = EvaluateExpression(scope, funScope, argument);
@@ -431,7 +432,7 @@ public sealed class Interpreter
                 variables.Add(targetFunction.Args[index].Name, new SArray(arrayTy.OfType, (valueAsArray).Size)
                 {
                     Ident = targetFunction.Args[index].Name,
-                    Value = valueAsArray.Clone()
+                    Value = valueAsArray//.Clone()
                 });
             }
             else

@@ -413,35 +413,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         };
     }
 
-    private List<TokenStream> ParseInsideRound(INullEnumerator<Token> stream)
+    private List<TokenStream> ParseInsideRound(TokenStream stream)
     {
-        List<TokenStream> streams = new();
-        List<Token> tokens = new();
-        int openParen = 1;
-        while(stream.Next() is Token token)
-        {
-            // gotta fix this so it does not ommit inner ()
-            if (token is Round.Open)
-                openParen += 1;
-            else if (token is Round.Closed)
-                openParen -= 1;
-            else if (token is Comma && openParen == 1)
-            {
-                streams.Add(tokens.ToTokenStream());
-                tokens = new();
-            }
-            if (openParen == 0)
-            {
-                if(tokens.Count > 0)
-                    streams.Add(tokens.ToTokenStream());
-                return streams;
-            }
-            else
-                tokens.Add(token);
-        }
-        foreach (var stream2 in streams)
-            stream2.Print();
-        throw new ParserException("Unclosed parentheses", stream.Current);
+        return ParseBetweenParenWithSeparator<Round.Open, Round.Closed, Comma>(stream, 1);
     }
     
     private CallExpression ParseCall(Ident ident, 

@@ -1,17 +1,18 @@
 ﻿import "STDLib";
 fun main(){
+	var array = { 1, 2, 3, 4 };
+	printArray(array);
+}
+fun printArray([int] array){
+	for x from 0 to len(array) - 1 {
+		println(array[x]);
+	}
+}
+fun dupa(int x){
+	x = x + 10;
+}
+fun add(int a, int b) int {
+	return a + b;
+}
 
-	
-}
-fun printArray(ref [text] array){
-	println(array);
-}
-
-
-fun wieprz(int x) int {
-	return x;
-}
-fun knur(int chuj) {
-	println(chuj);
-}
 
