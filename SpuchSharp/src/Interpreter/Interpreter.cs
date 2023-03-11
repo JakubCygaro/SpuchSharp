@@ -402,7 +402,7 @@ public sealed class Interpreter
             throw new InterpreterException($"Expected {targetFunction.Args.Length} arguments " +
                 $"got {call.Args.Length}", call.Function);
         //variable scope for the function
-        VariableScope variables = new();
+        VariableScope newVariables = new();
 
         foreach(var (argument, index) in call.Args.Select((x, i) => (x, i)))
         {
@@ -416,7 +416,7 @@ public sealed class Interpreter
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
                         $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
 
-                variables.Add(targetFunction.Args[index].Name, variable);
+                newVariables.Add(targetFunction.Args[index].Name, variable);
                 continue;
             }
             var value = EvaluateExpression(scope, funScope, argument);
@@ -425,18 +425,21 @@ public sealed class Interpreter
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
                         $"but got a variable of type {value.Ty.Stringify()}", argument);
 
-            else if (targetFunction.Args[index].Ty is ArrayTy arrayTy)
+            if (targetFunction.Args[index].Ty is ArrayTy arrayTy)
             {
                 var valueAsArray = value as ArrayValue
-                    ?? throw new InterpreterException("Type mismatch, call argument was not an array", call.Args[index]);
-                variables.Add(targetFunction.Args[index].Name, new SArray(arrayTy.OfType, (valueAsArray).Size)
+                    ?? throw new InterpreterException("Type mismatch, call argument was not an array", 
+                    call.Args[index]);
+
+                newVariables.Add(targetFunction.Args[index].Name, new SArray(arrayTy.OfType, 
+                    (valueAsArray).Size)
                 {
                     Ident = targetFunction.Args[index].Name,
                     Value = valueAsArray//.Clone()
                 });
             }
             else
-                variables.Add(targetFunction.Args[index].Name, new SSimpleVariable
+                newVariables.Add(targetFunction.Args[index].Name, new SSimpleVariable
                 {
                     Ident = targetFunction.Args[index].Name,
                     Value = value,
@@ -444,13 +447,13 @@ public sealed class Interpreter
         }
 
         if (targetFunction is ExternalFunction ext)
-            return CallExternalFunction(ext, variables.Values.ToList());
+            return CallExternalFunction(ext, newVariables.Values.ToList());
 
-        variables.Extend(_globalVariableScope);
+        newVariables.Extend(_globalVariableScope);
         var newFunScope = new FunctionScope();
         newFunScope.Extend(_globalFunctionScope);
 
-        var retValue = ExcecuteBlock(targetFunction.Block, variables, newFunScope);
+        var retValue = ExcecuteBlock(targetFunction.Block, newVariables, newFunScope);
         if (retValue is NothingValue)
             retValue = null;
 

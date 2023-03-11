@@ -1,7 +1,10 @@
 ﻿import "STDLib";
 fun main(){
-	var array = { 1, 2, 3, 4 };
-	printArray(array);
+	[int] array = [10];
+	for x from 0 to 9 {
+		array[x] = randInt(1, 10);
+	}
+	println(array);
 }
 fun printArray([int] array){
 	for x from 0 to len(array) - 1 {
