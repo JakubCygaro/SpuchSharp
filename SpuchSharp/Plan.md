@@ -3,19 +3,36 @@ int \/
 string \/
 float \/
 boolean \/
-maybe arrays ?
+maybe arrays \/
 
-# Lexer fix
+# Lexer fix \/
 The column and line of every token must be correct, comments cannot fuck it up, also \t \n and other such shit must 
 be ignored/neutralized 
 maybe externalize the line infromation? create a map of lines and their numbers
 Dictionary<uint(number), string(line)>
-and discard all everything that is commented out?
+and discard everything that is commented out?
+
+# Interpreter rework
+External library dlls (at least STD dlls) should be held in a special folder next to the interpreter, so that
+they can be imported from anywhere, and if the user is trying to import something that is not in that folder,
+only then will the interpreter look for it in the working directory.
+there probably should be a project file written in json that would allow the user to specify all that shit
+like which dlls to import locally and which globally from the global repository, and paths.
+import statement should support paths btw
+
+
+# Deep lexer and charstream rework
+Make them not implement ienumerable
+Add peek to charstream
+Maybe even drop the whole oop shtick
+Get rid of schizo out methods
+Escape parsing
+Lexer must take in a charstream and spit out a TokenStream
+No inbetweens
 
 
 
-
-# Change Type parsing from manual to procedural so that this is possible
+# Change Type parsing from manual to procedural so that this is possible \/
 [[int]] -> array of int arrays
 
 # Operators to add
@@ -86,7 +103,7 @@ for x from 1..10 {
 }
 ```
 
-# Arrays PARTIALLY IMPLEMENTED
+# Arrays \/
 
 ```
 // array initialization

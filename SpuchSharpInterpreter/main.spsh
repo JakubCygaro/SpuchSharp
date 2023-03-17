@@ -1,26 +1,10 @@
-﻿import "STDLib";
+﻿mod chuj;
+use chuj;
+
+import "STDLib";
 fun main(){
-	[[int]] cohones = [2][3];
-	for x from 0 to 1 {
-		for y from 0 to 2 {
-			cohones[x][y] = 1;
-		}
-	}
-	println(cohones);
+	[[int]] chuj = {{1, 2}, {3, 4}};
 }
-fun produceArray() [text] {
-	return { "dupa", "cipa", "chuj" };
-}
-fun printArray([int] array){
-	for x from 0 to len(array) - 1 {
-		println(array[x]);
-	}
-}
-fun dupa(int x){
-	x = x + 10;
-}
-fun add(int a, int b) int {
-	return a + b;
-}
+
 
 

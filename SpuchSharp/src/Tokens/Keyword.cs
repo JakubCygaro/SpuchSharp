@@ -25,6 +25,8 @@ internal abstract class KeyWord : Token
         "to" => new To(),
         "while" => new While(),
         "ref" => new Ref(),
+        "mod" => new Mod(),
+        "use" => new Use(),
         _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
     };
 }
@@ -96,5 +98,13 @@ internal sealed class While : KeyWord
 internal sealed class Ref : KeyWord
 {
     public override string Stringify() => "ref";
+}
+internal sealed class Use : KeyWord
+{
+    public override string Stringify() => "use";
+}
+internal sealed class Mod : KeyWord
+{
+    public override string Stringify() => "mod";
 }
 

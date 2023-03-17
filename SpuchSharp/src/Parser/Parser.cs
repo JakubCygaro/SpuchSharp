@@ -103,7 +103,33 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Skip skip => ParseSkip(skip, stream),
             For @for => ParseFor(@for, stream),
             While @while => ParseWhile(@while, stream),
+            Mod mod => ParseMod(mod, stream),
+            Use use => ParseUse(use, stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+        };
+    }
+    private Instruction ParseMod(Mod modKeyword, TokenStream stream)
+    {
+        if (stream.Next() is not Ident ident)
+            throw ParserException.Expected<Ident>(stream.Current);
+        if (stream.Next() is not Semicolon)
+            throw ParserException.Expected<Semicolon>(stream.Current);
+        return new ModuleDecl
+        {
+            Ident = ident,
+            Location = modKeyword.Location,
+        };
+    }
+    private Instruction ParseUse(Use useKeyword, TokenStream stream)
+    {
+        if (stream.Next() is not Ident ident)
+            throw ParserException.Expected<Ident>(stream.Current);
+        if (stream.Next() is not Semicolon)
+            throw ParserException.Expected<Semicolon>(stream.Current);
+        return new UseStmt
+        {
+            ModuleIdent = ident,
+            Location = useKeyword.Location,
         };
     }
     private Ty ParseType(TokenStream stream)
@@ -123,9 +149,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Declaration ParseArrayDeclaration(Square.Open squareOpen, TokenStream stream)
     {
-        var ty = ParseType(stream) 
-            as ArrayTy 
-            ?? throw new ParserException("Array type not an array type!?");
+        var ty = ParseType(stream);
+            //as ArrayTy 
+            //?? throw new ParserException("Array type not an array type!?", stream.Current);
 
         var nextToken = stream.Next();
         if (nextToken is not Square.Closed)
@@ -133,7 +159,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         nextToken = stream.Next();
         if (nextToken is not Ident ident)
-            throw ParserException.Expected<Square.Closed>(nextToken);
+            throw ParserException.Expected<Ident>(nextToken);
 
         nextToken = stream.Next();
         if (nextToken is not Assign)
@@ -725,7 +751,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     /// <typeparam name="T"></typeparam>
     /// <param name="stream"></param>
     /// <returns></returns>
-    public List<TokenStream> ParseBetweenParenWithSeparator<TOpen, TClosed, TSeparator>(TokenStream stream,
+    private List<TokenStream> ParseBetweenParenWithSeparator<TOpen, TClosed, TSeparator>(TokenStream stream,
         int alreadyopen = 0)
         where TOpen : Paren
         where TClosed : Paren
