@@ -50,6 +50,10 @@ sealed class Comma : SimpleToken
 {
     public override string Stringify() => ",";
 }
+sealed class Exclam : SimpleToken
+{
+    public override string Stringify() => "!";
+}
 
 
 abstract class Paren : SimpleToken

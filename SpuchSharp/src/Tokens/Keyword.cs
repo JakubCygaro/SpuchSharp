@@ -8,7 +8,7 @@ namespace SpuchSharp.Tokens;
 
 internal abstract class KeyWord : Token 
 {
-    public static KeyWord From(string literal) => literal switch
+    public static KeyWord? From(string literal) => literal switch
     {
         "var" => new Var(),
         "fun" => new Fun(),
@@ -27,7 +27,7 @@ internal abstract class KeyWord : Token
         "ref" => new Ref(),
         "mod" => new Mod(),
         "use" => new Use(),
-        _ => throw new Lexing.LexerException($"Failed to tokenize {literal} as a keyword token."),
+        _ => null
     };
 }
 internal sealed class Var : KeyWord 

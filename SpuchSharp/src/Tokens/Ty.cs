@@ -67,14 +67,14 @@ internal abstract class Ty : Token, IEquatable<Ty>
         throw new InvalidCastException(
             $"Could not translate external function type {type} to any internal type");
     }
-    public static Ty From(string lit) => lit switch
+    public static Ty? From(string lit) => lit switch
     {
         "int" => Ty.Int,
         "text" => Ty.Text,
         "bool" => Ty.Boolean,
         "void" => Ty.Void,
         "float" => Ty.Float,
-        _ => throw new Lexing.LexerException("Failed to parse to Ty"),
+        _ => null,
     };
     public override string Stringify() => Ident.Value;
     public override bool Equals(object? obj)

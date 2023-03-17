@@ -14,10 +14,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
     private Instruction _currentInstruction = default!;
     private readonly TokenStream _tokenStream;
-    public Parser(Lexer lexer) 
+    public Parser(TokenStream tokenStream) 
     {
-        var tokens = lexer.ToList();
-        _tokenStream = new TokenStream(tokens);
+        _tokenStream = tokenStream;
     }
     private bool Parse()
     {
