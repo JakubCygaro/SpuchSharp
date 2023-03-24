@@ -16,7 +16,7 @@ internal sealed class ModuleDecl : Declaration
 }
 internal sealed class UseStmt : Statement 
 {
-    public required Ident ModuleIdent { get; init; }
+    public required Ident[] ModulePath { get; init; }
 }
 internal class Variable : Declaration
 {

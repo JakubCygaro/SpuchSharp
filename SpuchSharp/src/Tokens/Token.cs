@@ -35,9 +35,23 @@ public sealed class Ident : Token, IEquatable<Ident>
     {
         return Value.GetHashCode();
     }
+    public override bool Equals(object? obj)
+    {
+        if (obj is Ident)
+            return Equals((Ident)obj);
+        else if (obj is string s)
+            return this == s;
+        else
+            return base.Equals(obj);
+    }
     public bool Equals(Ident? other)
     {
         if(other is null) return false;
         return Value == other.Value;
     }
+    public static bool operator == (Ident lhs, string rhs)
+    {
+        return lhs.Value == rhs;
+    }
+    public static bool operator != (Ident lhs, string rhs) => !(lhs == rhs);
 }

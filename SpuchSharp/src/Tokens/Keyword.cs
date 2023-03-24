@@ -27,6 +27,7 @@ internal abstract class KeyWord : Token
         "ref" => new Ref(),
         "mod" => new Mod(),
         "use" => new Use(),
+        "pub" => new Public(),
         _ => null
     };
 }
@@ -104,6 +105,10 @@ internal sealed class Use : KeyWord
     public override string Stringify() => "use";
 }
 internal sealed class Mod : KeyWord
+{
+    public override string Stringify() => "mod";
+}
+internal sealed class Public : KeyWord
 {
     public override string Stringify() => "mod";
 }

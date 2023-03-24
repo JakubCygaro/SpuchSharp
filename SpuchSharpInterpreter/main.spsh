@@ -5,6 +5,14 @@ import "STDLib";
 fun main(){
 	[[int]] chuj = {{1, 2}, {3, 4}};
 	println("hello\nspucha!"); #cing cing
+	szatan();
+}
+fun woda(){
+	println("woda");
+	woda2();
+}
+fun woda2(){
+	println("woda2");
 }
 
 

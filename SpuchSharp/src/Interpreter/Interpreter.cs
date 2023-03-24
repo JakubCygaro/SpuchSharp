@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,12 +8,12 @@ using SpuchSharp.Instructions;
 using SpuchSharp.Parsing;
 using SpuchSharp.Tokens;
 using SpuchSharp.API;
+using System.Reflection;
 
 using VariableScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
-using System.Reflection;
 
 namespace SpuchSharp.Interpreting;
 
@@ -233,10 +232,20 @@ public sealed class Interpreter
     }
     static void UseModule(UseStmt useStmt, Module module)
     {
-        if (!module.Modules.TryGetValue(useStmt.ModuleIdent, out var modToImport))
-            throw new InterpreterException("TODO Module unavaliable");
-        module.VariableScope.Extend(modToImport.VariableScope);
-        module.FunctionScope.Extend(modToImport.FunctionScope);
+        Module toInclude = module;
+
+        foreach(var ident in useStmt.ModulePath)
+        {
+            if (ident == "super")
+                toInclude = toInclude.ParentModule?.ValueOrDefault() ??
+                    throw new InterpreterException("TODO super module unavaliable");
+            else
+                toInclude = toInclude.Modules.GetValueOrDefault(ident) ??
+                    throw new InterpreterException("TODO module unavaliable");
+
+        }
+        module.VariableScope.Extend(toInclude.VariableScope);
+        module.FunctionScope.Extend(toInclude.FunctionScope);
     }
     static void CreateModule(ModuleDecl modDecl, 
         Module module,
@@ -886,5 +895,17 @@ public static class EnumerableExt
     {
         var i = 0;
         foreach (var e in ie) action(e, i++);
+    }
+}
+public static class WeakReferenceExr
+{
+    public static T? ValueOrDefault<T>(this WeakReference<T> weakReference)
+        where T: class
+    {
+        if(weakReference.TryGetTarget(out var value))
+        {
+            return value;
+        }
+        return null;
     }
 }

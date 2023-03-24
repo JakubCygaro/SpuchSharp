@@ -121,13 +121,26 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseUse(Use useKeyword, TokenStream stream)
     {
-        if (stream.Next() is not Ident ident)
-            throw ParserException.Expected<Ident>(stream.Current);
-        if (stream.Next() is not Semicolon)
-            throw ParserException.Expected<Semicolon>(stream.Current);
+        var tokens = ReadToSemicolon(stream).ToTokenStream();
+        List<Ident> idents = new();
+        while(tokens.Next() is Token token)
+        {
+            if (token is not Ident ident)
+                throw ParserException.Expected<Ident>(token);
+
+            idents.Add(ident);
+
+            var next = tokens.Next();
+            if (next is Colon2)
+                continue;
+            else if (next is null)
+                break;
+            else
+                throw ParserException.UnexpectedToken(next);
+        }
         return new UseStmt
         {
-            ModuleIdent = ident,
+            ModulePath = idents.ToArray(),
             Location = useKeyword.Location,
         };
     }

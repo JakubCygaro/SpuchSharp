@@ -1,4 +1,6 @@
-﻿fun max([int] array, int len) int {
+﻿use super;
+
+fun max([int] array, int len) int {
 	if (len <= 0){
 		return len + 1;
 	}
@@ -9,4 +11,7 @@
 		}
 	}
 	return ret;
+}
+fun szatan(){
+	woda();
 }
