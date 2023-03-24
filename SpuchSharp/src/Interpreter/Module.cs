@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using SpuchSharp.Tokens;
+using System.Runtime;
 
 using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
@@ -17,7 +18,7 @@ internal sealed class Module
     public required Dictionary<Ident, Module> Modules { get; set; } = new();
     public required VariableScope VariableScope { get; init; }
     public required FunctionScope FunctionScope { get; init; }
-    public required Module? ParentModule { get; init; }
+    public required WeakReference<Module>? ParentModule { get; init; }
 
     //public override int GetHashCode() => Ident.GetHashCode();
 }

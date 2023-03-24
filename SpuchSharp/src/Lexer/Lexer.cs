@@ -25,6 +25,14 @@ internal sealed class Lexer
         {
             if (character == ' ')
                 continue;
+            if (character == '#')
+            {
+                if (charStream.SkipLine())
+                    continue;
+                else
+                    break;
+            }
+
             tokens.Add(Lex(character, charStream));
         }
         return tokens.ToTokenStream();
@@ -208,15 +216,10 @@ internal sealed class Lexer
             case '9':
             case '0':
                 return ScanForNumberLiteral(ref first, charStream);
-
-
-
-
+            
 
             default:
                 throw new LexerException($"Unallowed character `{first}`");
-
-
         }
 
     }

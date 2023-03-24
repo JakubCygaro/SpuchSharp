@@ -89,6 +89,16 @@ internal sealed class CharStream
         }
         return null;
     }
+    public bool SkipLine()
+    {
+        if(_currentLine + 1 > LineCount)
+        {
+            _currentLine++;
+            _position = 0;
+            return true;
+        }
+        return false;
+    }
 }
 struct CodeLine
 {

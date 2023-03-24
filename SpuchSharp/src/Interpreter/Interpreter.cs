@@ -254,7 +254,7 @@ public sealed class Interpreter
             VariableScope = new VariableScope(),
             Ident = modDecl.Ident,
             Modules = new(),
-            ParentModule = module,
+            ParentModule = new (module),
         };
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);
