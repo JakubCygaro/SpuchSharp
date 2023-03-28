@@ -1,4 +1,6 @@
-﻿use super;
+﻿import "STDLib";
+mod odbyt;
+use super;
 
 fun max([int] array, int len) int {
 	if (len <= 0){
@@ -12,6 +14,6 @@ fun max([int] array, int len) int {
 	}
 	return ret;
 }
-fun szatan(){
-	woda();
+pub fun szatan(){
+	println("szatan");
 }

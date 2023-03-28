@@ -12,14 +12,29 @@ using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 using SpuchSharp.Tokens;
 using SpuchSharp.Parsing;
-using System.Reflection.Metadata.Ecma335;
+using SModule = SpuchSharp.Interpreting.Module;
 
 namespace SpuchSharp.API;
 
 internal static class Importer
 {
+
+    public static SModule ImportModule(string ddlPath, Ident moduleIdent)
+    {
+        return new SModule()
+        {
+            OwnedFunctions = ImportFunctions(ddlPath),
+            FunctionScope = new(),
+            VariableScope = new(),
+            Ident = moduleIdent,
+            Modules = new(),
+            ParentModule = null,
+            IsExternal = true,
+        };
+    }
     public static FunctionScope ImportFunctions(string dllPath)
     {
+        
 
         Assembly importedAssembly;
         try
@@ -34,7 +49,9 @@ internal static class Importer
                 Block = Array.Empty<Instructions.Instruction>(),
                 Ident = info.Ident,
                 MethodInfo = info.MethodInfo,
-                ReturnTy = Ty.FromCSharpType(info.MethodInfo.ReturnType)
+                ReturnTy = Ty.FromCSharpType(info.MethodInfo.ReturnType),
+                IsPublic = true,
+                ParentModule = null,
             })
                 .ToDictionary(external => external.Ident, external => external as SFunction);
         }

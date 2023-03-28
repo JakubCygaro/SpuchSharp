@@ -14,6 +14,7 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using Microsoft.VisualBasic;
 
 namespace SpuchSharp.Interpreting;
 
@@ -25,7 +26,7 @@ public sealed class Interpreter
 
     //private VariableScope _rootVariableScope = new();
     //private FunctionScope _rootFunctionScope = new();
-    private HashSet<string> _importedExternalLibs = new();
+    private Dictionary<Ident, Module> _importedExternalLibs = new();
     internal Interpreter(Parser parser) 
     {
         _parser = parser;
@@ -36,6 +37,7 @@ public sealed class Interpreter
             Ident = new Ident { Value = "root" },
             Modules = new(),
             ParentModule = null,
+            OwnedFunctions = new(),
         };
     }
     public Interpreter(string sourceFilePath) : this(GetParserFromSource(sourceFilePath)) { }
@@ -122,6 +124,7 @@ public sealed class Interpreter
         {
             Ident = forLoopStmt.VariableIdent,
             Value = variableValue,
+            IsPublic = false,
         };
         newVarScope.Add(variable);
 
@@ -195,13 +198,25 @@ public sealed class Interpreter
     }
     static void Run(Instruction[] instructions, 
         Module module,
-        HashSet<string> importedLibs)
+        Dictionary<Ident, Module> importedLibs)
     {
         foreach (var instruction in instructions)
         {
-            //ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
             GlobalExcecute(instruction, module, importedLibs);
         }
+        foreach (var instruction in instructions)
+        {
+            ExcecuteModules(instruction, module, importedLibs);
+        }
+    }
+    static void ExcecuteModules(Instruction instruction,
+        Module module,
+        Dictionary<Ident, Module> importedLibs)
+    {
+        if (instruction is ModuleDecl modDecl)
+            CreateModule(modDecl, module, importedLibs);
+        else if (instruction is UseStmt useStmt)
+            UseModule(useStmt, module);
     }
     /// <summary>
     /// This is what the interpreter does before calling main(), all instructions are evaluated
@@ -209,16 +224,18 @@ public sealed class Interpreter
     /// </summary>
     static void GlobalExcecute(Instruction instruction, 
         Module module,
-        HashSet<string> importedLibs)
+        Dictionary<Ident, Module> importedLibs)
     {
         PrintInstruction(instruction);
         //only process variable and function declarations, ignore everything else
         if (instruction is Statement stmt)
         {
             if (stmt is ModuleDecl modDecl)
-                CreateModule(modDecl, module, importedLibs);
+                return;
+                //CreateModule(modDecl, module, importedLibs);
             else if (stmt is UseStmt useStmt)
-                UseModule(useStmt, module);
+                return;
+                //UseModule(useStmt, module);
             else
             {
                 IfDeclaration(module.VariableScope, module.FunctionScope, module, stmt, importedLibs);
@@ -244,12 +261,13 @@ public sealed class Interpreter
                     throw new InterpreterException("TODO module unavaliable");
 
         }
-        module.VariableScope.Extend(toInclude.VariableScope);
-        module.FunctionScope.Extend(toInclude.FunctionScope);
+
+        module.VariableScope.ExtendPublic(toInclude.VariableScope);
+        module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
     }
     static void CreateModule(ModuleDecl modDecl, 
         Module module,
-        HashSet<string> importedLibs)
+        Dictionary<Ident, Module> importedLibs)
     {
         var modules = module.Modules;
 
@@ -264,6 +282,7 @@ public sealed class Interpreter
             Ident = modDecl.Ident,
             Modules = new(),
             ParentModule = new (module),
+            OwnedFunctions = new(),
         };
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);
@@ -275,23 +294,41 @@ public sealed class Interpreter
     {
         return EvaluateExpression(varScope, funScope, module, returnStatement.Expr);
     }
-    static void IfImport(Statement instruction, Module module, HashSet<string> importedLibs)
+    static void IfImport(Statement instruction, 
+        Module module, 
+        Dictionary<Ident, Module> importedLibs)
     {
         var funScope = module.FunctionScope;
         if (instruction is not ImportStatement import) 
             return;
-        if (importedLibs.Contains(import.Path))
-            throw new InterpreterException($"Cannot import an already imported library: {import.Path}", 
-                import);
-        try 
+
+        //Console.WriteLine($"Import in module: {module.Ident.Stringify()}");
+
+        //foreach (var function in funScope)
+        //{
+        //    Console.WriteLine($"{function.Key.Stringify()}");
+        //}
+
+        var importPath = import.Path.AsIdent();
+        if (importedLibs.ContainsKey(importPath))
         {
-            funScope.Extend(Importer.ImportFunctions(import.Path));
-            importedLibs.Add(import.Path);
+            funScope.Extend(importedLibs[importPath].OwnedFunctions, false);
         }
-        catch(Exception ex) 
-        {
-            throw new InterpreterException(ex.Message, ex);
-        }
+        else
+            try 
+            {
+                var mod = Importer.ImportModule(import.Path, importPath);
+                importedLibs.Add(mod.Ident, mod);
+                funScope.Extend(importedLibs[importPath].OwnedFunctions, false);
+            }
+            catch (Exception ex) 
+            {
+                throw new InterpreterException(ex.Message, ex);
+            }
+        //foreach (var function in funScope)
+        //{
+        //    Console.WriteLine($"{function.Key.Stringify()}\n");
+        //}
     }
     private void RunMain()
     {
@@ -316,14 +353,14 @@ public sealed class Interpreter
         FunctionScope funScope, 
         Module module,
         Statement instruction,
-        HashSet<string>? importedLibs = null)
+        Dictionary<Ident, Module>? importedLibs = null)
     {
         if (instruction is not Declaration decl) 
             return;
         if (decl is Variable var)
             CreateVariable(varScope, funScope, module, var);
         else if (decl is Function fun)
-            CreateFunction(fun, funScope);
+            CreateFunction(fun, module);
         else if (decl is ArrayDecl arr)
             CreateArray(varScope, funScope, module, arr);
         //else if (decl is ModuleDecl modDecl)
@@ -383,6 +420,7 @@ public sealed class Interpreter
         {
             Ident = new Ident() { Value = arrayDecl.Name },
             Value = arrayValue,
+            IsPublic = false,
         };
         //var index = 0;
         //foreach (var value in values)
@@ -411,7 +449,8 @@ public sealed class Interpreter
 
         var sArray = new SArray(sizes.First!.Value.type, sizes.First!.Value.size)
         {
-            Ident = new Ident { Value = typedArr.Name }
+            Ident = new Ident { Value = typedArr.Name },
+            IsPublic = false,
         };
         sizes.RemoveFirst();
         var val = (ArrayValue)sArray.Value;
@@ -555,6 +594,20 @@ public sealed class Interpreter
     {
         //get the function that should be called
         var targetFunction = FindFunction(call.Function, funScope);
+
+        Module functionModule;
+        if(targetFunction.ParentModule?.ValueOrDefault() is Module m)
+        {
+            if (object.ReferenceEquals(module, m))
+                functionModule = module;
+            else
+                functionModule = m;
+        }
+        else
+        {
+            functionModule = module;
+        }
+
         //get the return type of that function
         var returnType = targetFunction.ReturnTy;
         //check whether argument amount makes sense
@@ -595,7 +648,9 @@ public sealed class Interpreter
                     (valueAsArray).Size)
                 {
                     Ident = targetFunction.Args[index].Name,
-                    Value = valueAsArray//.Clone()
+                    Value = valueAsArray,//.Clone()
+                    IsPublic = false,
+                    
                 });
             }
             else
@@ -603,17 +658,22 @@ public sealed class Interpreter
                 {
                     Ident = targetFunction.Args[index].Name,
                     Value = value,
+                    IsPublic = false,
                 });
         }
 
         if (targetFunction is ExternalFunction ext)
             return CallExternalFunction(ext, newVariables.Values.ToList());
 
-        newVariables.Extend(module.VariableScope);
+        newVariables.Extend(functionModule.VariableScope);
         var newFunScope = new FunctionScope();
-        newFunScope.Extend(funScope);
+        newFunScope.Extend(functionModule.FunctionScope);
 
-        var retValue = ExcecuteBlock(targetFunction.Block, newVariables, newFunScope, module);
+        var retValue = ExcecuteBlock(targetFunction.Block,
+            newVariables, 
+            functionModule.FunctionScope, 
+            functionModule);
+
         if (retValue is NothingValue)
             retValue = null;
 
@@ -672,11 +732,11 @@ public sealed class Interpreter
     }
     static SFunction FindFunction(Ident ident, FunctionScope scope)
     {
-        if(scope.TryGetValue(ident, out var f))
+        if (scope.TryGetValue(ident, out var f))
         {
             return f;
         }
-        else throw new InterpreterException($"No function {ident.Value} declared in this scope");
+            throw new InterpreterException($"No function {ident.Value} declared in this scope", ident);
     }
 
     static void CreateVariable(VariableScope varScope,
@@ -695,11 +755,13 @@ public sealed class Interpreter
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = arrayValue,
+                IsPublic = false,
             },
             Value otherValue => new SSimpleVariable 
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = otherValue,
+                IsPublic = false,
             }
         };
 
@@ -753,17 +815,22 @@ public sealed class Interpreter
             throw new InterpreterException("Mismatched types", identExpr.Ident);
         variable.Value = assignedValue;
     }
-    static void CreateFunction(Function fun, FunctionScope funScope)
+    static void CreateFunction(Function fun, Module module)
     {
-        if (funScope.ContainsKey(fun.Name))
+        var ownedFunctions = module.OwnedFunctions;
+        if (ownedFunctions.ContainsKey(fun.Name))
             throw new InterpreterException($"Function {fun.Name} already exists!", fun.Name);
-        funScope.Add(fun.Name, new SFunction
+        var function = new SFunction
         {
             Args = fun.Args,
             Block = fun.Block,
             Ident = fun.Name,
             ReturnTy = fun.ReturnTy,
-        });
+            IsPublic = fun.IsPublic,
+            ParentModule = new(module),
+        };
+        ownedFunctions.Add(fun.Name, function);
+        module.FunctionScope.Add(fun.Name, function);
     }
 
     [Conditional("EXPRESSION")]
@@ -868,16 +935,38 @@ internal static class ScopeExt
         //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
         return new FunctionScope(other);
     }
-    public static void Extend(this VariableScope scope, VariableScope other) 
+    public static void Extend(this VariableScope scope, 
+        VariableScope other,
+        bool noExternal = true) 
     {
         foreach (var pair in other)
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
                     $"Variable {pair.Key.Stringify()} already declared ", pair.Key);
     }
-    public static void Extend(this FunctionScope scope, FunctionScope other)
+    public static void ExtendPublic(this VariableScope scope, 
+        VariableScope other)
     {
-        foreach (var pair in other)
+        foreach (var pair in other.Where(v => v.Value.IsPublic))
+            if (!scope.TryAdd(pair.Key, pair.Value))
+                throw new InterpreterException(
+                    $"Variable {pair.Key.Stringify()} already declared ", pair.Key);
+    }
+    public static void Extend(this FunctionScope scope, 
+        FunctionScope other, 
+        bool noExternal = true)
+    {
+        foreach (var pair in other.Where(f => f.Value is not ExternalFunction == noExternal))
+            if (!scope.TryAdd(pair.Key, pair.Value))
+                throw new InterpreterException(
+                    $"Function {pair.Key.Stringify()} already declared ", pair.Key);
+    }
+    public static void ExtendPublic(this FunctionScope scope, 
+        FunctionScope other,
+        bool noExternal = true)
+    {
+        foreach (var pair in other.Where(f => f.Value.IsPublic && 
+                                            f.Value is not ExternalFunction == noExternal))
             if (!scope.TryAdd(pair.Key, pair.Value))
                 throw new InterpreterException(
                     $"Function {pair.Key.Stringify()} already declared ", pair.Key);
@@ -888,6 +977,7 @@ internal static class ScopeExt
             throw new InterpreterException(
                     $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
     }
+
 }
 public static class EnumerableExt
 {

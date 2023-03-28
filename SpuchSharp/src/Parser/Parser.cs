@@ -104,7 +104,17 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             While @while => ParseWhile(@while, stream),
             Mod mod => ParseMod(mod, stream),
             Use use => ParseUse(use, stream),
+            Public => ParseWithPublic(stream.Next() as KeyWord ?? 
+                        throw new ParserException("Disallowed pub usage", stream.Current), stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+        };
+    }
+    private Instruction ParseWithPublic(KeyWord keyword, TokenStream stream)
+    {
+        return keyword switch
+        {
+            Fun => ParseDeclaration(keyword, stream, true),
+            _ => throw new ParserException("Disallowed pub usage", stream.Current),
         };
     }
     private Instruction ParseMod(Mod modKeyword, TokenStream stream)
@@ -581,7 +591,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Location = ident.Location
         };
     }
-    private Instruction ParseDeclaration(Token token, TokenStream stream)
+    private Instruction ParseDeclaration(Token token, TokenStream stream, bool pub = false)
     {
         if (token is Var var)
         {
@@ -650,6 +660,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Name = ident,
                 ReturnTy = type,
                 Location = ident.Location,
+                IsPublic = pub
             };
         }
         else

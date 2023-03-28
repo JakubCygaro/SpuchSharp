@@ -1,13 +1,15 @@
-﻿mod chuj;
+﻿import "STDLib";
+mod chuj;
 use chuj;
+use chuj::odbyt;
 
-import "STDLib";
 fun main(){
 	[[int]] chuj = {{1, 2}, {3, 4}};
-	println("hello\nspucha!"); #cing cing
+	println("hello spucha!"); #cing cing
 	szatan();
+	odbyt();
 }
-fun woda(){
+pub fun woda(){
 	println("woda");
 	woda2();
 }

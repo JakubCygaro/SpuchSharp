@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using SpuchSharp.API;
 using SpuchSharp.Instructions;
 using SpuchSharp.Tokens;
+using System.Runtime;
 
 namespace SpuchSharp.Interpreting;
 
@@ -18,6 +19,8 @@ internal abstract class SObject
     }
 
     public abstract string Display();
+    public required bool IsPublic { get; init; }
+
 }
 
 internal abstract class SVariable : SObject 
@@ -94,6 +97,7 @@ internal class SFunction : SObject
     public required Parsing.FunArg[] Args { get; init; }
     public required Instruction[] Block { get; init; }
     public required Ty ReturnTy { get; init; }
+    public required WeakReference<Module>? ParentModule { get; init; }
 }
 
 internal class ExternalFunction : SFunction

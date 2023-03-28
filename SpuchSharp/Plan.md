@@ -19,9 +19,10 @@ only then will the interpreter look for it in the working directory.
 there probably should be a project file written in json that would allow the user to specify all that shit
 like which dlls to import locally and which globally from the global repository, and paths.
 import statement should support paths btw
+At the end rename the interpreter to cumman
 
 
-# Deep lexer and charstream rework
+# Deep lexer and charstream rework \/
 Make them not implement ienumerable
 Add peek to charstream
 Maybe even drop the whole oop shtick

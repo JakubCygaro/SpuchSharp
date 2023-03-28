@@ -18,7 +18,7 @@ public abstract class Token
     public abstract string Stringify();
 }
 
-public sealed class Ident : Token, IEquatable<Ident>
+public sealed class Ident : Token, IEquatable<Ident>, ICloneable<Ident>
 {
     public required string Value { get; set; }
     public override string Stringify() => Value;
@@ -44,6 +44,13 @@ public sealed class Ident : Token, IEquatable<Ident>
         else
             return base.Equals(obj);
     }
+    public Ident Clone()
+    {
+        return new Ident()
+        {
+            Value = (string)this.Value.Clone(),
+        };
+    }
     public bool Equals(Ident? other)
     {
         if(other is null) return false;
@@ -54,4 +61,14 @@ public sealed class Ident : Token, IEquatable<Ident>
         return lhs.Value == rhs;
     }
     public static bool operator != (Ident lhs, string rhs) => !(lhs == rhs);
+}
+public static class IdentExt
+{
+    public static Ident AsIdent(this string s)
+    {
+        return new Ident
+        {
+            Value = s,
+        };
+    }
 }

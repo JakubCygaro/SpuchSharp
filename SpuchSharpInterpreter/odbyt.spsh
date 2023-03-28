@@ -1,0 +1,5 @@
+import "STDLib";
+
+pub fun odbyt(){
+    println("siema");
+}

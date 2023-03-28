@@ -9,7 +9,10 @@ using System.Threading.Tasks;
 namespace SpuchSharp.Instructions;
 
 internal abstract class Statement : Instruction { }
-internal abstract class Declaration : Statement { }
+internal abstract class Declaration : Statement 
+{
+    public bool IsPublic { get; set; } = false;
+}
 internal sealed class ModuleDecl : Declaration 
 {
     public required Ident Ident { get; init; }

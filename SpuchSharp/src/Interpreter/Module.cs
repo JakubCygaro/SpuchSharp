@@ -18,7 +18,10 @@ internal sealed class Module
     public required Dictionary<Ident, Module> Modules { get; set; } = new();
     public required VariableScope VariableScope { get; init; }
     public required FunctionScope FunctionScope { get; init; }
+    public required FunctionScope OwnedFunctions { get; init; }
     public required WeakReference<Module>? ParentModule { get; init; }
+    public FunctionScope UsedFunctions { get; init; } = new();
+    public bool IsExternal { get; init; } = false;
 
     //public override int GetHashCode() => Ident.GetHashCode();
 }
