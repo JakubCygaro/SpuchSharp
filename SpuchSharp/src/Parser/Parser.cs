@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections;
 using SpuchSharp.Instructions;
-using SpuchSharp.Interpreting;
-using SpuchSharp.Lexing;
 using SpuchSharp.Tokens;
+using VariableScope =
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
+using FunctionScope =
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 
 namespace SpuchSharp.Parsing;
 
@@ -607,7 +609,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Peek() is Curly.Open)
                 return ParseUntypedArrayDecl(ident, stream);
-            return new Variable()
+            return new VariableDecl()
             {
                 Name = ident.Value,
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
@@ -621,7 +623,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if (stream.Next() is not Assign)
                 throw new ParserException("Invalid token error", stream.Current);
 
-            return new Typed()
+            return new TypedVariableDecl()
             {
                 Name = ident.Value,
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
@@ -659,7 +661,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", stream.Current);
             var instructions = ParseFunctionInstructions(stream);
 
-            return new Function()
+            return new FunctionDecl()
             {
                 Args = arguments,
                 Block = instructions,
