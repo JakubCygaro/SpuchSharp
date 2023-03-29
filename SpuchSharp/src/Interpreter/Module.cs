@@ -17,6 +17,7 @@ internal sealed class Module
     public required Ident Ident { get; init; }
     public required Dictionary<Ident, Module> Modules { get; set; } = new();
     public required VariableScope VariableScope { get; init; }
+    public required VariableScope OwnedVariables { get; init; }
     public required FunctionScope FunctionScope { get; init; }
     public required FunctionScope OwnedFunctions { get; init; }
     public required WeakReference<Module>? ParentModule { get; init; }

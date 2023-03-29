@@ -104,16 +104,18 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             While @while => ParseWhile(@while, stream),
             Mod mod => ParseMod(mod, stream),
             Use use => ParseUse(use, stream),
-            Public => ParseWithPublic(stream.Next() as KeyWord ?? 
-                        throw new ParserException("Disallowed pub usage", stream.Current), stream),
+            Public => ParseWithPublic(stream.Next() ?? 
+                    throw new ParserException("Premature end of input", stream.Current), 
+                    stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
         };
     }
-    private Instruction ParseWithPublic(KeyWord keyword, TokenStream stream)
+    private Instruction ParseWithPublic(Token keyword, TokenStream stream)
     {
         return keyword switch
         {
-            Fun => ParseDeclaration(keyword, stream, true),
+            Fun or Var => ParseDeclaration(keyword, stream, true),
+            Square.Open sq => ParseArrayDeclaration(sq, stream, true),
             _ => throw new ParserException("Disallowed pub usage", stream.Current),
         };
     }
@@ -169,7 +171,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else
             throw new ParserException("Failed to parse to type", stream.Current);
     }
-    private Declaration ParseArrayDeclaration(Square.Open squareOpen, TokenStream stream)
+    private Declaration ParseArrayDeclaration(Square.Open squareOpen, 
+        TokenStream stream,
+        bool pub = false)
     {
         var ty = ParseType(stream);
             //as ArrayTy 
@@ -213,6 +217,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 ArrayExpression = ArrayExpression.Empty,
                 Sized = sizes,
                 Location = ident.Location,
+                IsPublic = pub,
             };
         }
 
@@ -223,6 +228,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Name = ident.Value,
             Sized = null,
             Location = ident.Location,
+            IsPublic = pub,
         };
     }
     private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)

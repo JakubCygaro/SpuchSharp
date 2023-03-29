@@ -16,6 +16,8 @@ namespace SpuchSharp.Lexing;
 
 internal sealed class Lexer
 {
+    internal static TokenStream Tokenize(string[] lines, string sourcePath) =>
+        Tokenize(new CharStream(lines, sourcePath));
     public static TokenStream Tokenize(string[] lines) => Tokenize(new CharStream(lines));
 
     public static TokenStream Tokenize(CharStream charStream)
@@ -32,8 +34,15 @@ internal sealed class Lexer
                 else
                     break;
             }
-
-            tokens.Add(Lex(character, charStream));
+            var start = new Location
+            {
+                Column = charStream.Column,
+                Line = charStream.LineNumber,
+                File = charStream.SourceFile,
+            };
+            var token = Lex(character, charStream);
+            token.Location = start;
+            tokens.Add(token);
         }
         return tokens.ToTokenStream();
     }
@@ -251,7 +260,7 @@ internal sealed class Lexer
         return new Ident
         {
             Value = value,
-            Location = new() { Column = startPos, Line = charStream.LineNumber }
+            Location = new() { Column = startPos, Line = charStream.LineNumber, File = charStream.SourceFile }
         };
     }
     static Token ScanForText(ref char first, CharStream charStream)
@@ -273,6 +282,7 @@ internal sealed class Lexer
                     {
                         Column = charStream.Column,
                         Line = charStream.LineNumber,
+                        File = charStream.SourceFile
                     });
                 contents.Add(ScanEscape(next));
             }
@@ -286,6 +296,7 @@ internal sealed class Lexer
             {
                 Column = charStream.Column,
                 Line = charStream.LineNumber,
+                File = charStream.SourceFile
             });
         return new TextValue
         {
@@ -294,6 +305,7 @@ internal sealed class Lexer
             { 
                 Column = startPos,
                 Line = charStream.LineNumber,
+                File = charStream.SourceFile
             }
         };
     }
@@ -347,6 +359,7 @@ internal sealed class Lexer
                     {
                         Column = charStream.Column,
                         Line = charStream.LineNumber,
+                        File = charStream.SourceFile
                     });
 
                 charStream.MoveNext();

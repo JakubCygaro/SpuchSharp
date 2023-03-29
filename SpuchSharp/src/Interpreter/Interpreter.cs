@@ -24,8 +24,6 @@ public sealed class Interpreter
 
     private Module _rootModule;
 
-    //private VariableScope _rootVariableScope = new();
-    //private FunctionScope _rootFunctionScope = new();
     private Dictionary<Ident, Module> _importedExternalLibs = new();
     internal Interpreter(Parser parser) 
     {
@@ -38,12 +36,13 @@ public sealed class Interpreter
             Modules = new(),
             ParentModule = null,
             OwnedFunctions = new(),
+            OwnedVariables = new(),
         };
     }
     public Interpreter(string sourceFilePath) : this(GetParserFromSource(sourceFilePath)) { }
     static Parser GetParserFromSource(string path)
     {
-        var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllLines(path, Encoding.UTF8));
+        var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllLines(path, Encoding.UTF8), path);
         return new Parser(tokenStream);
     }
     static Value? ExcecuteInstruction(Instruction instruction, 
@@ -59,6 +58,8 @@ public sealed class Interpreter
 
         if(instruction is Statement stmt)
         {
+            if (stmt is Function)
+                throw new InterpreterException("Disallowed function declaration", stmt);
             IfDeclaration(varScope, funScope, module, stmt);
             IfAssignment(varScope, funScope, module, stmt);
             IfDeletion(varScope, funScope, stmt);
@@ -238,7 +239,20 @@ public sealed class Interpreter
                 //UseModule(useStmt, module);
             else
             {
-                IfDeclaration(module.VariableScope, module.FunctionScope, module, stmt, importedLibs);
+                //IfDeclaration(module.VariableScope, module.FunctionScope, module, stmt, importedLibs);
+                if (stmt is Function fun)
+                    CreateFunction(fun, module);
+                else if (stmt is Variable var)
+                {
+                    CreateVariable(module.OwnedVariables, module.FunctionScope, module, var);
+                    module.VariableScope.Extend(module.OwnedVariables);
+                }
+                else if (stmt is ArrayDecl arr)
+                {
+                    CreateArray(module.OwnedVariables, module.FunctionScope, module, arr);
+                    module.VariableScope.Extend(module.OwnedVariables);
+                }
+
                 IfImport(stmt, module, importedLibs);
             }
             //IfAssignment(varScope, funScope, stmt);
@@ -257,12 +271,29 @@ public sealed class Interpreter
                 toInclude = toInclude.ParentModule?.ValueOrDefault() ??
                     throw new InterpreterException("TODO super module unavaliable");
             else
-                toInclude = toInclude.Modules.GetValueOrDefault(ident) ??
-                    throw new InterpreterException("TODO module unavaliable");
-
+            {
+                if(toInclude.Modules.GetValueOrDefault(ident) is null)
+                {
+                    if (toInclude.OwnedVariables.GetValueOrDefault(ident) is SVariable variable)
+                    {
+                        module.VariableScope.Add(variable);
+                        return;
+                    }
+                    else if (toInclude.OwnedFunctions.GetValueOrDefault(ident) is SFunction function)
+                    {
+                        module.FunctionScope.Add(function);
+                        return;
+                    }
+                    else
+                        throw new InterpreterException("TODO function or variable not found", useStmt);
+                }
+                else
+                    toInclude = toInclude.Modules.GetValueOrDefault(ident) ??
+                        throw new InterpreterException("TODO module unavaliable");
+            }
         }
 
-        module.VariableScope.ExtendPublic(toInclude.VariableScope);
+        module.VariableScope.ExtendPublic(toInclude.OwnedVariables);
         module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
     }
     static void CreateModule(ModuleDecl modDecl, 
@@ -283,6 +314,7 @@ public sealed class Interpreter
             Modules = new(),
             ParentModule = new (module),
             OwnedFunctions = new(),
+            OwnedVariables = new(),
         };
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);
@@ -302,13 +334,6 @@ public sealed class Interpreter
         if (instruction is not ImportStatement import) 
             return;
 
-        //Console.WriteLine($"Import in module: {module.Ident.Stringify()}");
-
-        //foreach (var function in funScope)
-        //{
-        //    Console.WriteLine($"{function.Key.Stringify()}");
-        //}
-
         var importPath = import.Path.AsIdent();
         if (importedLibs.ContainsKey(importPath))
         {
@@ -325,10 +350,6 @@ public sealed class Interpreter
             {
                 throw new InterpreterException(ex.Message, ex);
             }
-        //foreach (var function in funScope)
-        //{
-        //    Console.WriteLine($"{function.Key.Stringify()}\n");
-        //}
     }
     private void RunMain()
     {
@@ -358,11 +379,19 @@ public sealed class Interpreter
         if (instruction is not Declaration decl) 
             return;
         if (decl is Variable var)
+        {
+            if (var.IsPublic)
+                throw new InterpreterException("Local variable declaration cannot be public", var);
             CreateVariable(varScope, funScope, module, var);
-        else if (decl is Function fun)
-            CreateFunction(fun, module);
+        }
+        //else if (decl is Function fun)
+        //    CreateFunction(fun, module);
         else if (decl is ArrayDecl arr)
+        {
+            if (arr.IsPublic)
+                throw new InterpreterException("Local array declaration cannot be public", arr);
             CreateArray(varScope, funScope, module, arr);
+        }
         //else if (decl is ModuleDecl modDecl)
         //    CreateModule(modDecl, module, importedLibs ?? throw new InterpreterException("Internal error" +
         //        " no set of imported external libraries was provided for Interpreter.CreateModule"));
@@ -755,13 +784,13 @@ public sealed class Interpreter
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = arrayValue,
-                IsPublic = false,
+                IsPublic = var.IsPublic,
             },
             Value otherValue => new SSimpleVariable 
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = otherValue,
-                IsPublic = false,
+                IsPublic = var.IsPublic,
             }
         };
 
@@ -976,6 +1005,12 @@ internal static class ScopeExt
         if(!scope.TryAdd(variable.Ident, variable))
             throw new InterpreterException(
                     $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
+    }
+    public static void Add(this FunctionScope funScope, SFunction function)
+    {
+        if (!funScope.TryAdd(function.Ident, function))
+            throw new InterpreterException(
+                    $"Variable {function.Ident.Stringify()} already declared ", function.Ident);
     }
 
 }

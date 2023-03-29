@@ -1,10 +1,9 @@
 ﻿import "STDLib";
 mod chuj;
 use chuj;
-use chuj::odbyt;
+use chuj::odbyt::woda;
 
 fun main(){
-	[[int]] chuj = {{1, 2}, {3, 4}};
 	println("hello spucha!"); #cing cing
 	szatan();
 	odbyt();

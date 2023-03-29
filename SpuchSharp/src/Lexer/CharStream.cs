@@ -23,7 +23,10 @@ internal sealed class CharStream
     public int LineLength { get => _lines[_currentLine].Length; }
     public char Current => _lines[_currentLine][_position];
 
-    public CharStream(string[] input)
+    public string SourceFile { get; }
+    const string NO_FILE = "";
+
+    public CharStream(string[] input, string sourceFile = NO_FILE)
     {
         var normalized = input
             .Select(line => line.Trim())
@@ -32,6 +35,7 @@ internal sealed class CharStream
             .Select(l => new CodeLine { Characters = l.Line.ToCharArray(), LineNumber = l.Number })
             .ToArray();
         _lines = normalized;
+        SourceFile = sourceFile;
 
     }
     static string CutComment(string input)

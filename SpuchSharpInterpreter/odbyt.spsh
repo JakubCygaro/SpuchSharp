@@ -3,3 +3,6 @@ import "STDLib";
 pub fun odbyt(){
     println("siema");
 }
+pub fun woda(){
+    println("woda w odbycie");
+}

@@ -30,6 +30,7 @@ internal static class Importer
             Modules = new(),
             ParentModule = null,
             IsExternal = true,
+            OwnedVariables = new(),
         };
     }
     public static FunctionScope ImportFunctions(string dllPath)
