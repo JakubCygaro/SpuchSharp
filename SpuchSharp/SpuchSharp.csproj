@@ -9,8 +9,4 @@
 	<WarningsAsErrors>CS8602</WarningsAsErrors>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="src\Extensions\" />
-  </ItemGroup>
-
 </Project>

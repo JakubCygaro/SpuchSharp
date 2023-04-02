@@ -23,6 +23,7 @@ internal sealed class Module
     public required WeakReference<Module>? ParentModule { get; init; }
     public FunctionScope UsedFunctions { get; init; } = new();
     public bool IsExternal { get; init; } = false;
+    public bool IsPublic { get; init; } = false;
 
     //public override int GetHashCode() => Ident.GetHashCode();
 }

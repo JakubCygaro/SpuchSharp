@@ -1,20 +1,21 @@
 ﻿import "STDLib";
 mod chuj;
 use chuj;
-use chuj::odbyt::woda;
+use chuj::odbyt;
 
 fun main(){
 	println("hello spucha!"); #cing cing
 	szatan();
+	woda();
 	odbyt();
 }
-pub fun woda(){
-	println("woda");
-	woda2();
-}
-fun woda2(){
-	println("woda2");
-}
+#pub fun woda(){
+#	println("woda");
+#	woda2();
+#}
+#fun woda2(){
+#	println("woda2");
+#}
 
 
 

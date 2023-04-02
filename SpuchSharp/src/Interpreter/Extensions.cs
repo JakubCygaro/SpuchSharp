@@ -75,8 +75,26 @@ internal static class ScopeExt
             throw new InterpreterException(
                     $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
     }
+    public static void AddPublic(this VariableScope scope, SVariable variable)
+    {
+        if (!variable.IsPublic)
+            throw new InterpreterException($"Cannot import a variable that is not public " +
+                $"`{variable.Ident.Stringify()}`");
+        if (!scope.TryAdd(variable.Ident, variable))
+            throw new InterpreterException(
+                    $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
+    }
     public static void Add(this FunctionScope funScope, SFunction function)
     {
+        if (!funScope.TryAdd(function.Ident, function))
+            throw new InterpreterException(
+                    $"Variable {function.Ident.Stringify()} already declared ", function.Ident);
+    }
+    public static void AddPublic(this FunctionScope funScope, SFunction function)
+    {
+        if (!function.IsPublic)
+            throw new InterpreterException($"Cannot import a function that is not public " +
+                $"`{function.Ident.Stringify()}`");
         if (!funScope.TryAdd(function.Ident, function))
             throw new InterpreterException(
                     $"Variable {function.Ident.Stringify()} already declared ", function.Ident);

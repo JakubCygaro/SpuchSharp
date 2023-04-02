@@ -271,16 +271,16 @@ public sealed class Interpreter
                     throw new InterpreterException("TODO super module unavaliable");
             else
             {
-                if(toInclude.Modules.GetValueOrDefault(ident) is null)
+                if (toInclude.Modules.GetValueOrDefault(ident) is null)
                 {
                     if (toInclude.OwnedVariables.GetValueOrDefault(ident) is SVariable variable)
                     {
-                        module.VariableScope.Add(variable);
+                        module.VariableScope.AddPublic(variable);
                         return;
                     }
                     else if (toInclude.OwnedFunctions.GetValueOrDefault(ident) is SFunction function)
                     {
-                        module.FunctionScope.Add(function);
+                        module.FunctionScope.AddPublic(function);
                         return;
                     }
                     else
@@ -289,8 +289,17 @@ public sealed class Interpreter
                 else
                     toInclude = toInclude.Modules.GetValueOrDefault(ident) ??
                         throw new InterpreterException("TODO module unavaliable");
+
+                if (!toInclude.IsPublic &&
+                        !ReferenceEquals(toInclude.ParentModule?.ValueOrDefault(), module) &&
+                        !ReferenceEquals(module.ParentModule?.ValueOrDefault(), toInclude))
+                    throw new InterpreterException("Cannot use an unpublic module", useStmt);
             }
         }
+        if (!toInclude.IsPublic &&
+                !ReferenceEquals(toInclude.ParentModule?.ValueOrDefault(), module) &&
+                !ReferenceEquals(module.ParentModule?.ValueOrDefault(), toInclude))
+            throw new InterpreterException("Cannot use an unpublic module", useStmt);
 
         module.VariableScope.ExtendPublic(toInclude.OwnedVariables);
         module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
@@ -314,6 +323,7 @@ public sealed class Interpreter
             ParentModule = new (module),
             OwnedFunctions = new(),
             OwnedVariables = new(),
+            IsPublic = modDecl.IsPublic,
         };
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);

@@ -118,10 +118,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             Fun or Var => ParseDeclaration(keyword, stream, true),
             Square.Open sq => ParseArrayDeclaration(sq, stream, true),
+            Mod m => ParseMod(m, stream, true),
             _ => throw new ParserException("Disallowed pub usage", stream.Current),
         };
     }
-    private Instruction ParseMod(Mod modKeyword, TokenStream stream)
+    private Instruction ParseMod(Mod modKeyword, TokenStream stream, bool pub = false)
     {
         if (stream.Next() is not Ident ident)
             throw ParserException.Expected<Ident>(stream.Current);
@@ -131,6 +132,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             Ident = ident,
             Location = modKeyword.Location,
+            IsPublic = pub,
         };
     }
     private Instruction ParseUse(Use useKeyword, TokenStream stream)

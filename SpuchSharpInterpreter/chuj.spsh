@@ -1,5 +1,5 @@
 ﻿import "STDLib";
-mod odbyt;
+pub mod odbyt;
 use super;
 
 fun max([int] array, int len) int {
