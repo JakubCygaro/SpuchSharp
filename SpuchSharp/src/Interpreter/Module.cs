@@ -21,6 +21,7 @@ internal sealed class Module
     public required FunctionScope FunctionScope { get; init; }
     public required FunctionScope OwnedFunctions { get; init; }
     public required WeakReference<Module>? ParentModule { get; init; }
+    public required string DirectoryPath { get; set; }
     public FunctionScope UsedFunctions { get; init; } = new();
     public bool IsExternal { get; init; } = false;
     public bool IsPublic { get; init; } = false;

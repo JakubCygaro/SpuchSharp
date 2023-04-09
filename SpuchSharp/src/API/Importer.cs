@@ -39,6 +39,8 @@ internal static class Importer
             ParentModule = null,
             IsExternal = true,
             OwnedVariables = new(),
+            DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(ddlPath)) ??
+                                    throw new ImporterException($"Could not determine module directory path for external library `{ddlPath}`")
         };
     }
     public static FunctionScope ImportFunctions(string dllPath)

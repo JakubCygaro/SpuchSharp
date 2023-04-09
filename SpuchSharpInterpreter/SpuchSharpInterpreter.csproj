@@ -10,6 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="test\dupa\**" />
+    <EmbeddedResource Remove="test\dupa\**" />
+    <None Remove="test\dupa\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
@@ -25,7 +31,7 @@
     <None Update="ExternalLibs\STDLib.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-	  <Content Include="ExternalLibs"/>
+	  <Content Include="ExternalLibs" />
   </ItemGroup>
 
 </Project>

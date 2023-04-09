@@ -15,16 +15,16 @@ using System.Reflection;
 namespace SpuchSharp;
 internal class Program
 {
-    static string MAIN_FILE_CONTENT = "import \"STDLib\";\nfun main() int {\n\tprintln(\"Hello world!\");\n}";
+    static string MAIN_FILE_CONTENT = "import \"STDLib\";\nfun main() {\n\tprintln(\"Hello world!\");\n}";
     static string PROJECT_JSON = "project.json";
 
     static int Main(string[] args)
     {
         return Parser.Default.ParseArguments<RunOptions, SetupOptions>(args)
             .MapResult(
-            (RunOptions runopts) => RunProject(runopts),
-            (SetupOptions setupupt) => SetupProject(setupupt),
-            errs => HandleErrors(errs));
+                (RunOptions runopts) => RunProject(runopts),
+                (SetupOptions setupupt) => SetupProject(setupupt),
+                errs => HandleErrors(errs));
     }
     static int RunProject(RunOptions runOptions)
     {
@@ -87,6 +87,10 @@ internal class Program
     }
     static int HandleErrors(IEnumerable<Error> errors)
     {
+        foreach(var err in errors)
+        {
+            Console.Error.WriteLine(err.ToString());
+        }
         return 1;
     }
 }
