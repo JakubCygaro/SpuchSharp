@@ -6,23 +6,50 @@
 #endif
 
 using SpuchSharp.Interpreting;
+using CommandLine;
+using Newtonsoft.Json;
+using System.Reflection;
+
+//[assembly:AssemblyVersion("0.0.1.0")]
 
 namespace SpuchSharp;
 internal class Program
 {
-    static void Main(string[] args)
+    static string MAIN_FILE_CONTENT = "import \"STDLib\";\nfun main() int {\n\tprintln(\"Hello world!\");\n}";
+    static string PROJECT_JSON = "project.json";
+
+    static int Main(string[] args)
     {
-#if DEBUG
-        if(args.Length == 0)
+        return Parser.Default.ParseArguments<RunOptions, SetupOptions>(args)
+            .MapResult(
+            (RunOptions runopts) => RunProject(runopts),
+            (SetupOptions setupupt) => SetupProject(setupupt),
+            errs => HandleErrors(errs));
+    }
+    static int RunProject(RunOptions runOptions)
+    {
+        ProjectSettings settings;
+        if (File.Exists(PROJECT_JSON))
         {
-            args = new string[] { "main.spsh" }; 
+            var json = File.ReadAllText(PROJECT_JSON);
+            try
+            {
+                settings = JsonConvert.DeserializeObject<ProjectSettings>(json) ??
+                    throw new Exception("Could not read project file.");
+            }
+            catch (Exception ex) 
+            {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         }
-#else
-        if (args.Length != 1)
-            throw new ArgumentException("No main.spsh file path provided.");
-#endif
-        var main = args[0];
-        Interpreter interpreter = new(main);
+        else
+            settings = ProjectSettings.Default;
+        if(runOptions.EntryFile is not null)
+        {
+            settings.EntryPoint = runOptions.EntryFile;
+        }
+        Interpreter interpreter = new(settings);
         try
         {
             interpreter.Run();
@@ -30,11 +57,51 @@ internal class Program
         catch (Exception ex)
         {
 #if DEBUG 
-            Console.WriteLine(ex);
+            Console.Error.WriteLine(ex);
 #else
-            Console.WriteLine(ex.Message);
+            Console.Error.WriteLine(ex.Message);
 #endif
         }
-        
+        return 0;
     }
+    static int SetupProject(SetupOptions setupOptions)
+    {
+        if (Directory.Exists(setupOptions.ProjectName))
+        {
+            Console.Error.WriteLine($"A directory with name `{setupOptions.ProjectName}` already exists");
+            return 1;
+        }
+        Directory.CreateDirectory(setupOptions.ProjectName);
+        Directory.SetCurrentDirectory(setupOptions.ProjectName);
+
+        var settings = new SpuchSharp.ProjectSettings
+        {
+            EntryPoint = "main.spsh",
+            ProjectName = setupOptions.ProjectName,
+            ExternalLibs = new(),
+        };
+        var json = JsonConvert.SerializeObject(settings, Formatting.Indented);
+        File.WriteAllText(PROJECT_JSON, json);
+        File.WriteAllText("main.spsh", MAIN_FILE_CONTENT);
+        return 0;
+    }
+    static int HandleErrors(IEnumerable<Error> errors)
+    {
+        return 1;
+    }
+}
+
+
+[Verb("run", HelpText = "Run a Spuch# script")]
+class RunOptions
+{
+    [Option('e', "entry", Required = false, HelpText = "Run from provided entry point .spsh file, `main` by default")]
+    public string? EntryFile { get; set; }
+}
+
+[Verb("setup", HelpText = "Setup a project")]
+class SetupOptions
+{
+    [Option('n', "name", Required = true, HelpText = "Project Name")]
+    public required string ProjectName { get; set; }
 }

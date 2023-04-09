@@ -20,13 +20,15 @@ namespace SpuchSharp.Interpreting;
 public sealed class Interpreter
 {
     private readonly Parser _parser;
-
+    private readonly ProjectSettings _settings;
     private Module _rootModule;
 
+
     private Dictionary<Ident, Module> _importedExternalLibs = new();
-    internal Interpreter(Parser parser) 
+    internal Interpreter(Parser parser, ProjectSettings projectSettings) 
     {
         _parser = parser;
+        _settings = projectSettings;
         _rootModule = new()
         {
             FunctionScope = new(),
@@ -38,13 +40,14 @@ public sealed class Interpreter
             OwnedVariables = new(),
         };
     }
-    public Interpreter(string sourceFilePath) : this(GetParserFromSource(sourceFilePath)) { }
+    public Interpreter(ProjectSettings projectSettings) 
+        : this(GetParserFromSource(projectSettings.EntryPoint), projectSettings) { }
     static Parser GetParserFromSource(string path)
     {
         var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllLines(path, Encoding.UTF8), path);
         return new Parser(tokenStream);
     }
-    static Value? ExcecuteInstruction(Instruction instruction, 
+    Value? ExcecuteInstruction(Instruction instruction, 
         VariableScope varScope,
         FunctionScope funScope,
         Module module,
@@ -82,7 +85,7 @@ public sealed class Interpreter
 
         return null;
     }
-    static Value? EvaluateWhileLoop(VariableScope varScope,
+    Value? EvaluateWhileLoop(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         WhileStatement whileStatement)
@@ -103,7 +106,7 @@ public sealed class Interpreter
             whileStatement.Condition);
         }
     }
-    static Value? EvaluateForLoop(VariableScope varScope, 
+    Value? EvaluateForLoop(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         ForLoopStatement forLoopStmt)
@@ -137,20 +140,20 @@ public sealed class Interpreter
         }
         return returnValue;
     }
-    static Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
+    Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
     {
         if (loopContext is null)
             throw new InterpreterException("Break statement outside of a loop block", breakStmt);
         loopContext.ShouldBreak = true;
         return Value.Nothing;
     }
-    static Value? EvaluateSkip(SkipStatement skipStatement, LoopContext? loopContext)
+    Value? EvaluateSkip(SkipStatement skipStatement, LoopContext? loopContext)
     {
         if (loopContext is null)
             throw new InterpreterException("Skip statement outside of a loop block", skipStatement);
         return Value.Nothing;
     }
-    static Value? EvaluateLoop(VariableScope varScope, 
+    Value? EvaluateLoop(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         LoopStatement loopStatement)
@@ -174,7 +177,7 @@ public sealed class Interpreter
     /// <param name="varScope"></param>
     /// <param name="funScope"></param>
     /// <returns></returns>
-    static Value? ExcecuteBlock(Instruction[] block,
+    Value? ExcecuteBlock(Instruction[] block,
         VariableScope varScope,
         FunctionScope funScope,
         Module module,
@@ -196,7 +199,7 @@ public sealed class Interpreter
         RunMain();
         //DebugInfo();
     }
-    static void Run(Instruction[] instructions, 
+    void Run(Instruction[] instructions, 
         Module module,
         Dictionary<Ident, Module> importedLibs)
     {
@@ -209,7 +212,7 @@ public sealed class Interpreter
             ExcecuteModules(instruction, module, importedLibs);
         }
     }
-    static void ExcecuteModules(Instruction instruction,
+    void ExcecuteModules(Instruction instruction,
         Module module,
         Dictionary<Ident, Module> importedLibs)
     {
@@ -222,7 +225,7 @@ public sealed class Interpreter
     /// This is what the interpreter does before calling main(), all instructions are evaluated
     /// on root scopes
     /// </summary>
-    static void GlobalExcecute(Instruction instruction, 
+    void GlobalExcecute(Instruction instruction, 
         Module module,
         Dictionary<Ident, Module> importedLibs)
     {
@@ -260,7 +263,7 @@ public sealed class Interpreter
             throw new InterpreterException($"Only variable and function declarations can happen in" +
                 $" the global module scope.", instruction);
     }
-    static void UseModule(UseStmt useStmt, Module module)
+    void UseModule(UseStmt useStmt, Module module)
     {
         Module toInclude = module;
 
@@ -304,7 +307,7 @@ public sealed class Interpreter
         module.VariableScope.ExtendPublic(toInclude.OwnedVariables);
         module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
     }
-    static void CreateModule(ModuleDecl modDecl, 
+    void CreateModule(ModuleDecl modDecl, 
         Module module,
         Dictionary<Ident, Module> importedLibs)
     {
@@ -328,32 +331,46 @@ public sealed class Interpreter
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);
     }
-    static Value EvaluateReturn(VariableScope varScope, 
+    Value EvaluateReturn(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         ReturnStatement returnStatement)
     {
         return EvaluateExpression(varScope, funScope, module, returnStatement.Expr);
     }
-    static void IfImport(Statement instruction, 
+    void IfImport(Statement instruction, 
         Module module, 
         Dictionary<Ident, Module> importedLibs)
     {
         var funScope = module.FunctionScope;
         if (instruction is not ImportStatement import) 
             return;
-
-        var importPath = import.Path.AsIdent();
-        if (importedLibs.ContainsKey(importPath))
+        string importPath;
+        Ident importIdent;
+        if (_settings.ExternalLibs.ContainsKey(import.Path))
         {
-            funScope.Extend(importedLibs[importPath].OwnedFunctions, false);
+            importPath = _settings.ExternalLibs[import.Path];
+            importPath = Path.GetFullPath(importPath);
+            importIdent = Path.GetFileNameWithoutExtension(importPath).AsIdent();
+        }
+        else
+        {
+            importIdent = import.Path.AsIdent();
+            importPath = Path.Combine(Importer.GetExternalLibsGlobalPath(), import.Path + ".dll");
+        }
+        if (importedLibs.ContainsKey(importIdent))
+        {
+            funScope.Extend(importedLibs[importIdent].OwnedFunctions, false);
         }
         else
             try 
             {
-                var mod = Importer.ImportModule(import.Path, importPath);
+                if (!File.Exists(importPath))
+                    throw new Exception($"Could not locate external library file, with name " +
+                        $"`{importIdent.Stringify()}`");
+                var mod = Importer.ImportModule(importPath, importIdent);
                 importedLibs.Add(mod.Ident, mod);
-                funScope.Extend(importedLibs[importPath].OwnedFunctions, false);
+                funScope.Extend(importedLibs[importIdent].OwnedFunctions, false);
             }
             catch (Exception ex) 
             {
@@ -379,7 +396,7 @@ public sealed class Interpreter
                 Location = null,
             });
     }
-    static void IfDeclaration(VariableScope varScope, 
+    void IfDeclaration(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         Statement instruction,
@@ -425,7 +442,7 @@ public sealed class Interpreter
     //    Run(instructions, newModule, importedLibs);
     //    module.Modules.Add(newModule.Ident, newModule);
     //}
-    static void CreateArray(VariableScope varScope, 
+    void CreateArray(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         ArrayDecl arrayDecl)
@@ -468,7 +485,7 @@ public sealed class Interpreter
         //}
         varScope.Add(array);
     }
-    static SArray CreateSizedArray(VariableScope varScope, 
+    SArray CreateSizedArray(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         TypedArrayDecl typedArr)
@@ -495,7 +512,7 @@ public sealed class Interpreter
         FillArrays(ref val, sizes);
         return sArray;
     }
-    static void FillArrays(ref ArrayValue arrayValue, LinkedList<(int size, Ty type)> sizes)
+    void FillArrays(ref ArrayValue arrayValue, LinkedList<(int size, Ty type)> sizes)
     {
         if (sizes.Count == 0)
             return;
@@ -520,7 +537,7 @@ public sealed class Interpreter
     /// <param name="ifStmt"></param>
     /// <returns></returns>
     /// <exception cref="InterpreterException"></exception>
-    static Value? IfIfStatement(VariableScope varScope, 
+    Value? IfIfStatement(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
         IfStatement ifStmt,
@@ -535,18 +552,18 @@ public sealed class Interpreter
             return ExcecuteBlock(elseBlock, varScope, funScope, module, loopContext: loopContext);
         return null;
     }
-    static void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
+    void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
     {
         if (stmt is not DeleteStatement delete)
             return;
         var sVar = varScope.FindVariable(delete.VariableIdent);
         DeleteVariable(sVar.Ident, varScope);
     }
-    static void DeleteVariable(Ident ident, VariableScope varScope)
+    void DeleteVariable(Ident ident, VariableScope varScope)
     {
         varScope.Remove(ident);
     }
-    static void IfAssignment(VariableScope varScope,
+    void IfAssignment(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         Statement statement)
@@ -554,7 +571,7 @@ public sealed class Interpreter
         if (statement is Assignment ass) 
             AssignValue(varScope, funScope,  module, ass);
     }
-    static Value EvaluateExpression(VariableScope varScope,
+    Value EvaluateExpression(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         Expression expr)
@@ -567,7 +584,7 @@ public sealed class Interpreter
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    static Value EvaluateSimple(VariableScope varScope,
+    Value EvaluateSimple(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         SimpleExpression expr)
@@ -582,7 +599,7 @@ public sealed class Interpreter
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    static Value EvalueArrayExpression(VariableScope varScope,
+    Value EvalueArrayExpression(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         ArrayExpression arrayExpression)
@@ -598,7 +615,7 @@ public sealed class Interpreter
             Values = values,
         };
     }
-    static Value EvaluateIndexer(VariableScope varScope,
+    Value EvaluateIndexer(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         IndexerExpression expr)
@@ -613,7 +630,7 @@ public sealed class Interpreter
         return arrayValue[index];
     }
     
-    static Value EvaluateCall(VariableScope varScope,
+    Value EvaluateCall(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         CallExpression call)
@@ -711,11 +728,11 @@ public sealed class Interpreter
                 $"the return type of the function `{targetFunction.Ident.Stringify()}`");
         return retValue;
     }
-    static Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
+    Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
     {
         return external.Invoke(variables.Select(v => v.Value.ValueAsObject).ToArray());
     }
-    static Value EvaluateComplex(VariableScope varScope,
+    Value EvaluateComplex(VariableScope varScope,
         FunctionScope funScope, 
         Module module,
         ComplexExpression expr)
@@ -748,7 +765,7 @@ public sealed class Interpreter
     }
     
 
-    static void CreateVariable(VariableScope varScope,
+    void CreateVariable(VariableScope varScope,
         FunctionScope funScope, 
         Module module,
         VariableDecl var)
@@ -777,7 +794,7 @@ public sealed class Interpreter
         if (!varScope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
-    static void AssignValue(VariableScope varScope,
+    void AssignValue(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         Assignment ass)
@@ -790,7 +807,7 @@ public sealed class Interpreter
         else if(ass.Left is IdentTarget identTarget)
             AssignVariable(varScope, identTarget, val);
     }
-    static void AssignIndex(VariableScope varScope, 
+    void AssignIndex(VariableScope varScope, 
         FunctionScope funScope,
         Module module,
         ArrayIndexTarget arrayIndexTarget,
@@ -813,7 +830,7 @@ public sealed class Interpreter
 
         arrayValue[index] = assignedValue.Clone();
     }
-    static void AssignVariable(VariableScope varScope,
+    void AssignVariable(VariableScope varScope,
         IdentTarget identTarget,
         Value assignedValue)
     {
@@ -824,7 +841,7 @@ public sealed class Interpreter
             throw new InterpreterException("Mismatched types", identExpr.Ident);
         variable.Value = assignedValue;
     }
-    static void CreateFunction(FunctionDecl fun, Module module)
+    void CreateFunction(FunctionDecl fun, Module module)
     {
         var ownedFunctions = module.OwnedFunctions;
         if (ownedFunctions.ContainsKey(fun.Name))

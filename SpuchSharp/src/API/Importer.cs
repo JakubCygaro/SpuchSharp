@@ -13,12 +13,20 @@ using FunctionScope =
 using SpuchSharp.Tokens;
 using SpuchSharp.Parsing;
 using SModule = SpuchSharp.Interpreting.Module;
-
 namespace SpuchSharp.API;
 
 internal static class Importer
 {
-
+    public static string GetExternalLibsGlobalPath()
+    {
+        var location = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ??
+            throw new Exception("Unable to localize the assembly directory");
+        location = Path.GetFullPath(location);
+        var path = Path.Combine(location, "ExternalLibs");
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+        return path;
+    }
     public static SModule ImportModule(string ddlPath, Ident moduleIdent)
     {
         return new SModule()

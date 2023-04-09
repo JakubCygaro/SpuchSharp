@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SpuchSharp\SpuchSharp.csproj" />
   </ItemGroup>
 
@@ -17,9 +22,10 @@
     <None Update="main.spsh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="STDLib.dll">
+    <None Update="ExternalLibs\STDLib.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	  <Content Include="ExternalLibs"/>
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,9 @@
 ﻿# TODO
 
 ## Top priority
-Further mod improvements
-pub mod
 Cumman rework
+safety around ExternalLibs directory
+modules as directories support
 Operator precedence rework
 
 ## Second priority
