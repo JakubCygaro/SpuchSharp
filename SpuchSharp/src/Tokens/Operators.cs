@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
 
+
 abstract class Operator : SimpleToken
 {
+    public virtual short Precedence { get => 0; }
     new public static Operator From(string value) => value switch
     {
         "==" => new Equality(),
@@ -66,22 +68,26 @@ sealed class Or : LogicOperator
 
 // value operators
 
-internal abstract class ValOperator : Operator { }
+internal abstract class ArithmeticOperator : Operator { }
 
-sealed class Add : ValOperator
+sealed class Add : ArithmeticOperator
 {
+    public override short Precedence => 1;
     public override string Stringify() => "+";
 }
-sealed class Sub : ValOperator
+sealed class Sub : ArithmeticOperator
 {
+    public override short Precedence => 1;
     public override string Stringify() => "-";
 }
-sealed class Mult : ValOperator
+sealed class Mult : ArithmeticOperator
 {
+    public override short Precedence => 2;
     public override string Stringify() => "*";
 }
-sealed class Div : ValOperator
+sealed class Div : ArithmeticOperator
 {
+    public override short Precedence => 2;
     public override string Stringify() => "/";
 }
 

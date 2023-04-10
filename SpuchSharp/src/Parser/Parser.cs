@@ -2,6 +2,7 @@
 using System.Collections;
 using SpuchSharp.Instructions;
 using SpuchSharp.Tokens;
+using SpuchSharp;
 using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope =
@@ -398,13 +399,81 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Expression ParseExpression(TokenStream stream)
     {
-        Expression? ret = null;
-        Operator? currentOperator = null;
-        while(stream.Next() is Token token)
+        var parsing = Transform(stream);
+        //foreach(var chuj in parsing)
+        //{
+        //    if(chuj.Value is Operator op)
+        //        Console.WriteLine(op.Stringify());
+        //    if(chuj.Value is Expression exp)
+        //        Console.WriteLine(exp.Display());
+        //}
+
+        while(parsing.Count > 1)
         {
+            int index = 0;
+            short highestPrecedence = short.MinValue;
+            for (int i = 0; i < parsing.Count; i++)
+            {
+                if (parsing[i].Value is Operator op)
+                {
+                    if (op.Precedence > highestPrecedence)
+                    {
+                        highestPrecedence = op.Precedence;
+                        index = i;
+                    }
+                }
+            }
+            HandleOperator(index, parsing[index].Left!, parsing);
+        }
+
+        //Console.WriteLine(parsing[0].RightOrThrow.Display());
+        return parsing[0].Right ?? 
+            throw new ParserException("Failed to parse an expression");
+
+    }
+    private void HandleOperator(int index, Operator op, List<Optional<Operator, Expression>> parsing)
+    {
+        Expression v1;
+        Expression v2;
+        switch (op) 
+        {
+            case Add or Sub or Div or Mult or 
+                Equality or InEquality or
+                And or Or or 
+                Greater or GreaterOrEq or
+                Less or LessOrEq:
+                v1 = parsing.TakeOutAt(index - 1).RightOrThrow;
+                //parsing.RemoveAt(index - 1);
+                v2 = parsing.TakeOutAt(index).RightOrThrow;
+                parsing[index - 1] = ComplexExpression.From(v1, op, v2);
+                break;
+
+            default:
+                throw new ParserException($"Unable to parse expression with operator {op.Stringify()}");
+        }
+    }
+
+    /// <summary>
+    /// Takes a token stream and transforms it into a list of operators and expressions, that can be further
+    /// parsed into a singular expression
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <returns></returns>
+    private List<Optional<Operator, Expression>> Transform(TokenStream stream)
+    {
+        List<Optional<Operator, Expression>> ret = new();
+
+        while (stream.Next() is Token token)
+        {
+            if (token is Operator op)
+            {
+                ret.Add(op);
+                continue;
+            }
+
             if (token is Curly.Open)
             {
-                ret = ParseArrayExpression(stream);
+                ret.Add(ParseArrayExpression(stream));
                 if (stream.Next() is not null)
                     throw new ParserException(
                         "Array initialisation expression cannot be used with operators or other expressions");
@@ -417,7 +486,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             {
                 var insideParen = ParseInsideRound(stream);
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
-                nextToken = stream.Next();
+                //nextToken = stream.Next();
+                ret.Add(simpleExpression);
+                continue;
             }
             if (nextToken is Square.Open/* && simpleExpression is IdentExpression identForIndex*/)
             {
@@ -430,12 +501,13 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     Location = simpleExpression.Location,
                 };
                 simpleExpression = indexer;
-                nextToken = stream.Next();
-                while(nextToken is Square.Open)
+                nextToken = stream.Peek();
+                while (nextToken is Square.Open)
                 {
+                    stream.Next();
                     (tokens, _) = ReadToToken<Square.Closed>(stream);
                     indexExpression = ParseExpression(tokens.ToTokenStream());
-                    
+
                     indexer = new IndexerExpression
                     {
                         ArrayProducer = indexer,
@@ -443,29 +515,97 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                         Location = simpleExpression.Location,
                     };
                     simpleExpression = indexer;
-                    nextToken = stream.Next();
+                    nextToken = stream.Peek();
                 }
-            }
-            if(currentOperator is not null && ret is not null)
-            {
-                ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
-            }
-            else
-            {
-                ret = simpleExpression;
+                ret.Add(simpleExpression);
+                continue;
             }
             if (nextToken is Operator nextOperator)
             {
-                currentOperator = nextOperator;
+                ret.Add(simpleExpression);
+                ret.Add(nextOperator);
+                continue;
             }
             else if (nextToken is not null)
             {
                 throw ParserException.UnexpectedToken(nextToken);
             }
+            ret.Add(simpleExpression);
+
         }
-        return ret ?? 
-            throw new ParserException("Failed to parse an expression");
+        return ret;
+
     }
+    //private Expression ParseExpression(TokenStream stream)
+    //{
+    //    Expression? ret = null;
+    //    Operator? currentOperator = null;
+    //    while(stream.Next() is Token token)
+    //    {
+    //        if (token is Curly.Open)
+    //        {
+    //            ret = ParseArrayExpression(stream);
+    //            if (stream.Next() is not null)
+    //                throw new ParserException(
+    //                    "Array initialisation expression cannot be used with operators or other expressions");
+    //            break;
+    //        }
+    //        SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
+    //        var nextToken = stream.Next();
+
+    //        if (nextToken is Round.Open && simpleExpression is IdentExpression identExpression)
+    //        {
+    //            var insideParen = ParseInsideRound(stream);
+    //            simpleExpression = ParseCall(identExpression.Ident, insideParen);
+    //            nextToken = stream.Next();
+    //        }
+    //        if (nextToken is Square.Open/* && simpleExpression is IdentExpression identForIndex*/)
+    //        {
+    //            var (tokens, _) = ReadToToken<Square.Closed>(stream);
+    //            var indexExpression = ParseExpression(tokens.ToTokenStream());
+    //            var indexer = new IndexerExpression
+    //            {
+    //                ArrayProducer = simpleExpression,
+    //                IndexExpression = indexExpression,
+    //                Location = simpleExpression.Location,
+    //            };
+    //            simpleExpression = indexer;
+    //            nextToken = stream.Next();
+    //            while(nextToken is Square.Open)
+    //            {
+    //                (tokens, _) = ReadToToken<Square.Closed>(stream);
+    //                indexExpression = ParseExpression(tokens.ToTokenStream());
+
+    //                indexer = new IndexerExpression
+    //                {
+    //                    ArrayProducer = indexer,
+    //                    IndexExpression = indexExpression,
+    //                    Location = simpleExpression.Location,
+    //                };
+    //                simpleExpression = indexer;
+    //                nextToken = stream.Next();
+    //            }
+    //        }
+    //        if(currentOperator is not null && ret is not null)
+    //        {
+    //            ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
+    //        }
+    //        else
+    //        {
+    //            ret = simpleExpression;
+    //        }
+    //        if (nextToken is Operator nextOperator)
+    //        {
+    //            currentOperator = nextOperator;
+    //        }
+    //        else if (nextToken is not null)
+    //        {
+    //            throw ParserException.UnexpectedToken(nextToken);
+    //        }
+    //    }
+    //    return ret ?? 
+    //        throw new ParserException("Failed to parse an expression");
+    //}
     private ArrayExpression ParseArrayExpression(TokenStream stream)
     {
         var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);

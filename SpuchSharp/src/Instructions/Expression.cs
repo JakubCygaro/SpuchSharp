@@ -48,7 +48,7 @@ internal abstract class ComplexExpression : Expression
         Operator op,
         Expression expr) => op switch
         {
-            ValOperator vop => vop switch
+            ArithmeticOperator vop => vop switch
             {
                 Add => new AddExpr { Left = left, Right = expr, Location = left.Location },
                 Sub => new SubExpr { Left = left, Right = expr, Location = left.Location },

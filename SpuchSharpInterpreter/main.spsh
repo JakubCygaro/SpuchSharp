@@ -1,21 +1,16 @@
 ﻿import "STDLib";
-mod chuj;
-use chuj;
-use chuj::odbyt;
 
 fun main(){
-	println("hello spucha!"); #cing cing
-	szatan();
-	woda();
-	odbyt();
+	[int] dupa = { 1, 2, 3, 4 };
+
+	println(dupa[1]*3+3*khuj(ogr()));
 }
-#pub fun woda(){
-#	println("woda");
-#	woda2();
-#}
-#fun woda2(){
-#	println("woda2");
-#}
+fun ogr() int {
+	return 10;
+}
+fun khuj(int dupa) int {
+	return dupa;
+}
 
 
 
