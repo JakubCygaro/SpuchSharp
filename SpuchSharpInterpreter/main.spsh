@@ -1,9 +1,8 @@
 ﻿import "STDLib";
 
 fun main(){
-	[int] dupa = { 1, 2, 3, 4 };
-
-	println(dupa[1]*3+3*khuj(ogr()));
+	var dupa = false;
+	println(!dupa);
 }
 fun ogr() int {
 	return 10;

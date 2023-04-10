@@ -104,7 +104,15 @@ internal sealed class Lexer
             case 'Y':
             case 'Z':
             case '_':
-                return ScanForIdentOrKeyWord(ref first, charStream);
+                var token =  ScanForIdentOrKeyWord(ref first, charStream);
+                if(token is Ident ident)
+                {
+                    if(ident == "true")
+                        return new BooleanValue { Value = true };
+                    else if (ident == "false")
+                        return new BooleanValue { Value = false };
+                }
+                return token;
 
             //case for text literal
             case '"':

@@ -620,8 +620,20 @@ public sealed class Interpreter
             CallExpression c => EvaluateCall(varScope, funScope, module, c),
             IndexerExpression id => EvaluateIndexer(varScope, funScope, module, id),
             ArrayExpression ae => EvalueArrayExpression(varScope, funScope, module, ae),
+            NotExpression ne => EvaluateNot(varScope, funScope, module, ne),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    Value EvaluateNot(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        NotExpression notExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, notExpression.Expr) as BooleanValue ??
+            throw new InterpreterException(
+                "Failed to evaluate operand to a boolean value for negation operator", notExpression);
+        val.Value = !val.Value;
+        return val;
     }
     Value EvalueArrayExpression(VariableScope varScope,
         FunctionScope funScope,

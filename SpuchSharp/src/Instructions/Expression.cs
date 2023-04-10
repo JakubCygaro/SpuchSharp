@@ -154,8 +154,9 @@ internal sealed class CallExpression : SimpleExpression
         sb.Append('(');
         foreach(var expr in Args)
         {
-            sb.Append(expr.Display() + " | ");
+            sb.Append(expr.Display() + " , ");
         }
+        sb.Remove(sb.Length - 3, sb.Length);
         sb.Append(')');
         return sb.ToString();
     }
@@ -191,5 +192,10 @@ internal sealed class ArrayExpression : SimpleExpression
         Expressions = Array.Empty<Expression>(), 
         Location = null 
     };
+}
+internal sealed class NotExpression : SimpleExpression
+{
+    public override string Display() => $"!{Expr.Display()}";
+    public required Expression Expr { get; init; }
 }
 

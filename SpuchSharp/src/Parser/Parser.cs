@@ -423,7 +423,14 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     }
                 }
             }
-            HandleOperator(index, parsing[index].Left!, parsing);
+            try
+            {
+                HandleOperator(index, parsing[index].Left!, parsing);
+            }
+            catch
+            {
+                throw new ParserException("Failed to parse an expression");
+            }
         }
 
         //Console.WriteLine(parsing[0].RightOrThrow.Display());
@@ -438,14 +445,18 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         switch (op) 
         {
             case Add or Sub or Div or Mult or 
-                Equality or InEquality or
-                And or Or or 
-                Greater or GreaterOrEq or
-                Less or LessOrEq:
+                    Equality or InEquality or
+                    And or Or or 
+                    Greater or GreaterOrEq or
+                    Less or LessOrEq:
                 v1 = parsing.TakeOutAt(index - 1).RightOrThrow;
-                //parsing.RemoveAt(index - 1);
                 v2 = parsing.TakeOutAt(index).RightOrThrow;
                 parsing[index - 1] = ComplexExpression.From(v1, op, v2);
+                break;
+
+            case Exclam:
+                v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
+                parsing[index] = new NotExpression { Expr = v1, Location = op.Location };
                 break;
 
             default:
@@ -465,6 +476,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         while (stream.Next() is Token token)
         {
+            if(token is Round.Open)
+            {
+                var tokens = ReadToToken<Round.Closed>(stream).Item1.ToTokenStream();
+                ret.Add(ParseExpression(tokens));
+                continue;
+            }
             if (token is Operator op)
             {
                 ret.Add(op);
