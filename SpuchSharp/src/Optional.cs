@@ -34,6 +34,14 @@ internal struct Optional<T1, T2>
     {
         _rightValue = t2;
     }
+    /// <summary>
+    /// Default constructor, all values will be default (null)
+    /// </summary>
+    public Optional()
+    {
+        _leftValue = default;
+        _rightValue = default;
+    }
     //public void SetLeft(T1 value)
     //{
     //    if (_rightValue is not null)

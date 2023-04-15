@@ -1,8 +1,9 @@
 ﻿import "STDLib";
 
 fun main(){
-	var dupa = false;
-	println(!dupa);
+	var dupa = 10;
+	println(++dupa);
+	println(dupa);
 }
 fun ogr() int {
 	return 10;

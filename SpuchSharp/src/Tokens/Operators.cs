@@ -20,7 +20,9 @@ abstract class Operator : SimpleToken
         ">=" => new GreaterOrEq(),
         "<=" => new LessOrEq(),
         "+" => new Add(),
+        "++" => new Add2(),
         "-" => new Sub(),
+        "--" => new Sub2(),
         "*" => new Mult(),
         "/" => new Div(),
         "&" => new Ampersand(),
@@ -74,6 +76,11 @@ sealed class Or : LogicOperator
     public override short Precedence => 3;
     public override string Stringify() => "||";
 }
+sealed class Exclam : LogicOperator
+{
+    public override short Precedence => 30;
+    public override string Stringify() => "!";
+}
 
 // value operators
 
@@ -103,6 +110,16 @@ sealed class Percent : ArithmeticOperator
 {
     public override short Precedence => 20;
     public override string Stringify() => "%";
+}
+sealed class Add2 : ArithmeticOperator
+{
+    public override short Precedence => 20;
+    public override string Stringify() => "++";
+}
+sealed class Sub2 : ArithmeticOperator
+{
+    public override short Precedence => 20;
+    public override string Stringify() => "--";
 }
 
 

@@ -156,7 +156,7 @@ internal sealed class CallExpression : SimpleExpression
         {
             sb.Append(expr.Display() + " , ");
         }
-        sb.Remove(sb.Length - 3, sb.Length);
+        sb.Remove(sb.Length - 3, 3);
         sb.Append(')');
         return sb.ToString();
     }
@@ -198,4 +198,27 @@ internal sealed class NotExpression : SimpleExpression
     public override string Display() => $"!{Expr.Display()}";
     public required Expression Expr { get; init; }
 }
-
+internal sealed class IncrementExpression : SimpleExpression 
+{
+    public required bool Pre { get; init; }
+    public required Expression Expression { get; init; }
+    public override string Display()
+    {
+        if(Pre)
+            return $"++{Expression.Display()}";
+        else
+            return $"{Expression.Display()}++";
+    }
+}
+internal sealed class DecrementExpression : SimpleExpression
+{
+    public required bool Pre { get; init; }
+    public required Expression Expression { get; init; }
+    public override string Display()
+    {
+        if (Pre)
+            return $"--{Expression.Display()}";
+        else
+            return $"{Expression.Display()}--";
+    }
+}

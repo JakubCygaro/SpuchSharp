@@ -1,7 +1,8 @@
 ﻿# TODO
 
 ## Top priority
-Operator precedence rework
-
-## Second priority
+more types { double, short, long }
+casting?
 Structs
+## Second priority
+try catch error handling

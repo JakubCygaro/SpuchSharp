@@ -621,8 +621,84 @@ public sealed class Interpreter
             IndexerExpression id => EvaluateIndexer(varScope, funScope, module, id),
             ArrayExpression ae => EvalueArrayExpression(varScope, funScope, module, ae),
             NotExpression ne => EvaluateNot(varScope, funScope, module, ne),
+            IncrementExpression ie => EvaluateIncrement(varScope, funScope, module, ie),
+            DecrementExpression de => EvaluateDecrement(varScope, funScope, module, de),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    Value EvaluateDecrement(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        DecrementExpression decrementExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, decrementExpression.Expression);
+        if (val is IntValue i)
+        {
+            if (decrementExpression.Pre)
+            {
+                --i.Value;
+                return i;
+            }
+            else
+            {
+                var ret = i.Clone();
+                --i.Value;
+                return ret;
+            }
+        }
+        else if (val is FloatValue f)
+        {
+            if (decrementExpression.Pre)
+            {
+                --f.Value;
+                return f;
+            }
+            else
+            {
+                var ret = f.Clone();
+                --f.Value;
+                return ret;
+            }
+        }
+        else
+            throw new InterpreterException("Invalid use of increment", decrementExpression);
+    }
+    Value EvaluateIncrement(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        IncrementExpression incrementExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, incrementExpression.Expression);
+        if (val is IntValue i)
+        {
+            if (incrementExpression.Pre)
+            {
+                ++i.Value;
+                return i;
+            }
+            else
+            {
+                var ret = i.Clone();
+                ++i.Value;
+                return ret;
+            }
+        }
+        else if (val is FloatValue f)
+        {
+            if (incrementExpression.Pre)
+            {
+                ++f.Value;
+                return f;
+            }
+            else
+            {
+                var ret = f.Clone();
+                ++f.Value;
+                return ret;
+            }
+        }
+        else
+            throw new InterpreterException("Invalid use of increment", incrementExpression);
     }
     Value EvaluateNot(VariableScope varScope,
         FunctionScope funScope,

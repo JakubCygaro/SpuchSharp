@@ -188,6 +188,11 @@ internal sealed class Lexer
                     return new Less();
 
             case '+':
+                if(charStream.PeekNext() == '+')
+                {
+                    charStream.MoveNext();
+                    return new Add2();
+                }
                 return new Add();
 
             case '-':
@@ -195,6 +200,11 @@ internal sealed class Lexer
                 {
                     if (char.IsDigit(posDigit))
                         return ScanForNumberLiteral(ref first, charStream);
+                }
+                if (charStream.PeekNext() == '-')
+                {
+                    charStream.MoveNext();
+                    return new Sub2();
                 }
                 return new Sub();
 

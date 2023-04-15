@@ -400,15 +400,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private Expression ParseExpression(TokenStream stream)
     {
         var parsing = Transform(stream);
-        //foreach(var chuj in parsing)
+        //foreach (var chuj in parsing)
         //{
-        //    if(chuj.Value is Operator op)
+        //    if (chuj.Value is Operator op)
         //        Console.WriteLine(op.Stringify());
-        //    if(chuj.Value is Expression exp)
+        //    if (chuj.Value is Expression exp)
         //        Console.WriteLine(exp.Display());
         //}
 
-        while(parsing.Count > 1)
+        while (parsing.Count > 1)
         {
             int index = 0;
             short highestPrecedence = short.MinValue;
@@ -423,17 +423,16 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     }
                 }
             }
+            var reff = parsing[index].Value;
             try
             {
                 HandleOperator(index, parsing[index].Left!, parsing);
             }
             catch
             {
-                throw new ParserException("Failed to parse an expression");
+                throw new ParserException("Failed to parse an expression", reff as Token);
             }
         }
-
-        //Console.WriteLine(parsing[0].RightOrThrow.Display());
         return parsing[0].Right ?? 
             throw new ParserException("Failed to parse an expression");
 
@@ -457,6 +456,58 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             case Exclam:
                 v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
                 parsing[index] = new NotExpression { Expr = v1, Location = op.Location };
+                break;
+
+            case Add2:
+                if(parsing.ElementAtOrDefault(index - 1).HasRight && 
+                    parsing.ElementAtOrDefault(index + 1).HasRight)
+                    throw new ParserException("Invalid usage of `++` operator", op);
+                if(parsing.ElementAtOrDefault(index - 1).HasRight)
+                {
+                    v1 = parsing.TakeOutAt(index - 1).RightOrThrow; //take expr
+                    parsing[index - 1] = new IncrementExpression
+                    {
+                        Expression = v1,
+                        Location = op.Location,
+                        Pre = false,
+                    };
+                }
+                else
+                {
+                    v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
+                    parsing[index] = new IncrementExpression
+                    {
+                        Expression = v1,
+                        Location = op.Location,
+                        Pre = true,
+                    };
+                }
+                break;
+
+            case Sub2:
+                if (parsing.ElementAtOrDefault(index - 1).HasRight &&
+                    parsing.ElementAtOrDefault(index + 1).HasRight)
+                    throw new ParserException("Invalid usage of `--` operator", op);
+                if (parsing.ElementAtOrDefault(index - 1).HasRight)
+                {
+                    v1 = parsing.TakeOutAt(index - 1).RightOrThrow; 
+                    parsing[index - 1] = new DecrementExpression
+                    {
+                        Expression = v1,
+                        Location = op.Location,
+                        Pre = false,
+                    };
+                }
+                else
+                {
+                    v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
+                    parsing[index] = new DecrementExpression
+                    {
+                        Expression = v1,
+                        Location = op.Location,
+                        Pre = true,
+                    };
+                }
                 break;
 
             default:
