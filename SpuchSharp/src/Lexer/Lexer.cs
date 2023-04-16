@@ -379,10 +379,17 @@ internal sealed class Lexer
                         Line = charStream.LineNumber,
                         File = charStream.SourceFile
                     });
-
+                
                 charStream.MoveNext();
                 literal.Add(next);
                 dot = true;
+            }
+            else if (next == 'f')
+            {
+                if (!dot)
+                    dot = true;
+                charStream.MoveNext();
+                break;
             }
             else
                 break;
@@ -391,14 +398,14 @@ internal sealed class Lexer
         {
             return new IntValue
             {
-                Value = int.Parse(new string(literal.ToArray()))
+                Value = int.Parse(new string(literal.ToArray()), System.Globalization.NumberFormatInfo.InvariantInfo)
             };
         }
         else
         {
             return new FloatValue
             {
-                Value = float.Parse(new string(literal.ToArray()))
+                Value = float.Parse(new string(literal.ToArray()), System.Globalization.NumberFormatInfo.InvariantInfo)
             };
         }
 

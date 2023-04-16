@@ -36,7 +36,12 @@ public class InterpreterException : Exception
 		var message = $"Variable {ident.Value} not found in present scope.";
 		return new InterpreterException(message, ident);
 	}
-	public InterpreterException(string message, Exception inner) : base(message, inner) { }
+	internal static InterpreterException InvalidCast(Ident to, Value from)
+	{
+		var message = $"Invalid cast exception, cannot cast type {from.Ty.Stringify()} into {to.Stringify()}";
+        return new InterpreterException(message, from);
+    }
+    public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(
 	  System.Runtime.Serialization.SerializationInfo info,
 	  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }

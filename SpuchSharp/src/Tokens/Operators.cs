@@ -133,3 +133,12 @@ sealed class Pipe : BitOperator
 {
     public override string Stringify() => "|";
 }
+internal sealed class CastOperator : Operator
+{
+    public required Ty TargetType { get; init; }
+    public override short Precedence => 20;
+    public override string Stringify()
+    {
+        return $"({TargetType.Stringify()})";
+    }
+}

@@ -222,3 +222,15 @@ internal sealed class DecrementExpression : SimpleExpression
             return $"{Expression.Display()}--";
     }
 }
+
+internal sealed class CastExpression : SimpleExpression 
+{
+    public required Ty TargetType { get; init; }
+    public required Expression Expression { get; init; }
+    public override string Display()
+    {
+        return $"({TargetType.Stringify()}){Expression.Display()}";
+    }
+}
+
+

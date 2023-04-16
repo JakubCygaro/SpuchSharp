@@ -623,8 +623,18 @@ public sealed class Interpreter
             NotExpression ne => EvaluateNot(varScope, funScope, module, ne),
             IncrementExpression ie => EvaluateIncrement(varScope, funScope, module, ie),
             DecrementExpression de => EvaluateDecrement(varScope, funScope, module, de),
+            CastExpression ce => EvaluateCast(varScope, funScope, module, ce),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    Value EvaluateCast(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        CastExpression castExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, castExpression.Expression);
+        var casted = castExpression.TargetType.Cast(val);
+        return casted;
     }
     Value EvaluateDecrement(VariableScope varScope,
         FunctionScope funScope,

@@ -7,6 +7,7 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using System.Security.Cryptography;
 
 namespace SpuchSharp.Parsing;
 
@@ -510,6 +511,16 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 }
                 break;
 
+            case CastOperator cast:
+                v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
+                parsing[index] = new CastExpression
+                {
+                    Expression = v1,
+                    TargetType = cast.TargetType,
+                    Location = op.Location,
+                };
+                break;
+
             default:
                 throw new ParserException($"Unable to parse expression with operator {op.Stringify()}");
         }
@@ -529,6 +540,17 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if(token is Round.Open)
             {
+                if(stream.Peek() is Ty typename)
+                {
+                    stream.Next();
+                    if (stream.Next() is not Round.Closed)
+                        throw ParserException.Expected<Round.Closed>(stream.Current);
+                    ret.Add(new CastOperator
+                    {
+                        TargetType = typename,
+                    });
+                    continue;
+                }
                 var tokens = ReadToToken<Round.Closed>(stream).Item1.ToTokenStream();
                 ret.Add(ParseExpression(tokens));
                 continue;

@@ -1,10 +1,13 @@
-﻿using System;
+﻿using SpuchSharp.Interpreting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
+
 
 internal abstract class Value : Token
 {
@@ -24,12 +27,7 @@ internal abstract class Value : Token
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    //public static Value From(string literal)
-    //{
-    //    return literal
-    //}
-    //public Value(Ty type, object val) => (Ty , Val) = (type, val);
-    //public override string Stringify() => $"{Ty.Ident.Value} {Val}";
+
 
     public static Value Void = new VoidValue();
     public static Value Nothing = new NothingValue();
@@ -176,8 +174,11 @@ internal abstract class Value : Token
     {
         return ty switch
         {
+            ShortTy => new ShortValue { Value = 0 },
             IntTy => new IntValue { Value = 0 },
+            LongTy => new LongValue { Value = 0 },
             FloatTy => new FloatValue { Value = 0f },
+            DoubleTy => new DoubleValue { Value = 0f },
             TextTy => new TextValue { Value = string.Empty },
             BooleanTy => new BooleanValue { Value = false },
             AnyTy => new AnyValue { Value = new object() },
@@ -199,6 +200,21 @@ internal sealed class TextValue : Value
             Value = this.Value
         };
 }
+internal sealed class ShortValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Short;
+    public required short Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new ShortValue
+        {
+            Value = this.Value
+        };
+
+    public static implicit operator short(ShortValue shortV) => shortV.Value;
+    
+}
 internal sealed class IntValue : Value
 {
     public override object ValueAsObject => Value;
@@ -212,6 +228,22 @@ internal sealed class IntValue : Value
         };
 
     public static implicit operator int(IntValue intV) => intV.Value;
+    
+}
+internal sealed class LongValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Long;
+    public required long Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new LongValue
+        {
+            Value = this.Value
+        };
+
+    public static implicit operator long(LongValue longV) => longV.Value;
+    
 }
 internal sealed class FloatValue : Value
 {
@@ -224,6 +256,21 @@ internal sealed class FloatValue : Value
         {
             Value = this.Value
         };
+
+
+}
+internal sealed class DoubleValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Double;
+    public required double Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new DoubleValue
+        {
+            Value = this.Value
+        };
+
 }
 internal sealed class BooleanValue : Value
 {
@@ -238,6 +285,7 @@ internal sealed class BooleanValue : Value
         };
 
     public static implicit operator bool(BooleanValue value) => value.Value;
+
 }
 internal sealed class VoidValue : Value
 {
