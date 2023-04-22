@@ -46,7 +46,11 @@ internal abstract class Value : Token
         return obj switch
         {
             string s => new TextValue { Value = s },
+            short h => new ShortValue { Value = h },
             int i => new IntValue { Value = i },
+            long l => new LongValue { Value = l },
+            float f => new FloatValue { Value = f },
+            double d => new DoubleValue { Value = d },
             bool b => new BooleanValue { Value = b },
             null => Value.Void,
             _ => throw new InvalidCastException($"Could not transalte c# type {obj} into Spuch# type")
