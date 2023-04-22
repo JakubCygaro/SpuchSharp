@@ -26,6 +26,11 @@ internal abstract class Ty : Token, IEquatable<Ty>
     {
         throw InterpreterException.InvalidCast(this.Ident, v);
     }
+    public virtual Value? SafeCast(Value v)
+    {
+        try { return Cast(v); }
+        catch { return null; }
+    }
 
     public static Ty FromValue(string lit)
     {
