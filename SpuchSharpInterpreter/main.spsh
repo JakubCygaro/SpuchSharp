@@ -1,10 +1,17 @@
 ﻿import "STDLib";
 
 fun main(){
-	var dupa = 10f;
-	int japa = (int)dupa + 10;
-	println(dupa);
+	short s = 100;
+	int i = 100;
+	long l = 100;
+	float f = 100f;
+	double d = 100f;
+	test(d);
 }
+fun test(double s){
+
+}
+
 fun ogr() int {
 	return 10;
 }

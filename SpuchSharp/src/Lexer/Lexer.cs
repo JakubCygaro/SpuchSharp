@@ -16,11 +16,28 @@ namespace SpuchSharp.Lexing;
 
 internal sealed class Lexer
 {
-    internal static TokenStream Tokenize(string[] lines, string sourcePath) =>
-        Tokenize(new CharStream(lines, sourcePath));
-    public static TokenStream Tokenize(string[] lines) => Tokenize(new CharStream(lines));
+    internal static TokenStream Tokenize(string[] lines, string sourcePath) 
+    {
+        return new Lexer().Tokenize(new CharStream(lines, sourcePath));
+    }
+    public static TokenStream Tokenize(string[] lines)
+    {
+        return new Lexer().Tokenize(new CharStream(lines));
+    }
 
-    public static TokenStream Tokenize(CharStream charStream)
+    enum TypeFlag
+    {
+        NONE = 0,
+        SHORT,
+        INT,
+        LONG,
+        FLOAT,
+        DOUBLE,
+        TEXT,
+    }
+    private TypeFlag LastTypeFlag { get; set; } = TypeFlag.NONE;
+
+    public TokenStream Tokenize(CharStream charStream)
     {
         List<Token> tokens = new();
         while (charStream.Next() is char character)
@@ -46,7 +63,7 @@ internal sealed class Lexer
         }
         return tokens.ToTokenStream();
     }
-    internal static Token Lex(char first, CharStream charStream)
+    internal Token Lex(char first, CharStream charStream)
     {
         switch (first)
         {
@@ -242,7 +259,20 @@ internal sealed class Lexer
             case '8':
             case '9':
             case '0':
-                return ScanForNumberLiteral(ref first, charStream);
+                try
+                {
+                    return ScanForNumberLiteral(ref first, charStream);
+                }
+                catch (LexerException le)
+                {
+                    throw le;
+                }
+                catch(Exception) 
+                {
+                    throw new LexerException("Failed to parse number literal at", 
+                        charStream.LineNumber,
+                        charStream.Column);
+                }
             
 
             default:
@@ -250,7 +280,7 @@ internal sealed class Lexer
         }
 
     }
-    static Token ScanForIdentOrKeyWord(ref char first, CharStream charStream)
+    Token ScanForIdentOrKeyWord(ref char first, CharStream charStream)
     {
         int startPos = charStream.Column;
         List<char> literal = new() { first };
@@ -269,10 +299,24 @@ internal sealed class Lexer
 
         if(KeyWord.From(value) is KeyWord keyWord)
         {
+            if (keyWord is Var)
+                LastTypeFlag = TypeFlag.NONE;
+
             return keyWord;
         }
         else if (Ty.From(value) is Ty type)
         {
+            LastTypeFlag = type switch
+            {
+                ShortTy => TypeFlag.SHORT,
+                IntTy => TypeFlag.INT,
+                LongTy => TypeFlag.LONG,
+                FloatTy => TypeFlag.FLOAT,
+                DoubleTy => TypeFlag.DOUBLE,
+                TextTy => TypeFlag.TEXT,
+                _ => TypeFlag.NONE,
+            };
+
             return type;
         }
         return new Ident
@@ -281,7 +325,7 @@ internal sealed class Lexer
             Location = new() { Column = startPos, Line = charStream.LineNumber, File = charStream.SourceFile }
         };
     }
-    static Token ScanForText(ref char first, CharStream charStream)
+    Token ScanForText(ref char first, CharStream charStream)
     {
         int startPos = charStream.Column;
         bool open = true;
@@ -327,7 +371,7 @@ internal sealed class Lexer
             }
         };
     }
-    static char ScanEscape(char special)
+    char ScanEscape(char special)
     {
         switch (special) 
         {
@@ -358,7 +402,7 @@ internal sealed class Lexer
 
         }
     }
-    static Token ScanForNumberLiteral(ref char first, CharStream charStream)
+    Token ScanForNumberLiteral(ref char first, CharStream charStream)
     {
         //int column = charStream.Column;
         List<char> literal = new() { first };
@@ -394,21 +438,66 @@ internal sealed class Lexer
             else
                 break;
         }
-        if (!dot)
-        {
-            return new IntValue
+        Value ret;
+        if(!dot)
+            switch (LastTypeFlag)
             {
-                Value = int.Parse(new string(literal.ToArray()), System.Globalization.NumberFormatInfo.InvariantInfo)
-            };
-        }
-        else
-        {
-            return new FloatValue
-            {
-                Value = float.Parse(new string(literal.ToArray()), System.Globalization.NumberFormatInfo.InvariantInfo)
-            };
-        }
+                case TypeFlag.INT:
+                    ret = new IntValue
+                    {
+                        Value = int.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
 
+                case TypeFlag.SHORT:
+                    ret = new ShortValue
+                    {
+                        Value = short.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
+
+                case TypeFlag.LONG:
+                    ret = new LongValue
+                    {
+                        Value = long.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
+
+                default:
+                    throw new LexerException(
+                        $"Invalid number literal format `{new string(literal.ToArray())}`",
+                        charStream.LineNumber,
+                        charStream.Column);
+            }
+        else
+            switch (LastTypeFlag)
+            {
+                case TypeFlag.FLOAT:
+                    ret = new FloatValue
+                    {
+                        Value = float.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
+                case TypeFlag.DOUBLE:
+                    ret = new DoubleValue
+                    {
+                        Value = double.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
+
+                default:
+                    throw new LexerException(
+                        $"Invalid number literal format `{new string(literal.ToArray())}`", 
+                        charStream.LineNumber,
+                        charStream.Column);
+            }
+        LastTypeFlag = TypeFlag.NONE;
+        return ret;
     }
 
 }
