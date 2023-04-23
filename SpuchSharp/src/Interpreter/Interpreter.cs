@@ -865,18 +865,19 @@ public sealed class Interpreter
         {
             return expr switch
             {
-                AddExpr => Value.Add(left, right),
-                SubExpr => Value.Sub(left, right),
-                MulExpr => Value.Mul(left, right),
-                DivExpr => Value.Div(left, right),
-                AndExpr => Value.And(left, right),
-                OrExpr => Value.Or(left, right),
-                EqExpr => Value.Eq(left, right),
-                InEqExpr => Value.InEq(left, right),
-                GreaterThanExpr => Value.GreaterThan(left, right),
-                LessThanExpr => Value.LessThan(left, right),
-                GreaterOrEqToExpr => Value.GreaterOrEqualTo(left, right),
-                LessOrEqToExpr => Value.LessOrEqualTo(left, right),
+                AddExpr => left.Add(right),
+                SubExpr => left.Sub(right),
+                MulExpr => left.Mul(right),
+                DivExpr => left.Div(right),
+                AndExpr => left.And(right),
+                ModuloExpr => left.Modulo(right),
+                OrExpr => left.Or(right),
+                EqExpr => left.Eq(right),
+                InEqExpr => left.InEq(right),
+                GreaterThanExpr => left.GreaterThan(right),
+                LessThanExpr => left.LessThan(right),
+                GreaterOrEqToExpr => left.GreaterOrEqualTo(right),
+                LessOrEqToExpr => left.LessOrEqualTo(right),
                 _ => throw new InterpreterException("Unrecognized expression type", expr)
             };
         }

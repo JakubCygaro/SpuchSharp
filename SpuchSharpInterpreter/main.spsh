@@ -3,10 +3,17 @@
 fun main(){
 	short s = 100;
 	int i = 100;
+	float b = (float)(s + i);
+
+
 	long l = 100;
 	float f = 100f;
 	double d = 100f;
 	test(d);
+	println(is_even(3));
+}
+fun is_even(int i) bool {
+	return i % 2 == 0;
 }
 fun test(double s){
 

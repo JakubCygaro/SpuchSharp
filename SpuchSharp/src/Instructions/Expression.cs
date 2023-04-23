@@ -54,6 +54,7 @@ internal abstract class ComplexExpression : Expression
                 Sub => new SubExpr { Left = left, Right = expr, Location = left.Location },
                 Mult => new MulExpr { Left = left, Right = expr, Location = left.Location },
                 Div => new DivExpr { Left = left, Right = expr, Location = left.Location },
+                Percent => new ModuloExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             LogicOperator lop => lop switch
@@ -88,6 +89,10 @@ sealed class MulExpr : ArthmetricExpression
 sealed class DivExpr : ArthmetricExpression
 {
     public override string Display() => $"[{Left.Display()} / {Right.Display()}]";
+}
+sealed class ModuloExpr : ArthmetricExpression
+{
+    public override string Display() => $"[{Left.Display()} % {Right.Display()}]";
 }
 abstract class LogicalExpression : ComplexExpression { }
 sealed class AndExpr : LogicalExpression

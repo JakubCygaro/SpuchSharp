@@ -448,7 +448,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     Equality or InEquality or
                     And or Or or 
                     Greater or GreaterOrEq or
-                    Less or LessOrEq:
+                    Less or LessOrEq or
+                    Percent:
                 v1 = parsing.TakeOutAt(index - 1).RightOrThrow;
                 v2 = parsing.TakeOutAt(index).RightOrThrow;
                 parsing[index - 1] = ComplexExpression.From(v1, op, v2);

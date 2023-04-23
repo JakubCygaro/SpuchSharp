@@ -230,6 +230,8 @@ internal sealed class Lexer
 
             case '*':
                 return new Mult();
+            case '%':
+                return new Percent();
 
             case '&':
                 if (charStream.PeekNext() == '&')
@@ -462,6 +464,15 @@ internal sealed class Lexer
                     ret = new LongValue
                     {
                         Value = long.Parse(new string(literal.ToArray()),
+                                System.Globalization.NumberFormatInfo.InvariantInfo)
+                    };
+                    break;
+
+                //default to int
+                case TypeFlag.NONE:
+                    ret = new IntValue
+                    {
+                        Value = int.Parse(new string(literal.ToArray()),
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
                     };
                     break;

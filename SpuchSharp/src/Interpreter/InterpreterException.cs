@@ -38,8 +38,14 @@ public class InterpreterException : Exception
 	}
 	internal static InterpreterException InvalidCast(Ident to, Value from)
 	{
-		var message = $"Invalid cast exception, cannot cast type {from.Ty.Stringify()} into {to.Stringify()}";
+		var message = $"Invalid cast, cannot cast type {from.Ty.Stringify()} into {to.Stringify()}";
         return new InterpreterException(message, from);
+    }
+    internal static InterpreterException InvalidOperation(string operation, Value a, Value b)
+    {
+        var message = $"Invalid operation, {operation} not possible between values of type " +
+			$"{a.Ty.Stringify()} {b.Ty.Stringify()}";
+        return new InterpreterException(message, a);
     }
     public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(
