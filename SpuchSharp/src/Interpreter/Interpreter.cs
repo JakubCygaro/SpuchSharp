@@ -895,9 +895,11 @@ public sealed class Interpreter
     {
         var value = EvaluateExpression(varScope, funScope, module, var.Expr);
         if (var is TypedVariableDecl typed)
-            if (!typed.Type.Equals(value.Ty))
+        {
+            value = typed.Type.SafeCast(value) ??
                 throw new InterpreterException(
                     "Mismatched types, assigned type is different from declared type.", typed.Type);
+        }
         SVariable newVariable = value switch
         {
             ArrayValue arrayValue => new SArray(arrayValue.ValueTy, arrayValue.Size) 
@@ -960,9 +962,9 @@ public sealed class Interpreter
         var identExpr = identTarget.Target as IdentExpression ??
             throw new InterpreterException("TODO cannot assing to", identTarget.Target);
         var variable = varScope.FindVariable(identExpr.Ident);
-        if(!variable.Value.Ty.Equals(assignedValue.Ty))
+        //if(!variable.Value.Ty.Equals(assignedValue.Ty))
+        variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
             throw new InterpreterException("Mismatched types", identExpr.Ident);
-        variable.Value = assignedValue;
     }
     void CreateFunction(FunctionDecl fun, Module module)
     {

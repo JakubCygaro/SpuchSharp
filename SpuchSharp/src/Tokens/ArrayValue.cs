@@ -39,8 +39,9 @@ internal sealed class ArrayValue : Value
         try
         {
             if (Values[index].Ty != ValueTy)
-                throw new Interpreting.InterpreterException($"Tried to assing a {value.Ty.Stringify()} " +
-                    $"value to an array of type {ValueTy.Stringify()}");
+                value = Ty.SafeCast(value) ??
+                    throw new Interpreting.InterpreterException($"Tried to assing a {value.Ty.Stringify()} " +
+                        $"value to an array of type {ValueTy.Stringify()}");
             Values[index] = value;
         }
         catch (Exception ex)
@@ -49,10 +50,10 @@ internal sealed class ArrayValue : Value
         }
     }
 
-    public ArrayValue(Ty type, int size)
+    public ArrayValue(Ty ofType, int size)
     {
-        ValueTy = type;
-        _arrayTy = ArrayTy.ArrayOf(type);
+        ValueTy = ofType;
+        _arrayTy = ArrayTy.ArrayOf(ofType);
         Size = size;
         Values = new Value[Size];
         for (int i = 0; i < size; i++)

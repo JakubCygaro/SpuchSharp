@@ -235,6 +235,7 @@ internal sealed class ShortValue : Value
     public static implicit operator short(ShortValue shortV) => shortV.Value;
     
 }
+
 internal sealed class IntValue : Value
 {
     public override object ValueAsObject => Value;

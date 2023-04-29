@@ -31,6 +31,7 @@ internal abstract class Ty : Token, IEquatable<Ty>
         try { return Cast(v); }
         catch { return null; }
     }
+    public abstract Value DefaultValue();
 
     public static Ty FromValue(string lit)
     {
@@ -153,6 +154,10 @@ internal sealed class TextTy : Ty
 {
     static Ident _ident = new Ident() { Value = "text" };
     public override Ident Ident => _ident;
+    public override Value DefaultValue()
+    {
+        return new TextValue { Value = string.Empty };
+    }
 
 }
 internal sealed class IntTy : Ty
@@ -171,26 +176,47 @@ internal sealed class IntTy : Ty
             _ => throw InterpreterException.InvalidCast(_ident, v),
         };
     }
+    public override Value DefaultValue()
+    {
+        return new IntValue { Value = 0 };
+    }
 }
+
 internal sealed class BooleanTy : Ty
 {
     static Ident _ident = new Ident() { Value = "bool" };
     public override Ident Ident => _ident;
+    public override Value DefaultValue()
+    {
+        return new BooleanValue { Value = false };
+    }
 }
 internal sealed class VoidTy : Ty
 {
     static Ident _ident = new Ident() { Value = "void" };
     public override Ident Ident => _ident;
+    public override Value DefaultValue()
+    {
+        return Value.Void;
+    }
 }
 internal sealed class AnyTy : Ty
 {
     static Ident _ident = new Ident() { Value = "any" };
     public override Ident Ident => _ident;
+    public override Value DefaultValue()
+    {
+        return new AnyValue { Value = null! };
+    }
 }
 internal sealed class NothingTy : Ty
 {
     static Ident _ident = new Ident() { Value = "nothing_type" };
     public override Ident Ident => _ident;
+    public override Value DefaultValue()
+    {
+        return Value.Nothing;
+    }
 }
 internal sealed class FloatTy : Ty
 {
@@ -207,6 +233,10 @@ internal sealed class FloatTy : Ty
             FloatValue f => f,
             _ => throw InterpreterException.InvalidCast(Ident, v),
         };
+    }
+    public override Value DefaultValue()
+    {
+        return new FloatValue { Value = 0f };
     }
 }
 internal sealed class DoubleTy : Ty
@@ -225,6 +255,10 @@ internal sealed class DoubleTy : Ty
             _ => throw InterpreterException.InvalidCast(Ident, v),
         };
     }
+    public override Value DefaultValue()
+    {
+        return new DoubleValue { Value = 0f };
+    }
 }
 internal sealed class ShortTy : Ty
 {
@@ -241,6 +275,10 @@ internal sealed class ShortTy : Ty
             ShortValue s => s,
             _ => throw InterpreterException.InvalidCast(Ident, v),
         };
+    }
+    public override Value DefaultValue()
+    {
+        return new ShortValue { Value = 0 };
     }
 }
 internal sealed class LongTy : Ty
@@ -260,6 +298,10 @@ internal sealed class LongTy : Ty
             _ => throw InterpreterException.InvalidCast(Ident, v),
         };
     }
+    public override Value DefaultValue()
+    {
+        return new LongValue { Value = 0 };
+    }
 }
 internal sealed class ArrayTy : Ty
 {
@@ -272,8 +314,11 @@ internal sealed class ArrayTy : Ty
     {
         return type switch
         {
+            ShortTy => Short,
             IntTy => Int,
+            LongTy => Long,
             FloatTy => Float,
+            DoubleTy => Double,
             BooleanTy => Boolean,
             TextTy => Text,
             AnyTy => Any,
@@ -284,6 +329,19 @@ internal sealed class ArrayTy : Ty
     {
         _type = type;
         _ident = new Ident() { Value = $"[{_type.Ident.Value}]" };
+    }
+    /// <summary>
+    /// This will return an <c>ArrayValue</c> of size 0 !
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
+    public override Value DefaultValue()
+    {
+        return DefaultValue(0);
+    }
+    public Value DefaultValue(int size)
+    {
+        return new ArrayValue(_type, size);
     }
 
     new public static ArrayTy Short = new ArrayTy(Ty.Short);

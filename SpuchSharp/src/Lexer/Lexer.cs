@@ -4,13 +4,8 @@ using System.Linq;
 using SpuchSharp.Tokens;
 using System.IO;
 using System.Collections;
-using System.Linq.Expressions;
-using System.Diagnostics;
 using SpuchSharp;
 using SpuchSharp.Parsing;
-using System.Globalization;
-using System.Text.RegularExpressions;
-using System.Reflection.Metadata.Ecma335;
 
 namespace SpuchSharp.Lexing;
 
@@ -136,6 +131,7 @@ internal sealed class Lexer
                 return ScanForText(ref first, charStream);
 
             case ';':
+                LastTypeFlag = TypeFlag.NONE;
                 return new Semicolon();
 
             case '{':
@@ -409,6 +405,7 @@ internal sealed class Lexer
         //int column = charStream.Column;
         List<char> literal = new() { first };
         bool dot = false;
+        bool @long = false;
         while (charStream.PeekNext() is char next)
         {
             if (char.IsDigit(next))
@@ -437,77 +434,111 @@ internal sealed class Lexer
                 charStream.MoveNext();
                 break;
             }
+            else if (next == 'L')
+            {
+                if (!@long)
+                    @long = true;
+                charStream.MoveNext();
+                break;
+            }
             else
                 break;
         }
+        //Value ret;
+        //if(!dot)
+        //    switch (LastTypeFlag)
+        //    {
+        //        case TypeFlag.INT:
+        //            ret = new IntValue
+        //            {
+        //                Value = int.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+
+        //        case TypeFlag.SHORT:
+        //            ret = new ShortValue
+        //            {
+        //                Value = short.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+
+        //        case TypeFlag.LONG:
+        //            ret = new LongValue
+        //            {
+        //                Value = long.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+
+        //        //default to int
+        //        case TypeFlag.NONE:
+        //            ret = new IntValue
+        //            {
+        //                Value = int.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+
+        //        default:
+        //            throw new LexerException(
+        //                $"Invalid number literal format `{new string(literal.ToArray())}`",
+        //                charStream.LineNumber,
+        //                charStream.Column);
+        //    }
+        //else
+        //    switch (LastTypeFlag)
+        //    {
+        //        case TypeFlag.FLOAT:
+        //            ret = new FloatValue
+        //            {
+        //                Value = float.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+        //        case TypeFlag.DOUBLE:
+        //            ret = new DoubleValue
+        //            {
+        //                Value = double.Parse(new string(literal.ToArray()),
+        //                        System.Globalization.NumberFormatInfo.InvariantInfo)
+        //            };
+        //            break;
+
+        //        default:
+        //            throw new LexerException(
+        //                $"Invalid number literal format `{new string(literal.ToArray())}`", 
+        //                charStream.LineNumber,
+        //                charStream.Column);
+        //    }
+        //LastTypeFlag = TypeFlag.NONE;
+
         Value ret;
-        if(!dot)
-            switch (LastTypeFlag)
+        if (dot)
+        {
+            ret = new FloatValue
             {
-                case TypeFlag.INT:
-                    ret = new IntValue
-                    {
-                        Value = int.Parse(new string(literal.ToArray()),
+                Value = float.Parse(new string(literal.ToArray()),
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
-
-                case TypeFlag.SHORT:
-                    ret = new ShortValue
-                    {
-                        Value = short.Parse(new string(literal.ToArray()),
+            };
+        }
+        else if (@long)
+        {
+            ret = new LongValue
+            {
+                Value = long.Parse(new string(literal.ToArray()),
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
-
-                case TypeFlag.LONG:
-                    ret = new LongValue
-                    {
-                        Value = long.Parse(new string(literal.ToArray()),
-                                System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
-
-                //default to int
-                case TypeFlag.NONE:
-                    ret = new IntValue
-                    {
-                        Value = int.Parse(new string(literal.ToArray()),
-                                System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
-
-                default:
-                    throw new LexerException(
-                        $"Invalid number literal format `{new string(literal.ToArray())}`",
-                        charStream.LineNumber,
-                        charStream.Column);
-            }
+            };
+        }
         else
-            switch (LastTypeFlag)
+        {
+            ret = new IntValue
             {
-                case TypeFlag.FLOAT:
-                    ret = new FloatValue
-                    {
-                        Value = float.Parse(new string(literal.ToArray()),
+                Value = int.Parse(new string(literal.ToArray()),
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
-                case TypeFlag.DOUBLE:
-                    ret = new DoubleValue
-                    {
-                        Value = double.Parse(new string(literal.ToArray()),
-                                System.Globalization.NumberFormatInfo.InvariantInfo)
-                    };
-                    break;
+            };
+        }
 
-                default:
-                    throw new LexerException(
-                        $"Invalid number literal format `{new string(literal.ToArray())}`", 
-                        charStream.LineNumber,
-                        charStream.Column);
-            }
-        LastTypeFlag = TypeFlag.NONE;
         return ret;
     }
 
