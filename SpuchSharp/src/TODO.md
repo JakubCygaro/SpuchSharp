@@ -1,10 +1,9 @@
 ﻿# TODO
 
 ## Top priority
--  soft casting when evaluating mixed typed expressions
-- uint ulong ushort
 - assignment and const update {
 	const keyword,
+	const ref,
 	declaration without assignment (values defaulted),
 	+= -+ *= /= %= operators
 }
@@ -29,6 +28,7 @@
 	}
 }
 - casting into any (void*) and possibly some safe casting possibilities? (as, is)
+- uint ulong ushort
 
 ## The great gig
 - Compilation to C

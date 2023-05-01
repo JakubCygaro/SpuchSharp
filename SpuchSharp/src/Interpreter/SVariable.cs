@@ -6,9 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SpuchSharp.Interpreting;
+internal struct SVariableStacker
+{
+    public SVariable Variable { get; set; }
+}
 internal abstract class SVariable : SObject
 {
     public abstract Tokens.Value Value { get; set; }
+    public required bool Const { get; set; }
 }
 internal class SSimpleVariable : SVariable
 {

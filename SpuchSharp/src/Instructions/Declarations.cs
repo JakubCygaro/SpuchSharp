@@ -19,6 +19,7 @@ internal sealed class ModuleDecl : Declaration
 }
 internal class VariableDecl : Declaration
 {
+    public required bool Const { get; set; }
     public required string Name { get; set; }
     public required Expression Expr { get; set; }
 }
@@ -28,6 +29,7 @@ internal sealed class TypedVariableDecl : VariableDecl
 }
 internal class ArrayDecl : Declaration
 {
+    public required bool Const { get; set; }
     public required string Name { get; set; }
     public required Expression ArrayExpression { get; set; }
 }

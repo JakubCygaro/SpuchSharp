@@ -116,7 +116,8 @@ internal static class Importer
                 {
                     Name = new Ident { Value = $"external_function_argument_{i++}" },
                     Ty = Ty.FromCSharpType(paramType),
-                    Ref = false
+                    Ref = false,
+                    Const = false,
                 });
             }
             catch

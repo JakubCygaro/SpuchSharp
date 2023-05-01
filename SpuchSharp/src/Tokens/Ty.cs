@@ -343,6 +343,18 @@ internal sealed class ArrayTy : Ty
     {
         return new ArrayValue(_type, size);
     }
+    //public override Value Cast(Value v)
+    //{
+    //    if(v is ArrayValue arrayVal)
+    //    {
+    //        if (_type == arrayVal.ValueTy)
+    //            return arrayVal;
+    //        else
+    //            return base.Cast(v);
+    //    }
+    //    else
+    //        return base.Cast(v);
+    //}
 
     new public static ArrayTy Short = new ArrayTy(Ty.Short);
     new public static ArrayTy Long = new ArrayTy(Ty.Long);

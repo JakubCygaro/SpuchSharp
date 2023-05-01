@@ -14,6 +14,7 @@ internal sealed class FunArg : Token
     public required Ty Ty { get; init; }
     public required Ident Name { get; init; }
     public required bool Ref { get; init; }
+    public required bool Const { get; init; }
 
     public override int GetHashCode()
     {

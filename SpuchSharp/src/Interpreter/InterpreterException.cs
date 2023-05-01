@@ -17,7 +17,10 @@ public class InterpreterException : Exception
 	public InterpreterException(string message, Tokens.Token token) 
 		: base($"{message} {token.Location}") 
 	{ }
-	internal InterpreterException(string message, Instructions.Instruction instruction) 
+    public InterpreterException(string message, Location? location = null)
+        : base($"{message} {location}")
+    { }
+    internal InterpreterException(string message, Instructions.Instruction instruction) 
 		: base($"{message} {instruction.Location}") 
 	{ }
 	internal static InterpreterException UnsuportedInstruction(Instruction ins)
@@ -46,6 +49,16 @@ public class InterpreterException : Exception
         var message = $"Invalid operation, {operation} not possible between values of type " +
 			$"{a.Ty.Stringify()} {b.Ty.Stringify()}";
         return new InterpreterException(message, a);
+    }
+	internal static InterpreterException ConstantReassignment(SVariable variable, Location? location = null)
+	{
+		var message = $"Tried to reassing a constant variable `{variable.Ident.Stringify()}`";
+		return new InterpreterException(message, location);
+	}
+    internal static InterpreterException ConstantReassignment(Ident variableName, Location? location = null)
+    {
+        var message = $"Tried to reassing a constant variable `{variableName.Stringify()}`";
+        return new InterpreterException(message, location);
     }
     public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(

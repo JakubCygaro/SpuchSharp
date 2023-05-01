@@ -206,7 +206,7 @@ internal sealed class NotExpression : SimpleExpression
 internal sealed class IncrementExpression : SimpleExpression 
 {
     public required bool Pre { get; init; }
-    public required Expression Expression { get; init; }
+    public required IdentExpression Expression { get; init; }
     public override string Display()
     {
         if(Pre)
@@ -218,7 +218,7 @@ internal sealed class IncrementExpression : SimpleExpression
 internal sealed class DecrementExpression : SimpleExpression
 {
     public required bool Pre { get; init; }
-    public required Expression Expression { get; init; }
+    public required IdentExpression Expression { get; init; }
     public override string Display()
     {
         if (Pre)

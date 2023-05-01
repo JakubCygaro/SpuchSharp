@@ -1,13 +1,25 @@
 ﻿import "STDLib";
 
 fun main(){
-	println(is_even(100));
+	int a = 10;
+	int b = a;
+	const var c = {
+		1,
+		2,
+		3,
+	};
+	println(c);
+	c = {
+		4,5,6
+	};
+	println(c);
+}
+fun test(const ref int s){
+	s++;
+	println(s);
 }
 fun is_even(int i) bool {
 	return i % 2 == 0;
-}
-fun test(double s){
-
 }
 
 fun ogr() int {

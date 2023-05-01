@@ -20,7 +20,9 @@ internal sealed class ArrayValue : Value
 
     private Ty _arrayTy;
     public int Size { get; }
-    public Value[] Values { get; init; }
+
+    private Value[] _values;
+    public Value[] Values { get => _values; init => _values = value; }
     public Value this[int index] { get => Get(index); set => Set(index, value); }
 
     private Value Get(int index)
@@ -55,11 +57,19 @@ internal sealed class ArrayValue : Value
         ValueTy = ofType;
         _arrayTy = ArrayTy.ArrayOf(ofType);
         Size = size;
-        Values = new Value[Size];
+        _values = new Value[Size];
         for (int i = 0; i < size; i++)
             Values[i] = Value.Default(ValueTy, size);
 
     }
+    private ArrayValue(Ty valueTy, Ty arrayTy, int size, Value[] values)
+    {
+        ValueTy = valueTy;
+        _arrayTy = arrayTy;
+        Size = size;
+        _values = values;
+    }
+
     public override string Stringify()
     {
         return $"{Ty.Stringify()}";
@@ -68,7 +78,8 @@ internal sealed class ArrayValue : Value
     public override object ValueAsObject => Values.Select(x => x.ValueAsObject).ToArray();
     public override Value Clone()
     {
-        return new ArrayValue(ValueTy, Size);
+        var ret = new ArrayValue(ValueTy, this.Ty, Size, (Value[])_values.Clone());
+        return ret;
     }
 }
 //internal sealed class IntArrayValue : ArrayValue

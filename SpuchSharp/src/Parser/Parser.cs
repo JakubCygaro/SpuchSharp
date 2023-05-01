@@ -111,16 +111,29 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Public => ParseWithPublic(stream.Next() ?? 
                     throw new ParserException("Premature end of input", stream.Current), 
                     stream),
+            Const @const => ParseWithConst(@const, stream),
             _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
         };
     }
-    private Instruction ParseWithPublic(Token keyword, TokenStream stream)
+    private Instruction ParseWithConst(Const constKeyword, TokenStream stream, bool pub = false)
+    {
+        var next = stream.Next();
+        return next switch
+        {
+            Var var => ParseDeclaration(var, stream, pub: pub, @const: true),
+            Ty ty => ParseDeclaration(ty, stream, pub: pub, @const: true),
+            Square.Open sq => ParseArrayDeclaration(sq, stream, pub: pub, @const: true),
+            _ => throw ParserException.PrematureEndOfInput(),
+        };
+    }
+    private Instruction ParseWithPublic(Token keyword, TokenStream stream, bool @const = false)
     {
         return keyword switch
         {
-            Fun or Var => ParseDeclaration(keyword, stream, true),
-            Square.Open sq => ParseArrayDeclaration(sq, stream, true),
-            Mod m => ParseMod(m, stream, true),
+            Fun or Var => ParseDeclaration(keyword, stream, pub: true),
+            Square.Open sq => ParseArrayDeclaration(sq, stream, pub: true),
+            Mod m => ParseMod(m, stream, pub: true),
+            Const c => ParseWithConst(c, stream, pub: true),
             _ => throw new ParserException("Disallowed pub usage", stream.Current),
         };
     }
@@ -179,7 +192,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Declaration ParseArrayDeclaration(Square.Open squareOpen, 
         TokenStream stream,
-        bool pub = false)
+        bool pub = false, bool @const = false)
     {
         var ty = ParseType(stream);
             //as ArrayTy 
@@ -224,6 +237,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Sized = sizes,
                 Location = ident.Location,
                 IsPublic = pub,
+                Const = @const,
             };
         }
 
@@ -235,6 +249,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Sized = null,
             Location = ident.Location,
             IsPublic = pub,
+            Const = @const,
         };
     }
     private WhileStatement ParseWhile(While whileKeyword, TokenStream stream)
@@ -469,7 +484,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     v1 = parsing.TakeOutAt(index - 1).RightOrThrow; //take expr
                     parsing[index - 1] = new IncrementExpression
                     {
-                        Expression = v1,
+                        Expression = v1 as IdentExpression ??
+                            throw new ParserException("Increment operator can only target variable names", 
+                            op),
                         Location = op.Location,
                         Pre = false,
                     };
@@ -479,7 +496,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
                     parsing[index] = new IncrementExpression
                     {
-                        Expression = v1,
+                        Expression = v1 as IdentExpression ??
+                            throw new ParserException("Increment operator can only target variable names",
+                            op),
                         Location = op.Location,
                         Pre = true,
                     };
@@ -495,7 +514,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     v1 = parsing.TakeOutAt(index - 1).RightOrThrow; 
                     parsing[index - 1] = new DecrementExpression
                     {
-                        Expression = v1,
+                        Expression = v1 as IdentExpression ??
+                            throw new ParserException("Decrement operator can only target variable names",
+                            op),
                         Location = op.Location,
                         Pre = false,
                     };
@@ -505,7 +526,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     v1 = parsing.TakeOutAt(index + 1).RightOrThrow;
                     parsing[index] = new DecrementExpression
                     {
-                        Expression = v1,
+                        Expression = v1 as IdentExpression ??
+                            throw new ParserException("Decrement operator can only target variable names",
+                            op),
                         Location = op.Location,
                         Pre = true,
                     };
@@ -810,7 +833,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         return (tokens, null);
     }
-    private Declaration ParseUntypedArrayDecl(Ident ident, TokenStream stream)
+    private Declaration ParseUntypedArrayDecl(Ident ident, TokenStream stream,
+        bool pub = false, bool @const = false)
     {
         //var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream);
         //Expression[] expressions = new Expression[tokens.Count];
@@ -829,10 +853,13 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
-            Location = ident.Location
+            Location = ident.Location,
+            Const = @const,
+            IsPublic = pub,
         };
     }
-    private Instruction ParseDeclaration(Token token, TokenStream stream, bool pub = false)
+    private Instruction ParseDeclaration(Token token, TokenStream stream, 
+        bool pub = false, bool @const = false)
     {
         if (token is Var var)
         {
@@ -847,6 +874,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Name = ident.Value,
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
                 Location = ident.Location,
+                Const = @const,
+                IsPublic = pub,
             };
         }
         else if (token is Ty ty)
@@ -862,6 +891,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
                 Type = ty,
                 Location = ident.Location,
+                Const = @const,
+                IsPublic = pub,
             };
         }
         else if (token is Fun fun)
@@ -920,8 +951,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private FunArg ParseFunctionArgument(TokenStream stream)
     {
         var @ref = false;
+        var @const = false;
         Ty type;
+
         var nextToken = stream.Next();
+        if(nextToken is Const)
+        {
+            @const = true;
+            nextToken = stream.Next();
+        }
         if (nextToken is Ref)
         {
             @ref = true;
@@ -952,7 +990,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Name = ident,
             Ref = @ref,
             Ty = type,
-            Location = ident.Location
+            Location = ident.Location,
+            Const = @const,
         };
     }
     /// <summary>

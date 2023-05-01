@@ -129,6 +129,7 @@ public sealed class Interpreter
             Ident = forLoopStmt.VariableIdent,
             Value = variableValue,
             IsPublic = false,
+            Const = false,
         };
         newVarScope.Add(variable);
 
@@ -479,13 +480,6 @@ public sealed class Interpreter
                 varScope.Add(sArray);
                 return;
             }
-        //var values = new List<Value>();
-        //foreach (var expr in arrayDecl.Expressions)
-        //{
-        //    values.Add(EvaluateExpression(varScope, funScope, expr));
-        //}
-        //if (values.Count == 0)
-        //    throw new InterpreterException("Empty array declaration", arrayDecl);
         var arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, module, arrayDecl.ArrayExpression);
         var declType = arrayDecl switch
         {
@@ -499,14 +493,10 @@ public sealed class Interpreter
         {
             Ident = new Ident() { Value = arrayDecl.Name },
             Value = arrayValue,
-            IsPublic = false,
+            IsPublic = arrayDecl.IsPublic,
+            Const = arrayDecl.Const,
         };
-        //var index = 0;
-        //foreach (var value in values)
-        //{
-        //    array.Set(index, value);
-        //    index++;
-        //}
+
         varScope.Add(array);
     }
     SArray CreateSizedArray(VariableScope varScope, 
@@ -529,7 +519,8 @@ public sealed class Interpreter
         var sArray = new SArray(sizes.First!.Value.type, sizes.First!.Value.size)
         {
             Ident = new Ident { Value = typedArr.Name },
-            IsPublic = false,
+            IsPublic = typedArr.IsPublic,
+            Const = typedArr.Const,
         };
         sizes.RemoveFirst();
         var val = (ArrayValue)sArray.Value;
@@ -641,74 +632,156 @@ public sealed class Interpreter
         Module module,
         DecrementExpression decrementExpression)
     {
+        var target = varScope.FindSimpleVariable(decrementExpression.Expression.Ident);
+        if (target.Const)
+            throw InterpreterException.ConstantReassignment(decrementExpression.Expression.Ident,
+                decrementExpression.Location);
+
         var val = EvaluateExpression(varScope, funScope, module, decrementExpression.Expression);
-        if (val is IntValue i)
+
+        switch (val)
         {
-            if (decrementExpression.Pre)
-            {
-                --i.Value;
-                return i;
-            }
-            else
-            {
-                var ret = i.Clone();
-                --i.Value;
-                return ret;
-            }
+            case ShortValue s:
+                if (decrementExpression.Pre)
+                {
+                    --s.Value;
+                    return s;
+                }
+                else
+                {
+                    var ret = s.Clone();
+                    --s.Value;
+                    return ret;
+                }
+            case IntValue i:
+                if (decrementExpression.Pre)
+                {
+                    --i.Value;
+                    return i;
+                }
+                else
+                {
+                    var ret = i.Clone();
+                    --i.Value;
+                    return ret;
+                }
+            case LongValue l:
+                if (decrementExpression.Pre)
+                {
+                    --l.Value;
+                    return l;
+                }
+                else
+                {
+                    var ret = l.Clone();
+                    --l.Value;
+                    return ret;
+                }
+            case FloatValue f:
+                if (decrementExpression.Pre)
+                {
+                    --f.Value;
+                    return f;
+                }
+                else
+                {
+                    var ret = f.Clone();
+                    --f.Value;
+                    return ret;
+                }
+            case DoubleValue d:
+                if (decrementExpression.Pre)
+                {
+                    --d.Value;
+                    return d;
+                }
+                else
+                {
+                    var ret = d.Clone();
+                    --d.Value;
+                    return ret;
+                }
+            default:
+                throw new InterpreterException("Invalid use of decrement", decrementExpression);
         }
-        else if (val is FloatValue f)
-        {
-            if (decrementExpression.Pre)
-            {
-                --f.Value;
-                return f;
-            }
-            else
-            {
-                var ret = f.Clone();
-                --f.Value;
-                return ret;
-            }
-        }
-        else
-            throw new InterpreterException("Invalid use of increment", decrementExpression);
     }
     Value EvaluateIncrement(VariableScope varScope,
         FunctionScope funScope,
         Module module,
         IncrementExpression incrementExpression)
     {
+        var target = varScope.FindSimpleVariable(incrementExpression.Expression.Ident);
+        if (target.Const)
+            throw InterpreterException.ConstantReassignment(incrementExpression.Expression.Ident, 
+                incrementExpression.Location);
+
         var val = EvaluateExpression(varScope, funScope, module, incrementExpression.Expression);
-        if (val is IntValue i)
+
+        switch (val)
         {
-            if (incrementExpression.Pre)
-            {
-                ++i.Value;
-                return i;
-            }
-            else
-            {
-                var ret = i.Clone();
-                ++i.Value;
-                return ret;
-            }
+            case ShortValue s:
+                if (incrementExpression.Pre)
+                {
+                    ++s.Value;
+                    return s;
+                }
+                else
+                {
+                    var ret = s.Clone();
+                    ++s.Value;
+                    return ret;
+                }
+            case IntValue i:
+                if (incrementExpression.Pre)
+                {
+                    ++i.Value;
+                    return i;
+                }
+                else
+                {
+                    var ret = i.Clone();
+                    ++i.Value;
+                    return ret;
+                }
+            case LongValue l:
+                if (incrementExpression.Pre)
+                {
+                    ++l.Value;
+                    return l;
+                }
+                else
+                {
+                    var ret = l.Clone();
+                    ++l.Value;
+                    return ret;
+                }
+            case FloatValue f:
+                if (incrementExpression.Pre)
+                {
+                    ++f.Value;
+                    return f;
+                }
+                else
+                {
+                    var ret = f.Clone();
+                    ++f.Value;
+                    return ret;
+                }
+            case DoubleValue d:
+                if (incrementExpression.Pre)
+                {
+                    ++d.Value;
+                    return d;
+                }
+                else
+                {
+                    var ret = d.Clone();
+                    ++d.Value;
+                    return ret;
+                }
+            default:
+                throw new InterpreterException("Invalid use of increment", incrementExpression);
         }
-        else if (val is FloatValue f)
-        {
-            if (incrementExpression.Pre)
-            {
-                ++f.Value;
-                return f;
-            }
-            else
-            {
-                var ret = f.Clone();
-                ++f.Value;
-                return ret;
-            }
-        }
-        else
-            throw new InterpreterException("Invalid use of increment", incrementExpression);
     }
     Value EvaluateNot(VariableScope varScope,
         FunctionScope funScope,
@@ -742,8 +815,6 @@ public sealed class Interpreter
         Module module,
         IndexerExpression expr)
     {
-        //Console.WriteLine("DEBUG INDEXER");
-        //Console.WriteLine(expr.Display());
         var arrayValue = EvaluateExpression(varScope, funScope, module, expr.ArrayProducer) as ArrayValue 
             ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
 
@@ -781,6 +852,7 @@ public sealed class Interpreter
                 $"got {call.Args.Length}", call.Function);
         //variable scope for the function
         VariableScope newVariables = new();
+        List<SVariable> deconst = new();
 
         foreach(var (argument, index) in call.Args.Select((x, i) => (x, i)))
         {
@@ -794,6 +866,20 @@ public sealed class Interpreter
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
                         $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
 
+                if (targetFunction.Args[index].Const)
+                {
+                    if (!variable.Const)
+                    {
+                        variable.Const = true;
+                        deconst.Add(variable);
+                    }
+                }
+                else
+                {
+                    if (variable.Const)
+                        throw new InterpreterException(
+                            $"Cannot pass a non-constant reference to a constant variable `{variable.Ident.Stringify()}`", call);
+                }
                 newVariables.Add(targetFunction.Args[index].Name, variable);
                 continue;
             }
@@ -815,7 +901,7 @@ public sealed class Interpreter
                     Ident = targetFunction.Args[index].Name,
                     Value = valueAsArray,//.Clone()
                     IsPublic = false,
-                    
+                    Const = targetFunction.Args[index].Const,
                 });
             }
             else
@@ -824,6 +910,7 @@ public sealed class Interpreter
                     Ident = targetFunction.Args[index].Name,
                     Value = value,
                     IsPublic = false,
+                    Const = targetFunction.Args[index].Const,
                 });
         }
 
@@ -848,6 +935,10 @@ public sealed class Interpreter
             throw new InterpreterException(
                 $"Return statement type does not match " +
                 $"the return type of the function `{targetFunction.Ident.Stringify()}`");
+
+        foreach (var v in deconst)
+            v.Const = false;
+
         return retValue;
     }
     Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
@@ -893,7 +984,7 @@ public sealed class Interpreter
         Module module,
         VariableDecl var)
     {
-        var value = EvaluateExpression(varScope, funScope, module, var.Expr);
+        var value = EvaluateExpression(varScope, funScope, module, var.Expr).Clone();
         if (var is TypedVariableDecl typed)
         {
             value = typed.Type.SafeCast(value) ??
@@ -907,12 +998,14 @@ public sealed class Interpreter
                 Ident = new Ident { Value = var.Name },
                 Value = arrayValue,
                 IsPublic = var.IsPublic,
+                Const = var.Const,
             },
             Value otherValue => new SSimpleVariable 
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = otherValue,
                 IsPublic = var.IsPublic,
+                Const = var.Const,
             }
         };
 
@@ -925,7 +1018,8 @@ public sealed class Interpreter
         Assignment ass)
     {
         //var svar = FindSimpleVariable(ass.Left.Ident, scope);
-        var val = EvaluateExpression(varScope, funScope, module, ass.Expr);
+        var val = EvaluateExpression(varScope, funScope, module, ass.Expr).Clone();
+
 
         if (ass.Left is ArrayIndexTarget arrayIndexTarget)
             AssignIndex(varScope, funScope, module, arrayIndexTarget, val);
@@ -962,9 +1056,24 @@ public sealed class Interpreter
         var identExpr = identTarget.Target as IdentExpression ??
             throw new InterpreterException("TODO cannot assing to", identTarget.Target);
         var variable = varScope.FindVariable(identExpr.Ident);
+        if (variable.Const)
+            throw InterpreterException.ConstantReassignment(variable);
         //if(!variable.Value.Ty.Equals(assignedValue.Ty))
+
+        if(assignedValue is ArrayValue arrayValue)
+        {
+            if (variable is not SVariable sArray)
+                throw new InterpreterException("Cannot assing an array to a non array variable", 
+                    identTarget.Target);
+            if (sArray.Value.Ty != arrayValue.Ty)
+                throw new InterpreterException("Type mismatch", identTarget.Target);
+            sArray.Value = arrayValue;
+            return;
+        }
+
+
         variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
-            throw new InterpreterException("Mismatched types", identExpr.Ident);
+            throw new InterpreterException($"Mismatched types {variable.Value.Ty.Stringify()} | {assignedValue.Ty.Stringify()}", identExpr.Ident);
     }
     void CreateFunction(FunctionDecl fun, Module module)
     {
