@@ -13,7 +13,7 @@ internal struct SVariableStacker
 internal abstract class SVariable : SObject
 {
     public abstract Tokens.Value Value { get; set; }
-    public required bool Const { get; set; }
+    public bool Const { get; set; } = false;
 }
 internal class SSimpleVariable : SVariable
 {
@@ -26,6 +26,20 @@ internal class SArray : SVariable
     public int Size { get; }
     public override Value Value { get => _arrayValue; set => _arrayValue = (ArrayValue)value; }
     private ArrayValue _arrayValue;
+
+    private bool _const;
+    new public bool Const 
+    {
+        get 
+        {
+            return _const;
+        }
+        set
+        {
+            _arrayValue.Const = value;
+            _const = value;
+        }
+    }
 
     public SArray(Ty ty, int size)
     {

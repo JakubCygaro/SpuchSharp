@@ -137,7 +137,7 @@ internal abstract class SimpleExpression : Expression { }
 /// 2;
 /// </code>
 /// </example>
-internal sealed class ValueExpression : SimpleExpression
+internal sealed class ConstantExpression : SimpleExpression
 {
     public override string Display() => $"{Val.Stringify()}";
     public required Value Val { get; init; }

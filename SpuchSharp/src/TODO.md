@@ -7,6 +7,7 @@
 	declaration without assignment (values defaulted),
 	+= -+ *= /= %= operators
 }
+- module scoped variables and arrays
 - [int] -> int[]
 - args for main()
 - indexing into text {

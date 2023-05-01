@@ -209,7 +209,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         nextToken = stream.Next();
         if (nextToken is not Assign)
             throw ParserException.Expected<Assign>(nextToken);
-
         if (stream.Peek() is Square.Open)
         {
             stream.Next();
@@ -329,7 +328,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             Expr = tokens.Count > 0 ? 
                     ParseExpression(tokens.ToTokenStream()) : 
-                    new ValueExpression { Val = Value.Void, Location = null, },
+                    new ConstantExpression { Val = Value.Void, Location = null, },
             Location = keyword.Location,
         };
     }
@@ -766,7 +765,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private SimpleExpression ParseIdentOrValueExpression(Token token)
     {
         if (token is Value value)
-            return new ValueExpression { Val = value, Location = value.Location };
+            return new ConstantExpression { Val = value, Location = value.Location };
         else if (token is Ident ident)
             return new IdentExpression { Ident = ident, Location = ident.Location };
         else
@@ -868,7 +867,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             if (stream.Next() is not Assign)
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Peek() is Curly.Open)
-                return ParseUntypedArrayDecl(ident, stream);
+                return ParseUntypedArrayDecl(ident, stream, pub: pub, @const: @const);
             return new VariableDecl()
             {
                 Name = ident.Value,

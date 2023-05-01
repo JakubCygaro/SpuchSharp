@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpuchSharp.Interpreting;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -24,6 +25,8 @@ internal sealed class ArrayValue : Value
     private Value[] _values;
     public Value[] Values { get => _values; init => _values = value; }
     public Value this[int index] { get => Get(index); set => Set(index, value); }
+
+    public bool Const { get; set; }
 
     private Value Get(int index)
     {
@@ -79,6 +82,7 @@ internal sealed class ArrayValue : Value
     public override Value Clone()
     {
         var ret = new ArrayValue(ValueTy, this.Ty, Size, (Value[])_values.Clone());
+        ret.Const = this.Const;
         return ret;
     }
 }

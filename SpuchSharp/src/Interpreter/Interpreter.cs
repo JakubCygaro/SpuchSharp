@@ -472,6 +472,7 @@ public sealed class Interpreter
         Module module,
         ArrayDecl arrayDecl)
     {
+
         if (arrayDecl is TypedArrayDecl typedArr)
             if (typedArr.Sized is not null)
             {
@@ -606,7 +607,7 @@ public sealed class Interpreter
     {
         return expr switch
         {
-            ValueExpression v => v.Val,
+            ConstantExpression v => v.Val,
             IdentExpression i => varScope.FindVariable(i.Ident).Value,
             CallExpression c => EvaluateCall(varScope, funScope, module, c),
             IndexerExpression id => EvaluateIndexer(varScope, funScope, module, id),
@@ -984,7 +985,15 @@ public sealed class Interpreter
         Module module,
         VariableDecl var)
     {
-        var value = EvaluateExpression(varScope, funScope, module, var.Expr).Clone();
+        var value = EvaluateExpression(varScope, funScope, module, var.Expr);
+        if (value is not ArrayValue arrv)
+            value = value.Clone();
+        else
+        {
+            if (arrv.Const && !var.Const)
+                throw InterpreterException.ConstantReassignment(var.Name, var.Location);
+        }
+
         if (var is TypedVariableDecl typed)
         {
             value = typed.Type.SafeCast(value) ??
@@ -1042,12 +1051,19 @@ public sealed class Interpreter
             ?? throw new InterpreterException("Could not obtain the array for assingment", 
             indexer.ArrayProducer);
 
+        if (arrayValue.Const)
+            throw new InterpreterException("Tried to reassign a value of a const array", 
+                arrayIndexTarget.Target.Location);
+
         var index = EvaluateExpression(varScope, funScope, module, arrayIndexTarget.IndexExpression)
                     as IntValue
                     ?? throw new InterpreterException("Index was not of integer value",
                     arrayIndexTarget.IndexExpression);
 
-        arrayValue[index] = assignedValue.Clone();
+        if(assignedValue is ArrayValue)
+            arrayValue[index] = assignedValue;
+        else
+            arrayValue[index] = assignedValue.Clone();
     }
     void AssignVariable(VariableScope varScope,
         IdentTarget identTarget,
@@ -1060,6 +1076,7 @@ public sealed class Interpreter
             throw InterpreterException.ConstantReassignment(variable);
         //if(!variable.Value.Ty.Equals(assignedValue.Ty))
 
+        //SArray case
         if(assignedValue is ArrayValue arrayValue)
         {
             if (variable is not SVariable sArray)
@@ -1067,10 +1084,12 @@ public sealed class Interpreter
                     identTarget.Target);
             if (sArray.Value.Ty != arrayValue.Ty)
                 throw new InterpreterException("Type mismatch", identTarget.Target);
+            if(!sArray.Const && arrayValue.Const)
+                throw new InterpreterException("Cannot assing a constant array to a non constant variable", 
+                    identTarget.Target);
             sArray.Value = arrayValue;
             return;
         }
-
 
         variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
             throw new InterpreterException($"Mismatched types {variable.Value.Ty.Stringify()} | {assignedValue.Ty.Stringify()}", identExpr.Ident);

@@ -55,6 +55,11 @@ public class InterpreterException : Exception
 		var message = $"Tried to reassing a constant variable `{variable.Ident.Stringify()}`";
 		return new InterpreterException(message, location);
 	}
+    internal static InterpreterException ConstantReassignment(string name, Location? location = null)
+    {
+        var message = $"Tried to reassing a constant variable `{name}`";
+        return new InterpreterException(message, location);
+    }
     internal static InterpreterException ConstantReassignment(Ident variableName, Location? location = null)
     {
         var message = $"Tried to reassing a constant variable `{variableName.Stringify()}`";

@@ -8,15 +8,13 @@ fun main(){
 		2,
 		3,
 	};
-	println(c);
-	c = {
-		4,5,6
-	};
-	println(c);
+	const var d = c;
+	test(d);
 }
-fun test(const ref int s){
-	s++;
-	println(s);
+fun test(const ref [int] arr){
+	for i from 0 to len(arr) - 1 {
+		print(arr[i]);
+	}
 }
 fun is_even(int i) bool {
 	return i % 2 == 0;
