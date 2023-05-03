@@ -12,6 +12,11 @@ internal abstract class SimpleToken : Token
     {
         ";" => new Semicolon(),
         "=" => new Assign(),
+        "+=" => new AssignAdd(),
+        "-=" => new AssignSub(),
+        "*=" => new AssignMul(),
+        "/=" => new AssignDiv(),
+        "%=" => new AssignModulo(),
         "(" => new Round.Open(),
         ")" => new Round.Closed(),
         "{" => new Curly.Open(),
@@ -26,7 +31,8 @@ internal abstract class SimpleToken : Token
     };
 }
 
-sealed class Assign : SimpleToken 
+abstract class AssignToken : SimpleToken { }
+sealed class Assign : AssignToken
 {
     public override string Stringify() => "=";
 }
@@ -50,8 +56,26 @@ sealed class Comma : SimpleToken
 {
     public override string Stringify() => ",";
 }
-
-
+sealed class AssignAdd : AssignToken
+{
+    public override string Stringify() => "+=";
+}
+sealed class AssignSub : AssignToken
+{
+    public override string Stringify() => "-=";
+}
+sealed class AssignMul : AssignToken
+{
+    public override string Stringify() => "*=";
+}
+sealed class AssignDiv : AssignToken
+{
+    public override string Stringify() => "/=";
+}
+sealed class AssignModulo : AssignToken
+{
+    public override string Stringify() => "%=";
+}
 
 abstract class Paren : SimpleToken
 {

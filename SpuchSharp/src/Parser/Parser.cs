@@ -7,7 +7,7 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
-using System.Security.Cryptography;
+using System.Data;
 
 namespace SpuchSharp.Parsing;
 
@@ -51,7 +51,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Instruction ParseExpressionOrAssignment(TokenStream stream)
     {
-        if (stream.Has<Assign>())
+        if (stream.Has<AssignToken>())
         {
             return ParseAssignment(stream);
         }
@@ -62,32 +62,65 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Assignment ParseAssignment(TokenStream stream)
     {
-        (var unparsedTarget, _) = ReadToToken<Assign>(stream);
+        (var unparsedTarget, var assignToken) = ReadToToken<AssignToken>(stream);
         var expression = ParseExpression(stream);
         var target = ParseExpression(unparsedTarget.ToTokenStream());
-        return target switch
+
+        AssignTarget assignTarget = target switch
         {
-            IdentExpression ie => new Assignment 
-            { 
-                Expr = expression,
-                Left = new IdentTarget 
-                {  
-                    Target = ie, 
+            IdentExpression ie => new IdentTarget
+                {
+                    Target = ie,
                 },
-                Location = ie.Location
-            },
-            IndexerExpression ix => new Assignment 
-            { 
-                Expr = expression,
-                Left = new ArrayIndexTarget 
-                { 
+            IndexerExpression ix => new ArrayIndexTarget
+                {
                     Target = ix,
                     IndexExpression = ix.IndexExpression,
                 },
-                Location = ix.Location
+            _ => throw new ParserException("This expression cannot be a target for an assignment",
+                target.Location)
+        };
+
+        return assignToken switch
+        {
+            Assign => new RegularAssignment 
+            { 
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
             },
-            _ => throw new ParserException("This expression cannot be a target for an assignment", 
-                target.Location) 
+            AssignAdd => new AddAssignment
+            {
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
+            },
+            AssignSub => new SubAssignment
+            {
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
+            },
+            AssignMul => new MulAssignment
+            {
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
+            },
+            AssignDiv => new DivAssignment
+            {
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
+            },
+            AssignModulo => new ModuloAssignment
+            {
+                Left = assignTarget,
+                Expr = expression,
+                Location = expression.Location,
+            },
+            _ => throw new ParserException("Unknown assignment type", 
+                assignToken.Location) 
         };
         
     }
@@ -649,76 +682,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return ret;
 
     }
-    //private Expression ParseExpression(TokenStream stream)
-    //{
-    //    Expression? ret = null;
-    //    Operator? currentOperator = null;
-    //    while(stream.Next() is Token token)
-    //    {
-    //        if (token is Curly.Open)
-    //        {
-    //            ret = ParseArrayExpression(stream);
-    //            if (stream.Next() is not null)
-    //                throw new ParserException(
-    //                    "Array initialisation expression cannot be used with operators or other expressions");
-    //            break;
-    //        }
-    //        SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
-    //        var nextToken = stream.Next();
-
-    //        if (nextToken is Round.Open && simpleExpression is IdentExpression identExpression)
-    //        {
-    //            var insideParen = ParseInsideRound(stream);
-    //            simpleExpression = ParseCall(identExpression.Ident, insideParen);
-    //            nextToken = stream.Next();
-    //        }
-    //        if (nextToken is Square.Open/* && simpleExpression is IdentExpression identForIndex*/)
-    //        {
-    //            var (tokens, _) = ReadToToken<Square.Closed>(stream);
-    //            var indexExpression = ParseExpression(tokens.ToTokenStream());
-    //            var indexer = new IndexerExpression
-    //            {
-    //                ArrayProducer = simpleExpression,
-    //                IndexExpression = indexExpression,
-    //                Location = simpleExpression.Location,
-    //            };
-    //            simpleExpression = indexer;
-    //            nextToken = stream.Next();
-    //            while(nextToken is Square.Open)
-    //            {
-    //                (tokens, _) = ReadToToken<Square.Closed>(stream);
-    //                indexExpression = ParseExpression(tokens.ToTokenStream());
-
-    //                indexer = new IndexerExpression
-    //                {
-    //                    ArrayProducer = indexer,
-    //                    IndexExpression = indexExpression,
-    //                    Location = simpleExpression.Location,
-    //                };
-    //                simpleExpression = indexer;
-    //                nextToken = stream.Next();
-    //            }
-    //        }
-    //        if(currentOperator is not null && ret is not null)
-    //        {
-    //            ret = ComplexExpression.From(ret, currentOperator, simpleExpression);
-    //        }
-    //        else
-    //        {
-    //            ret = simpleExpression;
-    //        }
-    //        if (nextToken is Operator nextOperator)
-    //        {
-    //            currentOperator = nextOperator;
-    //        }
-    //        else if (nextToken is not null)
-    //        {
-    //            throw ParserException.UnexpectedToken(nextToken);
-    //        }
-    //    }
-    //    return ret ?? 
-    //        throw new ParserException("Failed to parse an expression");
-    //}
+    
     private ArrayExpression ParseArrayExpression(TokenStream stream)
     {
         var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);

@@ -206,6 +206,11 @@ internal sealed class Lexer
                     charStream.MoveNext();
                     return new Add2();
                 }
+                else if (charStream.PeekNext() == '=')
+                {
+                    charStream.MoveNext();
+                    return new AssignAdd();
+                }
                 return new Add();
 
             case '-':
@@ -214,19 +219,39 @@ internal sealed class Lexer
                     if (char.IsDigit(posDigit))
                         return ScanForNumberLiteral(ref first, charStream);
                 }
-                if (charStream.PeekNext() == '-')
+                else if (charStream.PeekNext() == '-')
                 {
                     charStream.MoveNext();
                     return new Sub2();
                 }
+                else if (charStream.PeekNext() == '=')
+                {
+                    charStream.MoveNext();
+                    return new AssignSub();
+                }
                 return new Sub();
 
             case '/':
+                if (charStream.PeekNext() == '=')
+                {
+                    charStream.MoveNext();
+                    return new AssignDiv();
+                }
                 return new Div();
 
             case '*':
+                if (charStream.PeekNext() == '=')
+                {
+                    charStream.MoveNext();
+                    return new AssignMul();
+                }
                 return new Mult();
             case '%':
+                if (charStream.PeekNext() == '=')
+                {
+                    charStream.MoveNext();
+                    return new AssignModulo();
+                }
                 return new Percent();
 
             case '&':

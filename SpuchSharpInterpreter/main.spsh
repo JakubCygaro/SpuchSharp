@@ -2,14 +2,10 @@
 
 fun main(){
 	int a = 10;
-	int b = a;
-	const var c = {
-		1,
-		2,
-		3,
-	};
-	const var d = c;
-	test(d);
+	int b = 20;
+	a += b;
+	println(a);
+	println(b);
 }
 fun test(const ref [int] arr){
 	for i from 0 to len(arr) - 1 {

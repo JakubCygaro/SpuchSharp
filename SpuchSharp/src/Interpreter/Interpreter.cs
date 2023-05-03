@@ -978,8 +978,6 @@ public sealed class Interpreter
             throw new InterpreterException(ex.Message, ex);
         }
     }
-    
-
     void CreateVariable(VariableScope varScope,
         FunctionScope funScope, 
         Module module,
@@ -1026,19 +1024,23 @@ public sealed class Interpreter
         Module module,
         Assignment ass)
     {
+
+
+
         //var svar = FindSimpleVariable(ass.Left.Ident, scope);
         var val = EvaluateExpression(varScope, funScope, module, ass.Expr).Clone();
 
 
         if (ass.Left is ArrayIndexTarget arrayIndexTarget)
-            AssignIndex(varScope, funScope, module, arrayIndexTarget, val);
+            AssignIndex(varScope, funScope, module, arrayIndexTarget, ass, val);
         else if(ass.Left is IdentTarget identTarget)
-            AssignVariable(varScope, identTarget, val);
+            AssignVariable(varScope, identTarget, ass, val);
     }
     void AssignIndex(VariableScope varScope, 
         FunctionScope funScope,
         Module module,
         ArrayIndexTarget arrayIndexTarget,
+        Assignment assignment,
         Value assignedValue)
     {
         
@@ -1060,13 +1062,44 @@ public sealed class Interpreter
                     ?? throw new InterpreterException("Index was not of integer value",
                     arrayIndexTarget.IndexExpression);
 
-        if(assignedValue is ArrayValue)
-            arrayValue[index] = assignedValue;
-        else
-            arrayValue[index] = assignedValue.Clone();
+
+        if (assignedValue is not ArrayValue)
+            assignedValue = assignedValue.Clone();
+
+        //if(assignedValue is ArrayValue)
+        //    arrayValue[index] = assignedValue;
+        //else
+        //    arrayValue[index] = assignedValue.Clone();
+
+        switch (assignment)
+        {
+            case RegularAssignment:
+                arrayValue[index] = assignedValue;
+                break;
+            case AddAssignment:
+                arrayValue[index] = assignedValue.Add(assignedValue);
+                break;
+            case SubAssignment:
+                arrayValue[index] = assignedValue.Sub(assignedValue);
+                break;
+            case MulAssignment:
+                arrayValue[index] = assignedValue.Mul(assignedValue);
+                break;
+            case DivAssignment:
+                arrayValue[index] = assignedValue.Div(assignedValue);
+                break;
+            case ModuloAssignment:
+                arrayValue[index] = assignedValue.Modulo(assignedValue);
+                break;
+            default:
+                throw new InterpreterException("Assignment Failure");
+        }
+
+
     }
     void AssignVariable(VariableScope varScope,
         IdentTarget identTarget,
+        Assignment assignment,
         Value assignedValue)
     {
         var identExpr = identTarget.Target as IdentExpression ??
@@ -1079,6 +1112,8 @@ public sealed class Interpreter
         //SArray case
         if(assignedValue is ArrayValue arrayValue)
         {
+            if (assignment is not RegularAssignment)
+                throw new InterpreterException("Cannot assign to array in such way", assignment);
             if (variable is not SVariable sArray)
                 throw new InterpreterException("Cannot assing an array to a non array variable", 
                     identTarget.Target);
@@ -1090,9 +1125,31 @@ public sealed class Interpreter
             sArray.Value = arrayValue;
             return;
         }
-
-        variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
-            throw new InterpreterException($"Mismatched types {variable.Value.Ty.Stringify()} | {assignedValue.Ty.Stringify()}", identExpr.Ident);
+        switch (assignment)
+        {
+            case RegularAssignment:
+                variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
+                    throw new InterpreterException($"Mismatched types {variable.Value.Ty.Stringify()} " +
+                    $"| {assignedValue.Ty.Stringify()}", identExpr.Ident);
+                break;
+            case AddAssignment:
+                variable.Value = variable.Value.Add(assignedValue);
+                break;
+            case SubAssignment:
+                variable.Value = variable.Value.Sub(assignedValue);
+                break;
+            case MulAssignment:
+                variable.Value = variable.Value.Mul(assignedValue);
+                break;
+            case DivAssignment:
+                variable.Value = variable.Value.Div(assignedValue);
+                break;
+            case ModuloAssignment:
+                variable.Value = variable.Value.Modulo(assignedValue);
+                break;
+            default:
+                throw new InterpreterException("Assignment Failure");
+        }
     }
     void CreateFunction(FunctionDecl fun, Module module)
     {
