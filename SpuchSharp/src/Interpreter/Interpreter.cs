@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +8,7 @@ using SpuchSharp.Instructions;
 using SpuchSharp.Parsing;
 using SpuchSharp.Tokens;
 using SpuchSharp.API;
+using SpuchSharp.Interpreting.Ext;
 
 using VariableScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
@@ -20,56 +20,75 @@ namespace SpuchSharp.Interpreting;
 public sealed class Interpreter
 {
     private readonly Parser _parser;
+    private readonly ProjectSettings _settings;
+    private Module _rootModule;
 
-    private VariableScope _globalVariableScope = new();
-    private FunctionScope _globalFunctionScope = new();
-    private HashSet<string> _importedExternalLibs = new();
-    internal Interpreter(Parser parser) 
+
+    private Dictionary<Ident, Module> _importedExternalLibs = new();
+    internal Interpreter(Parser parser, ProjectSettings projectSettings) 
     {
         _parser = parser;
+        _settings = projectSettings;
+        _rootModule = new()
+        {
+            FunctionScope = new(),
+            VariableScope = new(),
+            Ident = new Ident { Value = "root" },
+            Modules = new(),
+            ParentModule = null,
+            OwnedFunctions = new(),
+            OwnedVariables = new(),
+            DirectoryPath = Directory.GetCurrentDirectory(),
+        };
     }
-    public Interpreter(string sourceFilePath) : this(GetParserFromSource(sourceFilePath)) { }
+    public Interpreter(ProjectSettings projectSettings) 
+        : this(GetParserFromSource(projectSettings.EntryPoint), projectSettings) { }
     static Parser GetParserFromSource(string path)
     {
-        return new Parser(new Lexing.Lexer(File.ReadAllLines(path, Encoding.UTF8)));
+        var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllLines(path, Encoding.UTF8), path);
+        return new Parser(tokenStream);
     }
-    private Value? ExcecuteInstruction(Instruction instruction, 
-        VariableScope varScope, 
+    Value? ExcecuteInstruction(Instruction instruction, 
+        VariableScope varScope,
         FunctionScope funScope,
+        Module module,
         LoopContext? loopContext = default)
     {
         //debug
-        PrintScope(varScope);
-        PrintInstruction(instruction);
+        Debug.PrintScope(module.VariableScope);
+        Debug.PrintInstruction(instruction);
 
 
         if(instruction is Statement stmt)
         {
-            IfDeclaration(varScope, funScope, stmt);
-            IfAssignment(varScope, funScope, stmt);
+            if (stmt is FunctionDecl)
+                throw new InterpreterException("Disallowed function declaration", stmt);
+            IfDeclaration(varScope, funScope, module, stmt);
+            IfAssignment(varScope, funScope, module, stmt);
             IfDeletion(varScope, funScope, stmt);
             if (stmt is IfStatement ifStatement)
-                return IfIfStatement(varScope, funScope, ifStatement, loopContext: loopContext);
+                return IfIfStatement(varScope, funScope, module, ifStatement, loopContext: loopContext);
             if (stmt is ReturnStatement returnStatement)
-                return EvaluateReturn(varScope, funScope, returnStatement);
+                return EvaluateReturn(varScope, funScope, module, returnStatement);
             if (stmt is LoopStatement loopStatement)
-                return EvaluateLoop(varScope, funScope, loopStatement);
+                return EvaluateLoop(varScope, funScope, module, loopStatement);
             if (stmt is BreakStatement breakStatement)
                 return EvaluateBreak(breakStatement, loopContext);
             if (stmt is SkipStatement skipStatement)
                 return EvaluateSkip(skipStatement, loopContext);
             if (stmt is ForLoopStatement forLoopStatement)
-                return EvaluateForLoop(varScope, funScope, forLoopStatement);
+                return EvaluateForLoop(varScope, funScope, module, forLoopStatement);
             if (stmt is WhileStatement whileStatement)
-                return EvaluateWhileLoop(varScope, funScope, whileStatement);
+                return EvaluateWhileLoop(varScope, funScope, module, whileStatement);
         }
         if (instruction is Expression expr)
-            EvaluateExpression(varScope, funScope, expr);
+            EvaluateExpression(varScope, funScope, module, expr);
 
         return null;
     }
-    private Value? EvaluateWhileLoop(VariableScope varScope,
+    Value? EvaluateWhileLoop(VariableScope varScope,
         FunctionScope funScope,
+        Module module,
         WhileStatement whileStatement)
     {
         var block = whileStatement.Block;
@@ -77,27 +96,28 @@ public sealed class Interpreter
         Value? returnValue = null;
 
         while(EvaluateCondition() && !context.ShouldBreak)
-            returnValue = ExcecuteBlock(block, varScope, funScope, loopContext: context);
+            returnValue = ExcecuteBlock(block, varScope, funScope, module, loopContext: context);
         return returnValue;
 
         bool EvaluateCondition()
         {
-            return EvaluateExpression(varScope, funScope, whileStatement.Condition)
+            return EvaluateExpression(varScope, funScope, module, whileStatement.Condition)
             as BooleanValue ??
             throw new InterpreterException("The condition of a while statement must evaluate to a boolean value",
             whileStatement.Condition);
         }
     }
-    private Value? EvaluateForLoop(VariableScope varScope, 
+    Value? EvaluateForLoop(VariableScope varScope, 
         FunctionScope funScope, 
+        Module module,
         ForLoopStatement forLoopStmt)
     {
         var block = forLoopStmt.Block;
         var context = new LoopContext();
         Value? returnValue = null;
-        var from = EvaluateExpression(varScope, funScope, forLoopStmt.From) as IntValue ??
+        var from = EvaluateExpression(varScope, funScope, module, forLoopStmt.From) as IntValue ??
             throw new InterpreterException("Expected int value");
-        var to = EvaluateExpression(varScope, funScope, forLoopStmt.To) as IntValue ??
+        var to = EvaluateExpression(varScope, funScope, module, forLoopStmt.To) as IntValue ??
             throw new InterpreterException("Expected int value");
 
         var increase = from > to ? -1 : 1;
@@ -108,6 +128,8 @@ public sealed class Interpreter
         {
             Ident = forLoopStmt.VariableIdent,
             Value = variableValue,
+            IsPublic = false,
+            Const = false,
         };
         newVarScope.Add(variable);
 
@@ -116,32 +138,33 @@ public sealed class Interpreter
             if (context.ShouldBreak)
                 break;
             variableValue.Value = x;
-            returnValue = ExcecuteBlock(block, newVarScope, funScope, loopContext: context);
+            returnValue = ExcecuteBlock(block, newVarScope, funScope, module, loopContext: context);
         }
         return returnValue;
     }
-    private Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
+    Value? EvaluateBreak(BreakStatement breakStmt, LoopContext? loopContext)
     {
         if (loopContext is null)
             throw new InterpreterException("Break statement outside of a loop block", breakStmt);
         loopContext.ShouldBreak = true;
         return Value.Nothing;
     }
-    private Value? EvaluateSkip(SkipStatement skipStatement, LoopContext? loopContext)
+    Value? EvaluateSkip(SkipStatement skipStatement, LoopContext? loopContext)
     {
         if (loopContext is null)
             throw new InterpreterException("Skip statement outside of a loop block", skipStatement);
         return Value.Nothing;
     }
-    private Value? EvaluateLoop(VariableScope varScope, 
+    Value? EvaluateLoop(VariableScope varScope, 
         FunctionScope funScope, 
+        Module module,
         LoopStatement loopStatement)
     {
         var block = loopStatement.Block;
         var context = new LoopContext();
         Value? returnValue = null;
         while (!context.ShouldBreak)
-            returnValue = ExcecuteBlock(block, varScope, funScope, loopContext: context);
+            returnValue = ExcecuteBlock(block, varScope, funScope, module, loopContext: context);
         return returnValue;
     }
 
@@ -156,14 +179,15 @@ public sealed class Interpreter
     /// <param name="varScope"></param>
     /// <param name="funScope"></param>
     /// <returns></returns>
-    private Value? ExcecuteBlock(Instruction[] block,
+    Value? ExcecuteBlock(Instruction[] block,
         VariableScope varScope,
         FunctionScope funScope,
+        Module module,
         LoopContext? loopContext = default)
     {
         foreach (var ins in block)
         {
-            var returnValue = ExcecuteInstruction(ins, varScope, funScope, loopContext: loopContext);
+            var returnValue = ExcecuteInstruction(ins, varScope, funScope, module, loopContext: loopContext);
             if (returnValue is not null and not NothingValue)
                 return returnValue;
         }
@@ -171,66 +195,225 @@ public sealed class Interpreter
     }
     public void Run()
     {
-        foreach (var instruction in _parser)
-        {
-            //ExcecuteInstruction(instruction, _globalVariableScope, _globalFunctionScope);
-            GlobalExcecute(instruction);
-        }
+        Run(_parser.ToArray(),
+            _rootModule,
+            _importedExternalLibs);
         RunMain();
-        DebugInfo();
+        //DebugInfo();
+    }
+    void Run(Instruction[] instructions, 
+        Module module,
+        Dictionary<Ident, Module> importedLibs)
+    {
+        foreach (var instruction in instructions)
+        {
+            GlobalExcecute(instruction, module, importedLibs);
+        }
+        foreach (var instruction in instructions)
+        {
+            ExcecuteModules(instruction, module, importedLibs);
+        }
+    }
+    void ExcecuteModules(Instruction instruction,
+        Module module,
+        Dictionary<Ident, Module> importedLibs)
+    {
+        if (instruction is ModuleDecl modDecl)
+            CreateModule(modDecl, module, importedLibs);
+        else if (instruction is UseStmt useStmt)
+            UseModule(useStmt, module);
     }
     /// <summary>
     /// This is what the interpreter does before calling main(), all instructions are evaluated
-    /// on global scopes
+    /// on root scopes
     /// </summary>
-    private void GlobalExcecute(Instruction instruction)
+    void GlobalExcecute(Instruction instruction, 
+        Module module,
+        Dictionary<Ident, Module> importedLibs)
     {
-        PrintInstruction(instruction);
+        Debug.PrintInstruction(instruction);
         //only process variable and function declarations, ignore everything else
         if (instruction is Statement stmt)
         {
-            IfDeclaration(_globalVariableScope, _globalFunctionScope, stmt);
-            IfImport(stmt, _globalFunctionScope);
+            if (stmt is ModuleDecl modDecl)
+                return;
+                //CreateModule(modDecl, module, importedLibs);
+            else if (stmt is UseStmt useStmt)
+                return;
+                //UseModule(useStmt, module);
+            else
+            {
+                //IfDeclaration(module.VariableScope, module.FunctionScope, module, stmt, importedLibs);
+                if (stmt is FunctionDecl fun)
+                    CreateFunction(fun, module);
+                else if (stmt is VariableDecl var)
+                {
+                    CreateVariable(module.OwnedVariables, module.FunctionScope, module, var);
+                    module.VariableScope.Extend(module.OwnedVariables);
+                }
+                else if (stmt is ArrayDecl arr)
+                {
+                    CreateArray(module.OwnedVariables, module.FunctionScope, module, arr);
+                    module.VariableScope.Extend(module.OwnedVariables);
+                }
+
+                IfImport(stmt, module, importedLibs);
+            }
             //IfAssignment(varScope, funScope, stmt);
         }
         else
             throw new InterpreterException($"Only variable and function declarations can happen in" +
-                $" the global scope.", instruction);
+                $" the global module scope.", instruction);
     }
-    private Value EvaluateReturn(VariableScope varScope, 
+    void UseModule(UseStmt useStmt, Module module)
+    {
+        Module toInclude = module;
+
+        foreach(var ident in useStmt.ModulePath)
+        {
+            if (ident == "super")
+                toInclude = toInclude.ParentModule?.ValueOrDefault() ??
+                    throw new InterpreterException("TODO super module unavaliable");
+            else
+            {
+                if (toInclude.Modules.GetValueOrDefault(ident) is null)
+                {
+                    if (toInclude.OwnedVariables.GetValueOrDefault(ident) is SVariable variable)
+                    {
+                        module.VariableScope.AddPublic(variable);
+                        return;
+                    }
+                    else if (toInclude.OwnedFunctions.GetValueOrDefault(ident) is SFunction function)
+                    {
+                        module.FunctionScope.AddPublic(function);
+                        return;
+                    }
+                    else
+                        throw new InterpreterException("TODO function or variable not found", useStmt);
+                }
+                else
+                    toInclude = toInclude.Modules.GetValueOrDefault(ident) ??
+                        throw new InterpreterException("TODO module unavaliable");
+
+                if (!toInclude.IsPublic &&
+                        !ReferenceEquals(toInclude.ParentModule?.ValueOrDefault(), module) &&
+                        !ReferenceEquals(module.ParentModule?.ValueOrDefault(), toInclude))
+                    throw new InterpreterException("Cannot use an unpublic module", useStmt);
+            }
+        }
+        if (!toInclude.IsPublic &&
+                !ReferenceEquals(toInclude.ParentModule?.ValueOrDefault(), module) &&
+                !ReferenceEquals(module.ParentModule?.ValueOrDefault(), toInclude))
+            throw new InterpreterException("Cannot use an unpublic module", useStmt);
+
+        module.VariableScope.ExtendPublic(toInclude.OwnedVariables);
+        module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
+    }
+    void CreateModule(ModuleDecl modDecl, 
+        Module module,
+        Dictionary<Ident, Module> importedLibs)
+    {
+        var modules = module.Modules;
+
+        if (modules.ContainsKey(modDecl.Ident))
+            throw new InterpreterException($"Module already used at " +
+                $"{modules[modDecl.Ident].Ident.Location}", modDecl);
+
+        var dir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(module.DirectoryPath);
+
+        Instruction[] moduleInstructions;
+        var supposedSource = modDecl.Ident.Value;
+        string path;
+        if (File.Exists(supposedSource + ".spsh"))
+        {
+            path = supposedSource + ".spsh";
+            moduleInstructions = GetParserFromSource(modDecl.Ident.Value + ".spsh").ToArray();
+        }
+        else if (Directory.Exists(supposedSource))
+        {
+            path = Path.Combine(supposedSource, "mod.spsh");
+            moduleInstructions = GetParserFromSource(path).ToArray();
+        }
+        else
+            throw new ParserException($"Could not locate source file for module `{supposedSource}`");
+
+        Directory.SetCurrentDirectory(dir);
+
+        var newModule = new Module
+        {
+            FunctionScope = new FunctionScope(),
+            VariableScope = new VariableScope(),
+            Ident = modDecl.Ident,
+            Modules = new(),
+            ParentModule = new(module),
+            OwnedFunctions = new(),
+            OwnedVariables = new(),
+            IsPublic = modDecl.IsPublic,
+            DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(path)) ??
+                                    throw new InterpreterException($"Could not determine module directory path for module `{supposedSource}`")
+        };
+        Run(moduleInstructions, newModule, importedLibs);
+        modules.Add(modDecl.Ident, newModule);
+    }
+    Value EvaluateReturn(VariableScope varScope, 
         FunctionScope funScope, 
+        Module module,
         ReturnStatement returnStatement)
     {
-        return EvaluateExpression(varScope, funScope, returnStatement.Expr);
+        return EvaluateExpression(varScope, funScope, module, returnStatement.Expr);
     }
-    private void IfImport(Statement instruction, FunctionScope funScope)
+    void IfImport(Statement instruction, 
+        Module module, 
+        Dictionary<Ident, Module> importedLibs)
     {
+        var funScope = module.FunctionScope;
         if (instruction is not ImportStatement import) 
             return;
-        if (_importedExternalLibs.Contains(import.Path))
-            throw new InterpreterException($"Cannot import an already imported library: {import.Path}", 
-                import);
-        try 
+        string importPath;
+        Ident importIdent;
+        if (_settings.ExternalLibs.ContainsKey(import.Path))
         {
-            funScope.Extend(Importer.ImportFunctions(import.Path));
-            _importedExternalLibs.Add(import.Path);
+            importPath = _settings.ExternalLibs[import.Path];
+            importPath = Path.GetFullPath(importPath);
+            importIdent = Path.GetFileNameWithoutExtension(importPath).AsIdent();
         }
-        catch(Exception ex) 
+        else
         {
-            throw new InterpreterException(ex.Message, ex);
+            importIdent = import.Path.AsIdent();
+            importPath = Path.Combine(Importer.GetExternalLibsGlobalPath(), import.Path + ".dll");
         }
+        if (importedLibs.ContainsKey(importIdent))
+        {
+            funScope.Extend(importedLibs[importIdent].OwnedFunctions, false);
+        }
+        else
+            try 
+            {
+                if (!File.Exists(importPath))
+                    throw new Exception($"Could not locate external library file, with name " +
+                        $"`{importIdent.Stringify()}`");
+                var mod = Importer.ImportModule(importPath, importIdent);
+                importedLibs.Add(mod.Ident, mod);
+                funScope.Extend(importedLibs[importIdent].OwnedFunctions, false);
+            }
+            catch (Exception ex) 
+            {
+                throw new InterpreterException(ex.Message, ex);
+            }
     }
     private void RunMain()
     {
         var mainIdent = new Ident { Value = "main" };
-        if (!_globalFunctionScope.TryGetValue(mainIdent, out var main))
+        if (!_rootModule.FunctionScope.TryGetValue(mainIdent, out var main))
             throw new InterpreterException("Could not find a main() fuction to begin execution.");
         if(main.Args.Length != 0)
             throw new InterpreterException("The main() function cannot take any arguments.");
         if(main.ReturnTy is not VoidTy)
             throw new InterpreterException("The main() function cannot have a return type.");
-        EvaluateCall(_globalVariableScope,
-            _globalFunctionScope,
+        EvaluateCall(_rootModule.VariableScope, 
+            _rootModule.FunctionScope,
+            _rootModule,
             new CallExpression
             {
                 Args = Array.Empty<Expression>(),
@@ -238,130 +421,404 @@ public sealed class Interpreter
                 Location = null,
             });
     }
-    private void IfDeclaration(VariableScope varScope, FunctionScope funScope, Statement instruction)
+    void IfDeclaration(VariableScope varScope, 
+        FunctionScope funScope, 
+        Module module,
+        Statement instruction,
+        Dictionary<Ident, Module>? importedLibs = null)
     {
         if (instruction is not Declaration decl) 
             return;
-        if (decl is Variable var) 
-            CreateVariable(varScope, funScope, var);
-        if (decl is Function fun) 
-            CreateFunction(fun, funScope);
-        if (decl is ArrayDecl arr)
-            CreateArray(varScope, funScope, arr);
+        if (decl is VariableDecl var)
+        {
+            if (var.IsPublic)
+                throw new InterpreterException("Local variable declaration cannot be public", var);
+            CreateVariable(varScope, funScope, module, var);
+        }
+        //else if (decl is Function fun)
+        //    CreateFunction(fun, module);
+        else if (decl is ArrayDecl arr)
+        {
+            if (arr.IsPublic)
+                throw new InterpreterException("Local array declaration cannot be public", arr);
+            CreateArray(varScope, funScope, module, arr);
+        }
+        //else if (decl is ModuleDecl modDecl)
+        //    CreateModule(modDecl, module, importedLibs ?? throw new InterpreterException("Internal error" +
+        //        " no set of imported external libraries was provided for Interpreter.CreateModule"));
+        else
+            throw new InterpreterException("Unallowed declaration statement", decl);
 
     }
-    private void CreateArray(VariableScope varScope, FunctionScope funScope, ArrayDecl arrayDecl)
+    //static void CreateModule(ModuleDecl modDecl, 
+    //    Module module, 
+    //    HashSet<string> importedLibs)
+    //{
+    //    var file = modDecl.Ident.Value + ".spsh";
+    //    var instructions = GetParserFromSource(file).ToArray();
+    //    var newModule = new Module
+    //    {
+    //        FunctionScope = new(),
+    //        VariableScope = new(),
+    //        Ident = modDecl.Ident,
+    //        Modules = new(),
+    //        ParentModule = module,
+    //    };
+    //    Run(instructions, newModule, importedLibs);
+    //    module.Modules.Add(newModule.Ident, newModule);
+    //}
+    void CreateArray(VariableScope varScope, 
+        FunctionScope funScope, 
+        Module module,
+        ArrayDecl arrayDecl)
     {
+        ArrayValue arrayValue;
+        Ty declType;
+        SArray array;
         if (arrayDecl is TypedArrayDecl typedArr)
+        {
             if (typedArr.Sized is not null)
             {
-                var size = EvaluateExpression(varScope, funScope, typedArr.Sized) as IntValue ??
-                    throw new InterpreterException("Size of an array must be an interger type value", 
-                    typedArr.Sized);
-                varScope.Add(new SArray(typedArr.Type, size)
-                {
-                    Ident = new Ident { Value = typedArr.Name },
-                });
+                var sArray = CreateSizedArray(varScope, funScope, module, typedArr);
+
+                varScope.Add(sArray);
                 return;
             }
-        //var values = new List<Value>();
-        //foreach (var expr in arrayDecl.Expressions)
-        //{
-        //    values.Add(EvaluateExpression(varScope, funScope, expr));
-        //}
-        //if (values.Count == 0)
-        //    throw new InterpreterException("Empty array declaration", arrayDecl);
-        var arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, arrayDecl.ArrayExpression);
-        var declType = arrayDecl switch
+            else if (arrayDecl.ArrayExpression is null)
+            {
+                declType = ArrayTy.ArrayOf(typedArr.Type);
+                arrayValue = (ArrayValue)declType.DefaultValue();
+                array = new SArray(declType, arrayValue.Size)
+                {
+                    Ident = new Ident() { Value = arrayDecl.Name },
+                    Value = arrayValue,
+                    IsPublic = arrayDecl.IsPublic,
+                    Const = arrayDecl.Const,
+                };
+            }
+            else
+                throw new InterpreterException("TODO Typed Array creation failed");
+        }
+        else /*if (arrayDecl.ArrayExpression is not null)*/
         {
-            TypedArrayDecl typed => typed.Type,
-            _ => arrayValue.ValueTy,
-        };
+            arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, module, arrayDecl.ArrayExpression ??
+                throw new InterpreterException("Untyped variable declaration must contain assignment", arrayDecl));
+            declType = arrayValue.Ty;
+            if (!arrayValue.ValueTy.Equals(declType))
+                throw new InterpreterException("Array type does not match the assigned value", arrayValue);
+            array = new SArray(declType, arrayValue.Size)
+            {
+                Ident = new Ident() { Value = arrayDecl.Name },
+                Value = arrayValue,
+                IsPublic = arrayDecl.IsPublic,
+                Const = arrayDecl.Const,
+            };
+        }
 
-        if (!arrayValue.ValueTy.Equals(declType))
-            throw new InterpreterException("Array type does not match the assigned value", arrayValue);
-        var array = new SArray(declType, arrayValue.Size)
-        {
-            Ident = new Ident() { Value = arrayDecl.Name },
-            Value = arrayValue,
-        };
-        //var index = 0;
-        //foreach (var value in values)
-        //{
-        //    array.Set(index, value);
-        //    index++;
-        //}
         varScope.Add(array);
+    }
+    SArray CreateSizedArray(VariableScope varScope, 
+        FunctionScope funScope, 
+        Module module,
+        TypedArrayDecl typedArr)
+    {
+        var sizes = new LinkedList<(int size, Ty type)>();
+        var arrayType = ArrayTy.ArrayOf(typedArr.Type);
+        foreach (var size in typedArr.Sized!)
+        {
+            var s = EvaluateExpression(varScope, funScope, module, size)
+                as IntValue
+                ?? throw new InterpreterException("Array size expression must be of integer value", size);
+            var ty = arrayType.OfType;
+            sizes.AddLast((s, ty));
+            arrayType = ArrayTy.ArrayOf(ty);
+        }
+
+        var sArray = new SArray(sizes.First!.Value.type, sizes.First!.Value.size)
+        {
+            Ident = new Ident { Value = typedArr.Name },
+            IsPublic = typedArr.IsPublic,
+            Const = typedArr.Const,
+        };
+        sizes.RemoveFirst();
+        var val = (ArrayValue)sArray.Value;
+        FillArrays(ref val, sizes);
+        return sArray;
+    }
+    void FillArrays(ref ArrayValue arrayValue, LinkedList<(int size, Ty type)> sizes)
+    {
+        if (sizes.Count == 0)
+            return;
+        for(int i = 0; i < arrayValue.Values.Count(); i++)
+            arrayValue.Values[i] = new ArrayValue(sizes.First!.Value.type, sizes.First!.Value.size);
+        sizes.RemoveFirst();
+        foreach (var valueArray in arrayValue.Values)
+        {
+            var val = (ArrayValue)valueArray;
+            FillArrays(ref val, sizes);
+        }
     }
 
 
     /// <summary>
     /// Will return a non-null <c>Value</c> if any of the contained instructions
-    /// was a <c>return</c> statement
+    /// was a <c>return</c> statement, but will return a <c>NothingValue</c> if a break or skip statement was
+    /// enqountered
     /// </summary>
     /// <param name="varScope"></param>
     /// <param name="funScope"></param>
     /// <param name="ifStmt"></param>
     /// <returns></returns>
     /// <exception cref="InterpreterException"></exception>
-    private Value? IfIfStatement(VariableScope varScope, 
+    Value? IfIfStatement(VariableScope varScope, 
         FunctionScope funScope, 
+        Module module,
         IfStatement ifStmt,
         LoopContext? loopContext = default)
     {
-        var value = EvaluateExpression(varScope, funScope, ifStmt.Expr);
+        var value = EvaluateExpression(varScope, funScope, module, ifStmt.Expr);
         if (value is not BooleanValue boolean)
             throw new InterpreterException("If statement expression must evaluate to a true/false value");
         if (boolean)
-            return ExcecuteBlock(ifStmt.Block, varScope, funScope, loopContext: loopContext);
+            return ExcecuteBlock(ifStmt.Block, varScope, funScope, module, loopContext: loopContext);
         else if(ifStmt.ElseBlock is Instruction[] elseBlock)
-            return ExcecuteBlock(elseBlock, varScope, funScope, loopContext: loopContext);
+            return ExcecuteBlock(elseBlock, varScope, funScope, module, loopContext: loopContext);
         return null;
     }
-    private void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
+    void IfDeletion(VariableScope varScope, FunctionScope funScope, Statement stmt)
     {
         if (stmt is not DeleteStatement delete)
             return;
-        var sVar = FindVariable(varScope, delete.VariableIdent);
+        var sVar = varScope.FindVariable(delete.VariableIdent);
         DeleteVariable(sVar.Ident, varScope);
     }
-    private void DeleteVariable(Ident ident, VariableScope varScope)
+    void DeleteVariable(Ident ident, VariableScope varScope)
     {
         varScope.Remove(ident);
     }
-    private void IfAssignment(VariableScope scope, FunctionScope funScope, Statement statement)
+    void IfAssignment(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        Statement statement)
     {
         if (statement is Assignment ass) 
-            AssignValue(scope, funScope, ass);
+            AssignValue(varScope, funScope,  module, ass);
     }
-    private Value EvaluateExpression(VariableScope scope, FunctionScope funScope, Expression expr)
+    Value EvaluateExpression(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        Expression expr)
     {
-        PrintExpression(expr);
+        Debug.PrintExpression(expr);
         return expr switch
         {
-            SimpleExpression s => EvaluateSimple(scope, funScope, s),
-            ComplexExpression c => EvaluateComplex(scope, funScope, c),
+            SimpleExpression s => EvaluateSimple(varScope, funScope, module, s),
+            ComplexExpression c => EvaluateComplex(varScope, funScope, module, c),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    private Value EvaluateSimple(VariableScope varScope, FunctionScope funScope, SimpleExpression expr)
+    Value EvaluateSimple(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        SimpleExpression expr)
     {
         return expr switch
         {
-            ValueExpression v => v.Val,
-            IdentExpression i => FindVariable(varScope, i.Ident).Value,
-            CallExpression c => EvaluateCall(varScope, funScope, c),
-            IndexerExpression id => EvaluateIndexer(varScope, funScope, id),
-            ArrayExpression ae => EvalueArrayExpression(varScope, funScope, ae),
+            ConstantExpression v => v.Val,
+            IdentExpression i => varScope.FindVariable(i.Ident).Value,
+            CallExpression c => EvaluateCall(varScope, funScope, module, c),
+            IndexerExpression id => EvaluateIndexer(varScope, funScope, module, id),
+            ArrayExpression ae => EvalueArrayExpression(varScope, funScope, module, ae),
+            NotExpression ne => EvaluateNot(varScope, funScope, module, ne),
+            IncrementExpression ie => EvaluateIncrement(varScope, funScope, module, ie),
+            DecrementExpression de => EvaluateDecrement(varScope, funScope, module, de),
+            CastExpression ce => EvaluateCast(varScope, funScope, module, ce),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    private Value EvalueArrayExpression(VariableScope varScope, 
-        FunctionScope funScope, 
+    Value EvaluateCast(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        CastExpression castExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, castExpression.Expression);
+        var casted = castExpression.TargetType.Cast(val);
+        return casted;
+    }
+    Value EvaluateDecrement(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        DecrementExpression decrementExpression)
+    {
+        var target = varScope.FindSimpleVariable(decrementExpression.Expression.Ident);
+        if (target.Const)
+            throw InterpreterException.ConstantReassignment(decrementExpression.Expression.Ident,
+                decrementExpression.Location);
+
+        var val = EvaluateExpression(varScope, funScope, module, decrementExpression.Expression);
+
+        switch (val)
+        {
+            case ShortValue s:
+                if (decrementExpression.Pre)
+                {
+                    --s.Value;
+                    return s;
+                }
+                else
+                {
+                    var ret = s.Clone();
+                    --s.Value;
+                    return ret;
+                }
+            case IntValue i:
+                if (decrementExpression.Pre)
+                {
+                    --i.Value;
+                    return i;
+                }
+                else
+                {
+                    var ret = i.Clone();
+                    --i.Value;
+                    return ret;
+                }
+            case LongValue l:
+                if (decrementExpression.Pre)
+                {
+                    --l.Value;
+                    return l;
+                }
+                else
+                {
+                    var ret = l.Clone();
+                    --l.Value;
+                    return ret;
+                }
+            case FloatValue f:
+                if (decrementExpression.Pre)
+                {
+                    --f.Value;
+                    return f;
+                }
+                else
+                {
+                    var ret = f.Clone();
+                    --f.Value;
+                    return ret;
+                }
+            case DoubleValue d:
+                if (decrementExpression.Pre)
+                {
+                    --d.Value;
+                    return d;
+                }
+                else
+                {
+                    var ret = d.Clone();
+                    --d.Value;
+                    return ret;
+                }
+            default:
+                throw new InterpreterException("Invalid use of decrement", decrementExpression);
+        }
+    }
+    Value EvaluateIncrement(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        IncrementExpression incrementExpression)
+    {
+        var target = varScope.FindSimpleVariable(incrementExpression.Expression.Ident);
+        if (target.Const)
+            throw InterpreterException.ConstantReassignment(incrementExpression.Expression.Ident, 
+                incrementExpression.Location);
+
+        var val = EvaluateExpression(varScope, funScope, module, incrementExpression.Expression);
+
+        switch (val)
+        {
+            case ShortValue s:
+                if (incrementExpression.Pre)
+                {
+                    ++s.Value;
+                    return s;
+                }
+                else
+                {
+                    var ret = s.Clone();
+                    ++s.Value;
+                    return ret;
+                }
+            case IntValue i:
+                if (incrementExpression.Pre)
+                {
+                    ++i.Value;
+                    return i;
+                }
+                else
+                {
+                    var ret = i.Clone();
+                    ++i.Value;
+                    return ret;
+                }
+            case LongValue l:
+                if (incrementExpression.Pre)
+                {
+                    ++l.Value;
+                    return l;
+                }
+                else
+                {
+                    var ret = l.Clone();
+                    ++l.Value;
+                    return ret;
+                }
+            case FloatValue f:
+                if (incrementExpression.Pre)
+                {
+                    ++f.Value;
+                    return f;
+                }
+                else
+                {
+                    var ret = f.Clone();
+                    ++f.Value;
+                    return ret;
+                }
+            case DoubleValue d:
+                if (incrementExpression.Pre)
+                {
+                    ++d.Value;
+                    return d;
+                }
+                else
+                {
+                    var ret = d.Clone();
+                    ++d.Value;
+                    return ret;
+                }
+            default:
+                throw new InterpreterException("Invalid use of increment", incrementExpression);
+        }
+    }
+    Value EvaluateNot(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        NotExpression notExpression)
+    {
+        var val = EvaluateExpression(varScope, funScope, module, notExpression.Expr) as BooleanValue ??
+            throw new InterpreterException(
+                "Failed to evaluate operand to a boolean value for negation operator", notExpression);
+        val.Value = !val.Value;
+        return val;
+    }
+    Value EvalueArrayExpression(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
         ArrayExpression arrayExpression)
     {
         var expressions = arrayExpression.Expressions;
-        var values = expressions.Select(expr => EvaluateExpression(varScope, funScope, expr))
+        var values = expressions.Select(expr => EvaluateExpression(varScope, funScope, module, expr))
                                 .ToArray();
         var size = values.Count();
         if (size == 0)
@@ -371,30 +828,40 @@ public sealed class Interpreter
             Values = values,
         };
     }
-    private Value EvaluateIndexer(VariableScope varScope, FunctionScope funScope, IndexerExpression expr)
+    Value EvaluateIndexer(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        IndexerExpression expr)
     {
-        var array = FindArray(varScope, expr.Ident);
-        var index = EvaluateExpression(varScope, funScope, expr.IndexExpression) as IntValue
-            ?? throw new InterpreterException("An array index must be of integer type", expr);
-        return array.Get<Value>(index);
+        var arrayValue = EvaluateExpression(varScope, funScope, module, expr.ArrayProducer) as ArrayValue 
+            ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
+
+        var index = EvaluateExpression(varScope, funScope, module, expr.IndexExpression) as IntValue
+            ?? throw new InterpreterException("An array index must be of integer type", expr.IndexExpression);
+        return arrayValue[index];
     }
-    private SVariable FindVariable(VariableScope varScope, Ident ident)
-    {
-        if (varScope.TryGetValue(ident, out var arr))
-            return arr;
-        throw InterpreterException.VariableNotFound(ident);
-    }
-    private SArray FindArray(VariableScope varScope, Ident ident)
-    {
-        if (varScope.TryGetValue(ident, out var arr))
-            return arr as SArray ??
-                throw new InterpreterException("Tried indexing into a non array type", ident);
-        throw InterpreterException.VariableNotFound(ident);
-    }
-    private Value EvaluateCall(VariableScope scope, FunctionScope funScope, CallExpression call)
+    
+    Value EvaluateCall(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        CallExpression call)
     {
         //get the function that should be called
-        var targetFunction = FindFunction(call.Function, funScope);
+        var targetFunction = funScope.FindFunction(call.Function);
+
+        Module functionModule;
+        if(targetFunction.ParentModule?.ValueOrDefault() is Module m)
+        {
+            if (object.ReferenceEquals(module, m))
+                functionModule = module;
+            else
+                functionModule = m;
+        }
+        else
+        {
+            functionModule = module;
+        }
+
         //get the return type of that function
         var returnType = targetFunction.ReturnTy;
         //check whether argument amount makes sense
@@ -403,6 +870,7 @@ public sealed class Interpreter
                 $"got {call.Args.Length}", call.Function);
         //variable scope for the function
         VariableScope newVariables = new();
+        List<SVariable> deconst = new();
 
         foreach(var (argument, index) in call.Args.Select((x, i) => (x, i)))
         {
@@ -410,16 +878,30 @@ public sealed class Interpreter
             {
                 if(argument is not IdentExpression identExpression)
                     throw new InterpreterException("A ref argument can only be a variable name", argument);
-                var variable = FindVariable(scope, identExpression.Ident);
+                var variable = varScope.FindVariable(identExpression.Ident);
                 if (variable.Value.Ty != targetFunction.Args[index].Ty)
                     throw new InterpreterException($"Mismatched argument type, " +
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
                         $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
 
+                if (targetFunction.Args[index].Const)
+                {
+                    if (!variable.Const)
+                    {
+                        variable.Const = true;
+                        deconst.Add(variable);
+                    }
+                }
+                else
+                {
+                    if (variable.Const)
+                        throw new InterpreterException(
+                            $"Cannot pass a non-constant reference to a constant variable `{variable.Ident.Stringify()}`", call);
+                }
                 newVariables.Add(targetFunction.Args[index].Name, variable);
                 continue;
             }
-            var value = EvaluateExpression(scope, funScope, argument);
+            var value = EvaluateExpression(varScope, funScope, module, argument);
             if (targetFunction.Args[index].Ty != value.Ty)
                 throw new InterpreterException($"Mismatched argument type, " +
                         $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
@@ -435,7 +917,9 @@ public sealed class Interpreter
                     (valueAsArray).Size)
                 {
                     Ident = targetFunction.Args[index].Name,
-                    Value = valueAsArray//.Clone()
+                    Value = valueAsArray,//.Clone()
+                    IsPublic = false,
+                    Const = targetFunction.Args[index].Const,
                 });
             }
             else
@@ -443,17 +927,23 @@ public sealed class Interpreter
                 {
                     Ident = targetFunction.Args[index].Name,
                     Value = value,
+                    IsPublic = false,
+                    Const = targetFunction.Args[index].Const,
                 });
         }
 
         if (targetFunction is ExternalFunction ext)
             return CallExternalFunction(ext, newVariables.Values.ToList());
 
-        newVariables.Extend(_globalVariableScope);
+        newVariables.Extend(functionModule.VariableScope);
         var newFunScope = new FunctionScope();
-        newFunScope.Extend(_globalFunctionScope);
+        newFunScope.Extend(functionModule.FunctionScope);
 
-        var retValue = ExcecuteBlock(targetFunction.Block, newVariables, newFunScope);
+        var retValue = ExcecuteBlock(targetFunction.Block,
+            newVariables, 
+            functionModule.FunctionScope, 
+            functionModule);
+
         if (retValue is NothingValue)
             retValue = null;
 
@@ -463,32 +953,40 @@ public sealed class Interpreter
             throw new InterpreterException(
                 $"Return statement type does not match " +
                 $"the return type of the function `{targetFunction.Ident.Stringify()}`");
+
+        foreach (var v in deconst)
+            v.Const = false;
+
         return retValue;
     }
-    private Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
+    Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
     {
         return external.Invoke(variables.Select(v => v.Value.ValueAsObject).ToArray());
     }
-    private Value EvaluateComplex(VariableScope scope, FunctionScope funScope, ComplexExpression expr)
+    Value EvaluateComplex(VariableScope varScope,
+        FunctionScope funScope, 
+        Module module,
+        ComplexExpression expr)
     {
-        var left = EvaluateExpression(scope, funScope, expr.Left);
-        var right = EvaluateExpression(scope, funScope, expr.Right);
+        var left = EvaluateExpression(varScope, funScope, module, expr.Left);
+        var right = EvaluateExpression(varScope, funScope, module, expr.Right);
         try
         {
             return expr switch
             {
-                AddExpr => Value.Add(left, right),
-                SubExpr => Value.Sub(left, right),
-                MulExpr => Value.Mul(left, right),
-                DivExpr => Value.Div(left, right),
-                AndExpr => Value.And(left, right),
-                OrExpr => Value.Or(left, right),
-                EqExpr => Value.Eq(left, right),
-                InEqExpr => Value.InEq(left, right),
-                GreaterThanExpr => Value.GreaterThan(left, right),
-                LessThanExpr => Value.LessThan(left, right),
-                GreaterOrEqToExpr => Value.GreaterOrEqualTo(left, right),
-                LessOrEqToExpr => Value.LessOrEqualTo(left, right),
+                AddExpr => left.Add(right),
+                SubExpr => left.Sub(right),
+                MulExpr => left.Mul(right),
+                DivExpr => left.Div(right),
+                AndExpr => left.And(right),
+                ModuloExpr => left.Modulo(right),
+                OrExpr => left.Or(right),
+                EqExpr => left.Eq(right),
+                InEqExpr => left.InEq(right),
+                GreaterThanExpr => left.GreaterThan(right),
+                LessThanExpr => left.LessThan(right),
+                GreaterOrEqToExpr => left.GreaterOrEqualTo(right),
+                LessOrEqToExpr => left.LessOrEqualTo(right),
                 _ => throw new InterpreterException("Unrecognized expression type", expr)
             };
         }
@@ -497,223 +995,206 @@ public sealed class Interpreter
             throw new InterpreterException(ex.Message, ex);
         }
     }
-    private SSimpleVariable FindSimpleVariable(Ident ident, VariableScope scope)
+    void CreateVariable(VariableScope varScope,
+        FunctionScope funScope, 
+        Module module,
+        VariableDecl var)
     {
-        if (scope.TryGetValue(ident, out var v))
+        Value value;
+        if (var.Expr is null) 
         {
-            return v as SSimpleVariable ??
-                throw new InterpreterException($"Value {ident.Value} is not a variable", ident);
+            if (var is not TypedVariableDecl tvd)
+                throw new InterpreterException("Untyped variable declaration must contain asssignment", 
+                    var);
+            value = tvd.Type.DefaultValue();
         }
-        else throw new InterpreterException($"No variable {ident.Value} declared in this scope", ident);
-        
-    }
-    private SFunction FindFunction(Ident ident, FunctionScope scope)
-    {
-        if(scope.TryGetValue(ident, out var f))
+        else
         {
-            return f;
+            value = EvaluateExpression(varScope, funScope, module, var.Expr);
+            if (value is not ArrayValue arrv)
+                value = value.Clone();
+            else
+            {
+                if (arrv.Const && !var.Const)
+                    throw InterpreterException.ConstantReassignment(var.Name, var.Location);
+            }   
         }
-        else throw new InterpreterException($"No function {ident.Value} declared in this scope");
-    }
 
-    private void CreateVariable(VariableScope scope, FunctionScope funScope, Variable var)
-    {
-        var value = EvaluateExpression(scope, funScope, var.Expr);
-        if (var is Typed typed)
-            if (!typed.Type.Equals(value.Ty))
+        if (var is TypedVariableDecl typed)
+        {
+            value = typed.Type.SafeCast(value) ??
                 throw new InterpreterException(
                     "Mismatched types, assigned type is different from declared type.", typed.Type);
+        }
         SVariable newVariable = value switch
         {
             ArrayValue arrayValue => new SArray(arrayValue.ValueTy, arrayValue.Size) 
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = arrayValue,
+                IsPublic = var.IsPublic,
+                Const = var.Const,
             },
             Value otherValue => new SSimpleVariable 
             { 
                 Ident = new Ident { Value = var.Name },
                 Value = otherValue,
+                IsPublic = var.IsPublic,
+                Const = var.Const,
             }
         };
 
-        if (!scope.TryAdd(newVariable.Ident, newVariable))
+        if (!varScope.TryAdd(newVariable.Ident, newVariable))
             throw new InterpreterException($"Variable `{var.Name}` already declared!");
     }
-    private void AssignValue(VariableScope varScope, FunctionScope funScope, Assignment ass)
+    void AssignValue(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        Assignment ass)
     {
+
+
+
         //var svar = FindSimpleVariable(ass.Left.Ident, scope);
-        var val = EvaluateExpression(varScope, funScope, ass.Expr);
+        var val = EvaluateExpression(varScope, funScope, module, ass.Expr).Clone();
+
 
         if (ass.Left is ArrayIndexTarget arrayIndexTarget)
-            AssignIndex(varScope, funScope, arrayIndexTarget, val);
+            AssignIndex(varScope, funScope, module, arrayIndexTarget, ass, val);
         else if(ass.Left is IdentTarget identTarget)
-            AssignVariable(varScope, identTarget, val);
+            AssignVariable(varScope, identTarget, ass, val);
     }
-    private void AssignIndex(VariableScope varScope, 
-        FunctionScope funScope, 
+    void AssignIndex(VariableScope varScope, 
+        FunctionScope funScope,
+        Module module,
         ArrayIndexTarget arrayIndexTarget,
+        Assignment assignment,
         Value assignedValue)
     {
-        var array = FindArray(varScope, arrayIndexTarget.Ident);
-        var index = EvaluateExpression(varScope, funScope, arrayIndexTarget.IndexExpression)
+        
+        var indexer = arrayIndexTarget.Target 
+            as IndexerExpression 
+            ?? throw new InterpreterException("Left hand side of assingment is not an index expresion",
+            arrayIndexTarget.Target);
+        var arrayValue = EvaluateExpression(varScope, funScope, module, indexer.ArrayProducer) 
+            as ArrayValue
+            ?? throw new InterpreterException("Could not obtain the array for assingment", 
+            indexer.ArrayProducer);
+
+        if (arrayValue.Const)
+            throw new InterpreterException("Tried to reassign a value of a const array", 
+                arrayIndexTarget.Target.Location);
+
+        var index = EvaluateExpression(varScope, funScope, module, arrayIndexTarget.IndexExpression)
                     as IntValue
-                    ?? throw new InterpreterException("TODO Index not an integer value");
-        array.Set(index, assignedValue.Clone());
+                    ?? throw new InterpreterException("Index was not of integer value",
+                    arrayIndexTarget.IndexExpression);
+
+
+        if (assignedValue is not ArrayValue)
+            assignedValue = assignedValue.Clone();
+
+        //if(assignedValue is ArrayValue)
+        //    arrayValue[index] = assignedValue;
+        //else
+        //    arrayValue[index] = assignedValue.Clone();
+
+        switch (assignment)
+        {
+            case RegularAssignment:
+                arrayValue[index] = assignedValue;
+                break;
+            case AddAssignment:
+                arrayValue[index] = assignedValue.Add(assignedValue);
+                break;
+            case SubAssignment:
+                arrayValue[index] = assignedValue.Sub(assignedValue);
+                break;
+            case MulAssignment:
+                arrayValue[index] = assignedValue.Mul(assignedValue);
+                break;
+            case DivAssignment:
+                arrayValue[index] = assignedValue.Div(assignedValue);
+                break;
+            case ModuloAssignment:
+                arrayValue[index] = assignedValue.Modulo(assignedValue);
+                break;
+            default:
+                throw new InterpreterException("Assignment Failure");
+        }
+
+
     }
-    private void AssignVariable(VariableScope varScope,
+    void AssignVariable(VariableScope varScope,
         IdentTarget identTarget,
+        Assignment assignment,
         Value assignedValue)
     {
-        var variable = FindVariable(varScope, identTarget.Ident);
-        if(!variable.Value.Ty.Equals(assignedValue.Ty))
-            throw new InterpreterException("Mismatched types", identTarget.Ident);
-        variable.Value = assignedValue;
+        var identExpr = identTarget.Target as IdentExpression ??
+            throw new InterpreterException("TODO cannot assing to", identTarget.Target);
+        var variable = varScope.FindVariable(identExpr.Ident);
+        if (variable.Const)
+            throw InterpreterException.ConstantReassignment(variable);
+        //if(!variable.Value.Ty.Equals(assignedValue.Ty))
+
+        //SArray case
+        if(assignedValue is ArrayValue arrayValue)
+        {
+            if (assignment is not RegularAssignment)
+                throw new InterpreterException("Cannot assign to array in such way", assignment);
+            if (variable is not SVariable sArray)
+                throw new InterpreterException("Cannot assing an array to a non array variable", 
+                    identTarget.Target);
+            if (sArray.Value.Ty != arrayValue.Ty)
+                throw new InterpreterException("Type mismatch", identTarget.Target);
+            if(!sArray.Const && arrayValue.Const)
+                throw new InterpreterException("Cannot assing a constant array to a non constant variable", 
+                    identTarget.Target);
+            sArray.Value = arrayValue;
+            return;
+        }
+        switch (assignment)
+        {
+            case RegularAssignment:
+                variable.Value = variable.Value.Ty.SafeCast(assignedValue) ??
+                    throw new InterpreterException($"Mismatched types {variable.Value.Ty.Stringify()} " +
+                    $"| {assignedValue.Ty.Stringify()}", identExpr.Ident);
+                break;
+            case AddAssignment:
+                variable.Value = variable.Value.Add(assignedValue);
+                break;
+            case SubAssignment:
+                variable.Value = variable.Value.Sub(assignedValue);
+                break;
+            case MulAssignment:
+                variable.Value = variable.Value.Mul(assignedValue);
+                break;
+            case DivAssignment:
+                variable.Value = variable.Value.Div(assignedValue);
+                break;
+            case ModuloAssignment:
+                variable.Value = variable.Value.Modulo(assignedValue);
+                break;
+            default:
+                throw new InterpreterException("Assignment Failure");
+        }
     }
-
-
-
-    private void CreateFunction(Function fun, FunctionScope funScope)
+    void CreateFunction(FunctionDecl fun, Module module)
     {
-        if (funScope.ContainsKey(fun.Name))
+        var ownedFunctions = module.OwnedFunctions;
+        if (ownedFunctions.ContainsKey(fun.Name))
             throw new InterpreterException($"Function {fun.Name} already exists!", fun.Name);
-        funScope.Add(fun.Name, new SFunction
+        var function = new SFunction
         {
             Args = fun.Args,
             Block = fun.Block,
             Ident = fun.Name,
             ReturnTy = fun.ReturnTy,
-        });
-    }
-
-    [Conditional("EXPRESSION")]
-    void PrintExpression(Expression expr)
-    {
-        //if (expr is ComplexExpression c)
-        //{
-        //    var ser = JsonSerializer.Serialize(c, new JsonSerializerOptions() { WriteIndented = true });
-        //    Console.WriteLine(ser);
-        //}
-        Console.WriteLine($$"""
-            Expression {
-                Type: {{expr}}
-                Display: {{expr.Display()}}
-            }
-            """);
-    }
-
-    [Conditional("INSTRUCTION")]
-    void PrintInstruction(Instruction ins)
-    {
-        Console.WriteLine($$"""
-            Instruction {
-                Type: {{ins}}
-            }
-            """);
-    }
-
-    [Conditional("DEBUG")]
-    void DebugInfo()
-    {
-        Console.WriteLine($"""
-
-            //EXECUTION ENDED//
-            ///////DEBUG///////
-            
-            Global Variables:
-            {printVariables()}
-
-            Functions:
-            {printFunctions()}
-
-            ///////DEBUG///////
-            """);
-
-        string printVariables()
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (var (ident, svar) in _globalVariableScope)
-            {
-                sb.AppendLine($"[{ident.Stringify()}, {svar.Display()}]");
-            }
-            return sb.ToString();
-        }
-        string printFunctions()
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (var (ident, sfun) in _globalFunctionScope)
-            {
-                sb.AppendLine($"{ident.Stringify()}, {sfun.Display()}");
-            }
-            return sb.ToString();
-        }
-    }
-    [Conditional("DEBUG")]
-    void PrintCall(CallExpression call)
-    {
-        Console.WriteLine(call.Display());
-    }
-    [Conditional("SCOPE")]
-    void PrintScope(VariableScope variableScope)
-    {
-        Console.WriteLine("=================");
-        Console.WriteLine("VARIABLE SCOPE:");
-        foreach(var (i, V) in variableScope)
-        {
-            Console.WriteLine($"[{i.Stringify()} {V.Display()}]");
-        }
-        Console.WriteLine("=================");
+            IsPublic = fun.IsPublic,
+            ParentModule = new(module),
+        };
+        ownedFunctions.Add(fun.Name, function);
+        module.FunctionScope.Add(fun.Name, function);
     }
 }
 
-internal static class ScopeExt
-{
-    /// <summary>
-    /// Clones a <c>VariableScope</c>
-    /// </summary>
-    /// <param name="other"></param>
-    /// <returns>A new <c>VariableScope</c></returns>
-    public static VariableScope Clone(this VariableScope other)
-    {
-        //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
-        return new VariableScope(other);
-    }
-    /// <summary>
-    /// Clones a <c>FunctionScope</c>
-    /// </summary>
-    /// <param name="other"></param>
-    /// <returns>A new <c>FunctionScope</c></returns>
-    public static FunctionScope Clone(this FunctionScope other)
-    {
-        //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
-        return new FunctionScope(other);
-    }
-    public static void Extend(this VariableScope scope, VariableScope other) 
-    {
-        foreach (var pair in other)
-            if (!scope.TryAdd(pair.Key, pair.Value))
-                throw new InterpreterException(
-                    $"Variable {pair.Key.Stringify()} already declared ", pair.Key);
-    }
-    public static void Extend(this FunctionScope scope, FunctionScope other)
-    {
-        foreach (var pair in other)
-            if (!scope.TryAdd(pair.Key, pair.Value))
-                throw new InterpreterException(
-                    $"Function {pair.Key.Stringify()} already declared ", pair.Key);
-    }
-    public static void Add(this VariableScope scope, SVariable variable)
-    {
-        if(!scope.TryAdd(variable.Ident, variable))
-            throw new InterpreterException(
-                    $"Variable {variable.Ident.Stringify()} already declared ", variable.Ident);
-    }
-}
-public static class EnumerableExt
-{
-    public static void Each<T>(this IEnumerable<T> ie, Action<T, int> action)
-    {
-        var i = 0;
-        foreach (var e in ie) action(e, i++);
-    }
-}

@@ -1,35 +1,30 @@
-﻿using System;
+﻿using SpuchSharp.Interpreting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 
 namespace SpuchSharp.Tokens;
+
 
 internal abstract class Value : Token
 {
     public abstract Value Clone();
     public abstract Ty Ty { get; }
     public abstract object ValueAsObject { get; }
-    //public object Val { get; }
     public static Value From(Ty type, string literal)
     {
         return type switch
         {
-            //IntTy => new IntValue { Value = int.Parse(literal) },
             TextTy => new TextValue { Value = literal },
             BooleanTy => new BooleanValue { Value = bool.Parse(literal) },
-            //FloatTy => new FloatValue { Value = float.Parse(literal, 
-             //                       System.Globalization.CultureInfo.InvariantCulture)},
             _ => throw new System.Diagnostics.UnreachableException(),
         };
     }
-    //public static Value From(string literal)
-    //{
-    //    return literal
-    //}
-    //public Value(Ty type, object val) => (Ty , Val) = (type, val);
-    //public override string Stringify() => $"{Ty.Ident.Value} {Val}";
+
 
     public static Value Void = new VoidValue();
     public static Value Nothing = new NothingValue();
@@ -48,122 +43,53 @@ internal abstract class Value : Token
         return obj switch
         {
             string s => new TextValue { Value = s },
+            short h => new ShortValue { Value = h },
             int i => new IntValue { Value = i },
+            long l => new LongValue { Value = l },
+            float f => new FloatValue { Value = f },
+            double d => new DoubleValue { Value = d },
             bool b => new BooleanValue { Value = b },
             null => Value.Void,
             _ => throw new InvalidCastException($"Could not transalte c# type {obj} into Spuch# type")
         };
     }
-    public static Value Add(Value left, Value right)
+    public virtual Value Add(Value other) =>
+        throw InterpreterException.InvalidOperation("addition", this, other);
+    public virtual Value Sub(Value other) =>
+        throw InterpreterException.InvalidOperation("subtraction", this, other);
+    public virtual Value Mul(Value other) =>
+        throw InterpreterException.InvalidOperation("multiplication", this, other);
+    public virtual Value Div(Value other) =>
+        throw InterpreterException.InvalidOperation("division", this, other);
+    public virtual Value Modulo(Value other) =>
+        throw InterpreterException.InvalidOperation("modulo", this, other);
+    public virtual BooleanValue And(Value other) =>
+        throw InterpreterException.InvalidOperation("logical and", this, other);
+    public virtual BooleanValue Or(Value other) =>
+        throw InterpreterException.InvalidOperation("logical or", this, other);
+    public virtual BooleanValue Eq(Value other) =>
+        throw InterpreterException.InvalidOperation("logical equality", this, other);
+    public virtual BooleanValue InEq(Value other)
     {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new IntValue { Value = iv.Value + ((IntValue)right).Value },
-            TextValue sv => new TextValue { Value = sv.Value + ((TextValue)right).Value },
-            FloatValue fv => new FloatValue { Value = fv.Value + ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types cannot be added!")
-        };
+        var v = Eq(other);
+        v.Value = !v.Value;
+        return v;
     }
-    public static Value Sub(Value left, Value right)
+    public virtual BooleanValue GreaterThan(Value other) =>
+        throw InterpreterException.InvalidOperation("logical greater than", this, other);
+    public virtual BooleanValue LessThan(Value other)
     {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new IntValue { Value = iv.Value - ((IntValue)right).Value },
-            FloatValue fv => new FloatValue { Value = fv.Value - ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types cannot be subtracted!")
-        };
-    }
-    public static Value Mul(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new IntValue { Value = iv.Value * ((IntValue)right).Value },
-            FloatValue fv => new FloatValue { Value = fv.Value * ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types cannot be multiplied!")
-        };
-    }
-    public static Value Div(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new IntValue { Value = iv.Value / ((IntValue)right).Value },
-            FloatValue fv => new FloatValue { Value = fv.Value / ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types cannot be divided!")
-        };
-    }
-    public static Value And(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            BooleanValue bv => new BooleanValue { Value = bv.Value && ((BooleanValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types not boolean!")
-        };
-    }
-    public static Value Or(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            BooleanValue bv => new BooleanValue { Value = bv.Value || ((BooleanValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types not boolean!")
-        };
-    }
-    public static BooleanValue Eq(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            BooleanValue bv => new BooleanValue { Value = bv.Value == ((BooleanValue)right).Value },
-            IntValue iv => new BooleanValue { Value = iv.Value == ((IntValue)right).Value },
-            TextValue tv => new BooleanValue { Value = tv.Value == ((TextValue)right).Value },
-            FloatValue fv => new BooleanValue { Value = fv.Value == ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types not boolean!")
-
-        };
-    }
-    public static BooleanValue InEq(Value left, Value right)
-    {
-        var val = Eq(left, right);
+        var val = GreaterThan(other);
         val.Value = !val.Value;
         return val;
     }
-    public static BooleanValue GreaterThan(Value left, Value right)
+    public virtual BooleanValue GreaterOrEqualTo(Value other)
     {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new BooleanValue { Value = iv.Value > ((IntValue)right).Value },
-            FloatValue fv => new BooleanValue { Value = fv.Value > ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types not boolean!")
-        };
+        return GreaterThan(other) || Eq(other);
     }
-    public static BooleanValue LessThan(Value left, Value right)
+    public virtual BooleanValue LessOrEqualTo(Value other)
     {
-        var val = GreaterThan(left, right);
-        val.Value = !val.Value;
-        return val;
-    }
-
-    public static BooleanValue GreaterOrEqualTo(Value left, Value right)
-    {
-        TypeCheck(left, right);
-        return left switch
-        {
-            IntValue iv => new BooleanValue { Value = iv.Value >= ((IntValue)right).Value },
-            FloatValue fv => new BooleanValue { Value = fv.Value >= ((FloatValue)right).Value },
-            _ => throw new Interpreting.InterpreterException("Types not boolean!")
-        };
-    }
-    public static BooleanValue LessOrEqualTo(Value left, Value right)
-    {
-        var val = GreaterOrEqualTo(left, right);
-        val.Value = !val.Value;
-        return val;
+        return LessThan(other) || Eq(other);
     }
 
     public static void TypeCheck(Value left, Value right)
@@ -172,12 +98,18 @@ internal abstract class Value : Token
             throw new Interpreting.InterpreterException(
                 $"Type mismatch! {left.Ty.Stringify()} and {right.Ty.Stringify()}", left);
     }
+
+
+    //REWORK THIS, MOVE IT INTO Ty 
     public static Value Default(Ty ty, int arraySize = 0)
     {
         return ty switch
         {
+            ShortTy => new ShortValue { Value = 0 },
             IntTy => new IntValue { Value = 0 },
+            LongTy => new LongValue { Value = 0 },
             FloatTy => new FloatValue { Value = 0f },
+            DoubleTy => new DoubleValue { Value = 0f },
             TextTy => new TextValue { Value = string.Empty },
             BooleanTy => new BooleanValue { Value = false },
             AnyTy => new AnyValue { Value = new object() },
@@ -198,7 +130,112 @@ internal sealed class TextValue : Value
         {
             Value = this.Value
         };
+    public override Value Add(Value other)
+    {
+        if (other is not TextValue text)
+            throw InterpreterException.InvalidOperation("addition", this, other);
+        return new TextValue { Value = this.Value + text.Value };
+    }
+    public override BooleanValue Eq(Value other)
+    {
+        if (other is not TextValue text)
+            return base.Eq(other);
+        return new BooleanValue { Value = Value == text.Value };
+    }
 }
+internal sealed class ShortValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Short;
+    public required short Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new ShortValue
+        {
+            Value = this.Value
+        };
+    public override Value Add(Value other) =>
+        other switch
+        {
+            ShortValue h => new ShortValue { Value = (short)(Value + h.Value) },
+            IntValue i => new IntValue { Value = Value + i.Value },
+            LongValue l => new LongValue { Value = Value + l.Value },
+            FloatValue f => new FloatValue { Value = Value + f.Value },
+            DoubleValue f => new DoubleValue { Value = Value + f.Value },
+            _ => base.Add(other)
+        };
+    public override Value Sub(Value other) =>
+        other switch
+        {
+            ShortValue h => new ShortValue { Value = (short)(Value - h.Value) },
+            IntValue i => new IntValue { Value = Value - i.Value },
+            LongValue l => new LongValue { Value = Value - l.Value },
+            FloatValue f => new FloatValue { Value = Value - f.Value },
+            DoubleValue f => new DoubleValue { Value = Value - f.Value },
+            _ => base.Sub(other)
+        };
+    public override Value Mul(Value other) =>
+        other switch
+        {
+            ShortValue h => new ShortValue { Value = (short)(Value * h.Value) },
+            IntValue i => new IntValue { Value = Value * i.Value },
+            LongValue l => new LongValue { Value = Value * l.Value },
+            FloatValue f => new FloatValue { Value = Value * f.Value },
+            DoubleValue f => new DoubleValue { Value = Value * f.Value },
+            _ => base.Mul(other)
+        };
+    public override Value Div(Value other) =>
+        other switch
+        {
+            ShortValue h => new ShortValue { Value = (short)(Value / h.Value) },
+            IntValue i => new IntValue { Value = Value / i.Value },
+            LongValue l => new LongValue { Value = Value / l.Value },
+            FloatValue f => new FloatValue { Value = Value / f.Value },
+            DoubleValue f => new DoubleValue { Value = Value / f.Value },
+            _ => base.Div(other)
+        };
+    public override Value Modulo(Value other) =>
+        other switch
+        {
+            ShortValue h => new ShortValue { Value = (short)(Value % h.Value) },
+            _ => base.Modulo(other)
+        };
+    public override BooleanValue Eq(Value other) =>
+        other switch
+        {
+            ShortValue h => h == Value,
+            IntValue i => i == Value,
+            LongValue l => l == Value,
+            FloatValue f => f.Value == Value,
+            DoubleValue d => d.Value == Value,
+            _ => base.Eq(other)
+        };
+    public override BooleanValue GreaterThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value > h,
+            IntValue i => Value > i,
+            LongValue l => Value > l,
+            FloatValue f => Value > f.Value,
+            DoubleValue d => Value > d.Value,
+            _ => base.GreaterThan(other)
+        };
+    public override BooleanValue LessThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value < h,
+            IntValue i => Value < i,
+            LongValue l => Value < l,
+            FloatValue f => Value < f.Value,
+            DoubleValue d => Value < d.Value,
+            _ => base.LessThan(other)
+        };
+
+
+    public static implicit operator short(ShortValue shortV) => shortV.Value;
+    
+}
+
 internal sealed class IntValue : Value
 {
     public override object ValueAsObject => Value;
@@ -210,8 +247,175 @@ internal sealed class IntValue : Value
         {
             Value = this.Value
         };
-
+    public override Value Add(Value other) =>
+        other switch
+        {
+            ShortValue h => new IntValue { Value = h.Value + Value },
+            IntValue i => new IntValue { Value = i.Value + Value },
+            LongValue l => new LongValue { Value = l.Value + Value },
+            FloatValue f => new FloatValue { Value = f.Value + Value },
+            DoubleValue d => new DoubleValue { Value = d.Value + Value },
+            _ => base.Add(other)
+        };
+    public override Value Sub(Value other) =>
+        other switch
+        {
+            ShortValue h => new IntValue { Value = Value - h.Value },
+            IntValue i => new IntValue { Value = Value - i.Value },
+            LongValue l => new LongValue { Value = Value - l.Value },
+            FloatValue f => new FloatValue { Value = Value - f.Value },
+            DoubleValue f => new DoubleValue { Value = Value - f.Value },
+            _ => base.Sub(other)
+        };
+    public override Value Mul(Value other) =>
+        other switch
+        {
+            ShortValue h => new IntValue { Value = Value * h.Value },
+            IntValue i => new IntValue { Value = Value * i.Value },
+            LongValue l => new LongValue { Value = Value * l.Value },
+            FloatValue f => new FloatValue { Value = Value * f.Value },
+            DoubleValue f => new DoubleValue { Value = Value * f.Value },
+            _ => base.Mul(other)
+        };
+    public override Value Div(Value other) =>
+        other switch
+        {
+            ShortValue h => new IntValue { Value = Value / h.Value },
+            IntValue i => new IntValue { Value = Value / i.Value },
+            LongValue l => new LongValue { Value = Value / l.Value },
+            FloatValue f => new FloatValue { Value = Value / f.Value },
+            DoubleValue f => new DoubleValue { Value = Value / f.Value },
+            _ => base.Div(other)
+        };
+    public override Value Modulo(Value other) =>
+        other switch
+        {
+            IntValue i => new IntValue { Value = Value % i.Value },
+            _ => base.Modulo(other)
+        };
+    public override BooleanValue Eq(Value other) =>
+        other switch
+        {
+            ShortValue h => h == Value,
+            IntValue i => i == Value,
+            LongValue l => l == Value,
+            FloatValue f => f.Value == Value,
+            DoubleValue d => d.Value == Value,
+            _ => base.Eq(other)
+        };
+    public override BooleanValue GreaterThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value > h,
+            IntValue i => Value > i,
+            LongValue l => Value > l,
+            FloatValue f => Value > f.Value,
+            DoubleValue d => Value > d.Value,
+            _ => base.GreaterThan(other)
+        };
+    public override BooleanValue LessThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value < h,
+            IntValue i => Value < i,
+            LongValue l => Value < l,
+            FloatValue f => Value < f.Value,
+            DoubleValue d => Value < d.Value,
+            _ => base.LessThan(other)
+        };
     public static implicit operator int(IntValue intV) => intV.Value;
+    
+}
+internal sealed class LongValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Long;
+    public required long Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new LongValue
+        {
+            Value = this.Value
+        };
+    public override Value Add(Value other) =>
+        other switch
+        {
+            ShortValue h => new LongValue { Value = h.Value + Value },
+            IntValue i => new LongValue { Value = i.Value + Value },
+            LongValue l => new LongValue { Value = l.Value + Value },
+            FloatValue f => new FloatValue { Value = f.Value + Value },
+            DoubleValue d => new DoubleValue { Value = d.Value + Value },
+            _ => base.Add(other)
+        };
+    public override Value Sub(Value other) =>
+        other switch
+        {
+            ShortValue h => new LongValue { Value = Value - h.Value },
+            IntValue i => new LongValue { Value = Value - i.Value },
+            LongValue l => new LongValue { Value = Value - l.Value },
+            FloatValue f => new FloatValue { Value = Value - f.Value },
+            DoubleValue f => new DoubleValue { Value = Value - f.Value },
+            _ => base.Sub(other)
+        };
+    public override Value Mul(Value other) =>
+        other switch
+        {
+            ShortValue h => new LongValue { Value = Value * h.Value },
+            IntValue i => new LongValue { Value = Value * i.Value },
+            LongValue l => new LongValue { Value = Value * l.Value },
+            FloatValue f => new FloatValue { Value = Value * f.Value },
+            DoubleValue f => new DoubleValue { Value = Value * f.Value },
+            _ => base.Mul(other)
+        };
+    public override Value Div(Value other) =>
+        other switch
+        {
+            ShortValue h => new LongValue { Value = Value / h.Value },
+            IntValue i => new LongValue { Value = Value / i.Value },
+            LongValue l => new LongValue { Value = Value / l.Value },
+            FloatValue f => new FloatValue { Value = Value / f.Value },
+            DoubleValue f => new DoubleValue { Value = Value / f.Value },
+            _ => base.Div(other)
+        };
+    public override Value Modulo(Value other) =>
+        other switch
+        {
+            LongValue i => new LongValue { Value = Value % i.Value },
+            _ => base.Modulo(other)
+        };
+
+    public override BooleanValue Eq(Value other) =>
+        other switch
+        {
+            ShortValue h => h == Value,
+            IntValue i => i == Value,
+            LongValue l => l == Value,
+            FloatValue f => f.Value == Value,
+            DoubleValue d => d.Value == Value,
+            _ => base.Eq(other)
+        };
+    public override BooleanValue GreaterThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value > h,
+            IntValue i => Value > i,
+            LongValue l => Value > l,
+            FloatValue f => Value > f.Value,
+            DoubleValue d => Value > d.Value,
+            _ => base.GreaterThan(other)
+        };
+    public override BooleanValue LessThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value < h,
+            IntValue i => Value < i,
+            LongValue l => Value < l,
+            FloatValue f => Value < f.Value,
+            DoubleValue d => Value < d.Value,
+            _ => base.LessThan(other)
+        };
+    public static implicit operator long(LongValue longV) => longV.Value;
+    
 }
 internal sealed class FloatValue : Value
 {
@@ -223,6 +427,170 @@ internal sealed class FloatValue : Value
         new FloatValue
         {
             Value = this.Value
+        };
+    public override Value Add(Value other) =>
+        other switch
+        {
+            ShortValue h => new FloatValue { Value = h.Value + Value },
+            IntValue i => new FloatValue { Value = i.Value + Value },
+            LongValue l => new FloatValue { Value = l.Value + Value },
+            FloatValue f => new FloatValue { Value = f.Value + Value },
+            DoubleValue d => new DoubleValue { Value = d.Value + Value },
+            _ => base.Add(other)
+        };
+    public override Value Sub(Value other) =>
+        other switch
+        {
+            ShortValue h => new FloatValue { Value = Value - h.Value },
+            IntValue i => new FloatValue { Value = Value - i.Value },
+            LongValue l => new FloatValue { Value = Value - l.Value },
+            FloatValue f => new FloatValue { Value = Value - f.Value },
+            DoubleValue f => new DoubleValue { Value = Value - f.Value },
+            _ => base.Sub(other)
+        };
+    public override Value Mul(Value other) =>
+        other switch
+        {
+            ShortValue h => new FloatValue { Value = Value * h.Value },
+            IntValue i => new FloatValue { Value = Value * i.Value },
+            LongValue l => new FloatValue { Value = Value * l.Value },
+            FloatValue f => new FloatValue { Value = Value * f.Value },
+            DoubleValue f => new DoubleValue { Value = Value * f.Value },
+            _ => base.Mul(other)
+        };
+    public override Value Div(Value other) =>
+        other switch
+        {
+            ShortValue h => new FloatValue { Value = Value / h.Value },
+            IntValue i => new FloatValue { Value = Value / i.Value },
+            LongValue l => new FloatValue { Value = Value / l.Value },
+            FloatValue f => new FloatValue { Value = Value / f.Value },
+            DoubleValue f => new DoubleValue { Value = Value / f.Value },
+            _ => base.Div(other)
+        };
+    public override Value Modulo(Value other) =>
+        other switch
+        {
+            FloatValue i => new FloatValue { Value = Value % i.Value },
+            _ => base.Modulo(other)
+        };
+    public override BooleanValue Eq(Value other) =>
+        other switch
+        {
+            ShortValue h => h == Value,
+            IntValue i => i == Value,
+            LongValue l => l == Value,
+            FloatValue f => f.Value == Value,
+            DoubleValue d => d.Value == Value,
+            _ => base.Eq(other)
+        };
+    public override BooleanValue GreaterThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value > h,
+            IntValue i => Value > i,
+            LongValue l => Value > l,
+            FloatValue f => Value > f.Value,
+            DoubleValue d => Value > d.Value,
+            _ => base.GreaterThan(other)
+        };
+    public override BooleanValue LessThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value < h,
+            IntValue i => Value < i,
+            LongValue l => Value < l,
+            FloatValue f => Value < f.Value,
+            DoubleValue d => Value < d.Value,
+            _ => base.LessThan(other)
+        };
+}
+internal sealed class DoubleValue : Value
+{
+    public override object ValueAsObject => Value;
+    public override Ty Ty => Ty.Double;
+    public required double Value { get; set; }
+    public override string Stringify() => $"{Ty.Stringify()} {Value}";
+    public override Value Clone() =>
+        new DoubleValue
+        {
+            Value = this.Value
+        };
+    public override Value Add(Value other) =>
+        other switch
+        {
+            ShortValue h => new DoubleValue { Value = h.Value + Value },
+            IntValue i => new DoubleValue { Value = i.Value + Value },
+            LongValue l => new DoubleValue { Value = l.Value + Value },
+            FloatValue f => new DoubleValue { Value = f.Value + Value },
+            DoubleValue d => new DoubleValue { Value = d.Value + Value },
+            _ => base.Add(other)
+        };
+    public override Value Sub(Value other) =>
+        other switch
+        {
+            ShortValue h => new DoubleValue { Value = Value - h.Value },
+            IntValue i => new DoubleValue { Value = Value - i.Value },
+            LongValue l => new DoubleValue { Value = Value - l.Value },
+            FloatValue f => new DoubleValue { Value = Value - f.Value },
+            DoubleValue f => new DoubleValue { Value = Value - f.Value },
+            _ => base.Sub(other)
+        };
+    public override Value Mul(Value other) =>
+        other switch
+        {
+            ShortValue h => new DoubleValue { Value = Value * h.Value },
+            IntValue i => new DoubleValue { Value = Value * i.Value },
+            LongValue l => new DoubleValue { Value = Value * l.Value },
+            FloatValue f => new DoubleValue { Value = Value * f.Value },
+            DoubleValue f => new DoubleValue { Value = Value * f.Value },
+            _ => base.Mul(other)
+        };
+    public override Value Div(Value other) =>
+        other switch
+        {
+            ShortValue h => new DoubleValue { Value = Value / h.Value },
+            IntValue i => new DoubleValue { Value = Value / i.Value },
+            LongValue l => new DoubleValue { Value = Value / l.Value },
+            FloatValue f => new DoubleValue { Value = Value / f.Value },
+            DoubleValue f => new DoubleValue { Value = Value / f.Value },
+            _ => base.Div(other)
+        };
+    public override Value Modulo(Value other) =>
+        other switch
+        {
+            DoubleValue i => new DoubleValue { Value = Value % i.Value },
+            _ => base.Modulo(other)
+        };
+    public override BooleanValue Eq(Value other) =>
+        other switch
+        {
+            ShortValue h => h == Value,
+            IntValue i => i == Value,
+            LongValue l => l == Value,
+            FloatValue f => f.Value == Value,
+            DoubleValue d => d.Value == Value,
+            _ => base.Eq(other)
+        };
+    public override BooleanValue GreaterThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value > h,
+            IntValue i => Value > i,
+            LongValue l => Value > l,
+            FloatValue f => Value > f.Value,
+            DoubleValue d => Value > d.Value,
+            _ => base.GreaterThan(other)
+        };
+    public override BooleanValue LessThan(Value other) =>
+        other switch
+        {
+            ShortValue h => Value < h,
+            IntValue i => Value < i,
+            LongValue l => Value < l,
+            FloatValue f => Value < f.Value,
+            DoubleValue d => Value < d.Value,
+            _ => base.LessThan(other)
         };
 }
 internal sealed class BooleanValue : Value
@@ -236,8 +604,26 @@ internal sealed class BooleanValue : Value
         {
             Value = this.Value
         };
-
+    public static implicit operator BooleanValue(bool b) => new BooleanValue { Value = b };
     public static implicit operator bool(BooleanValue value) => value.Value;
+    public override BooleanValue And(Value other)
+    {
+        if (other is not BooleanValue b)
+            return base.And(other);
+        return new BooleanValue { Value = b.Value && Value };
+    }
+    public override BooleanValue Or(Value other)
+    {
+        if (other is not BooleanValue b)
+            return base.And(other);
+        return new BooleanValue { Value = b.Value || Value };
+    }
+    public override BooleanValue Eq(Value other)
+    {
+        if (other is not BooleanValue b)
+            return base.Eq(other);
+        return new BooleanValue { Value = Value == b.Value };
+    }
 }
 internal sealed class VoidValue : Value
 {

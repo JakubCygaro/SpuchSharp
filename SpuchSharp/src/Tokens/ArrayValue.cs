@@ -1,5 +1,7 @@
-﻿using System;
+﻿using SpuchSharp.Interpreting;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,21 +21,58 @@ internal sealed class ArrayValue : Value
 
     private Ty _arrayTy;
     public int Size { get; }
-    public Value[] Values { get; init; }
-    public Value this[int index] { get => Values[index]; set => Values[index] = value; }
 
+    private Value[] _values;
+    public Value[] Values { get => _values; init => _values = value; }
+    public Value this[int index] { get => Get(index); set => Set(index, value); }
 
+    public bool Const { get; set; }
 
-    public ArrayValue(Ty type, int size)
+    private Value Get(int index)
     {
-        ValueTy = type;
-        _arrayTy = ArrayTy.ArrayOf(type);
+        try
+        {
+            return Values[index];
+        }
+        catch (Exception ex) 
+        {
+            throw new Interpreting.InterpreterException(ex.Message);
+        }
+    }
+    private void Set(int index, Value value)
+    {
+        try
+        {
+            if (Values[index].Ty != ValueTy)
+                value = Ty.SafeCast(value) ??
+                    throw new Interpreting.InterpreterException($"Tried to assing a {value.Ty.Stringify()} " +
+                        $"value to an array of type {ValueTy.Stringify()}");
+            Values[index] = value;
+        }
+        catch (Exception ex)
+        {
+            throw new Interpreting.InterpreterException(ex.Message);
+        }
+    }
+
+    public ArrayValue(Ty ofType, int size)
+    {
+        ValueTy = ofType;
+        _arrayTy = ArrayTy.ArrayOf(ofType);
         Size = size;
-        Values = new Value[Size];
+        _values = new Value[Size];
         for (int i = 0; i < size; i++)
             Values[i] = Value.Default(ValueTy, size);
 
     }
+    private ArrayValue(Ty valueTy, Ty arrayTy, int size, Value[] values)
+    {
+        ValueTy = valueTy;
+        _arrayTy = arrayTy;
+        Size = size;
+        _values = values;
+    }
+
     public override string Stringify()
     {
         return $"{Ty.Stringify()}";
@@ -42,7 +81,9 @@ internal sealed class ArrayValue : Value
     public override object ValueAsObject => Values.Select(x => x.ValueAsObject).ToArray();
     public override Value Clone()
     {
-        return new ArrayValue(ValueTy, Size);
+        var ret = new ArrayValue(ValueTy, this.Ty, Size, (Value[])_values.Clone());
+        ret.Const = this.Const;
+        return ret;
     }
 }
 //internal sealed class IntArrayValue : ArrayValue

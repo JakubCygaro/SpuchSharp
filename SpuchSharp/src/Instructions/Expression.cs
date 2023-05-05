@@ -48,12 +48,13 @@ internal abstract class ComplexExpression : Expression
         Operator op,
         Expression expr) => op switch
         {
-            ValOperator vop => vop switch
+            ArithmeticOperator vop => vop switch
             {
                 Add => new AddExpr { Left = left, Right = expr, Location = left.Location },
                 Sub => new SubExpr { Left = left, Right = expr, Location = left.Location },
                 Mult => new MulExpr { Left = left, Right = expr, Location = left.Location },
                 Div => new DivExpr { Left = left, Right = expr, Location = left.Location },
+                Percent => new ModuloExpr { Left = left, Right = expr, Location = left.Location },
                 _ => throw new System.Diagnostics.UnreachableException()
             },
             LogicOperator lop => lop switch
@@ -88,6 +89,10 @@ sealed class MulExpr : ArthmetricExpression
 sealed class DivExpr : ArthmetricExpression
 {
     public override string Display() => $"[{Left.Display()} / {Right.Display()}]";
+}
+sealed class ModuloExpr : ArthmetricExpression
+{
+    public override string Display() => $"[{Left.Display()} % {Right.Display()}]";
 }
 abstract class LogicalExpression : ComplexExpression { }
 sealed class AndExpr : LogicalExpression
@@ -132,9 +137,9 @@ internal abstract class SimpleExpression : Expression { }
 /// 2;
 /// </code>
 /// </example>
-internal sealed class ValueExpression : SimpleExpression
+internal sealed class ConstantExpression : SimpleExpression
 {
-    public override string Display() => $"[{Val.Stringify()}]";
+    public override string Display() => $"{Val.Stringify()}";
     public required Value Val { get; init; }
 }
 /// <summary>
@@ -150,12 +155,13 @@ internal sealed class CallExpression : SimpleExpression
     public override string Display()
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append($"[{Function.Stringify()}]");
+        sb.Append($"{Function.Stringify()}");
         sb.Append('(');
         foreach(var expr in Args)
         {
-            sb.Append(expr.Display() + " | ");
+            sb.Append(expr.Display() + " , ");
         }
+        sb.Remove(sb.Length - 3, 3);
         sb.Append(')');
         return sb.ToString();
     }
@@ -164,16 +170,22 @@ internal sealed class CallExpression : SimpleExpression
 }
 internal sealed class IdentExpression : SimpleExpression
 {
-    public override string Display() => $"[{Ident.Stringify()}]";
+    public override string Display() => $"{Ident.Stringify()}";
     public required Ident Ident { get; init; }
 }
 internal sealed class IndexerExpression : SimpleExpression
 {
-    public override string Display() => $"[{Ident.Stringify()}[{IndexExpression.Display()}]]";
+    public override string Display() => $"{ArrayProducer.Display()}[{IndexExpression.Display()}]";
 
     // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
     // inny indexer albo nawet wywołanie \/
-    public required Ident Ident { get; init; } 
+    /// <summary>
+    /// this expression must evaluate to an ArrayValue
+    /// </summary>
+    public required Expression ArrayProducer { get; init; } 
+    /// <summary>
+    /// this expression must evaluate to an IntValue
+    /// </summary>
     public required Expression IndexExpression { get; init; }
 }
 internal sealed class ArrayExpression : SimpleExpression 
@@ -186,26 +198,44 @@ internal sealed class ArrayExpression : SimpleExpression
         Location = null 
     };
 }
-<<<<<<< Updated upstream
-=======
-internal sealed class IndexerExpression : SimpleExpression
+internal sealed class NotExpression : SimpleExpression
 {
-    public override string Display() => $"[{Target.Display()}[{IndexExpression.Display()}]]";
+    public override string Display() => $"!{Expr.Display()}";
+    public required Expression Expr { get; init; }
+}
+internal sealed class IncrementExpression : SimpleExpression 
+{
+    public required bool Pre { get; init; }
+    public required IdentExpression Expression { get; init; }
+    public override string Display()
+    {
+        if(Pre)
+            return $"++{Expression.Display()}";
+        else
+            return $"{Expression.Display()}++";
+    }
+}
+internal sealed class DecrementExpression : SimpleExpression
+{
+    public required bool Pre { get; init; }
+    public required IdentExpression Expression { get; init; }
+    public override string Display()
+    {
+        if (Pre)
+            return $"--{Expression.Display()}";
+        else
+            return $"{Expression.Display()}--";
+    }
+}
 
-    // to nie może już być ident, tylko coś co zwraca wartość, czyli inne wyrażenie,
-    // inny indexer albo nawet wywołanie \/
-    public required Expression Target { get; init; } 
-    public required Expression IndexExpression { get; init; }
-}
-internal sealed class ArrayExpression : SimpleExpression 
+internal sealed class CastExpression : SimpleExpression 
 {
-    public override string Display() => $"";
-    public required Expression[] Expressions { get; init; }
-    public static ArrayExpression Empty = new ArrayExpression 
-    { 
-        Expressions = Array.Empty<Expression>(), 
-        Location = null 
-    };
+    public required Ty TargetType { get; init; }
+    public required Expression Expression { get; init; }
+    public override string Display()
+    {
+        return $"({TargetType.Stringify()}){Expression.Display()}";
+    }
 }
->>>>>>> Stashed changes
+
 

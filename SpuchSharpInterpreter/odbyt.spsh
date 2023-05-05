@@ -1,0 +1,10 @@
+import "STDLib";
+use super;
+
+pub fun odbyt(){
+    println("siema");
+    szatan();
+}
+pub fun woda(){
+    println("woda w odbycie");
+}

@@ -1,21 +1,27 @@
 ﻿import "STDLib";
+
 fun main(){
-	[int] array = [10];
-	for x from 0 to 9 {
-		array[x] = randInt(1, 10);
+	[int] a;
+	print(a);
+	a = {
+		1,2,3
+	};
+	print(a);
+}
+fun test(const ref [int] arr){
+	for i from 0 to len(arr) - 1 {
+		print(arr[i]);
 	}
-	println(array);
 }
-fun printArray([int] array){
-	for x from 0 to len(array) - 1 {
-		println(array[x]);
-	}
+fun is_even(int i) bool {
+	return i % 2 == 0;
 }
-fun dupa(int x){
-	x = x + 10;
+
+fun ogr() int {
+	return 10;
 }
-fun add(int a, int b) int {
-	return a + b;
+fun khuj(int dupa) int {
+	return dupa;
 }
 =======
 	var chuj = {"Adam Papieros", "Jaca", "Kartoniarz" };
@@ -27,4 +33,5 @@ fun printArray(ref [text] array){
 		println(array[x]);
 	}
 }
+
 

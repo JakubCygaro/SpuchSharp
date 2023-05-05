@@ -8,7 +8,7 @@ using SpuchSharp;
 
 namespace SpuchSharp.Lexing;
 
-internal sealed class CharStream : INullEnumerator<char>, IEnumerable<char>
+internal sealed class CharStream
 {
     private CodeLine[] _lines;
 
@@ -23,17 +23,11 @@ internal sealed class CharStream : INullEnumerator<char>, IEnumerable<char>
     public int LineLength { get => _lines[_currentLine].Length; }
     public char Current => _lines[_currentLine][_position];
 
-    object IEnumerator.Current => Current;
+    public string SourceFile { get; }
+    const string NO_FILE = "";
 
-    public CharStream(string[] input)
+    public CharStream(string[] input, string sourceFile = NO_FILE)
     {
-        //_lines = input.Where(l => !string.IsNullOrEmpty(l))
-        //    .Where(l => !l.StartsWith("#"))
-        //    .Select(l => l.Trim())
-        //    .Select(l => l.Normalize())
-        //    //.Select(l => l + " ")
-        //    .Select(l => l.ToCharArray())
-        //    .ToArray();
         var normalized = input
             .Select(line => line.Trim())
             .Select((line, num) => new { Line = CutComment(line), Number = num + 1 })
@@ -41,6 +35,7 @@ internal sealed class CharStream : INullEnumerator<char>, IEnumerable<char>
             .Select(l => new CodeLine { Characters = l.Line.ToCharArray(), LineNumber = l.Number })
             .ToArray();
         _lines = normalized;
+        SourceFile = sourceFile;
 
     }
     static string CutComment(string input)
@@ -82,34 +77,31 @@ internal sealed class CharStream : INullEnumerator<char>, IEnumerable<char>
             return null;
         }
     }
-    public bool MoveBack()
-    {
-        if(_position - 1 >= 0)
-        {
-            _position--;
-            return true;
-        }
-        else if(_currentLine - 1 >= 0)
-        {
-            _currentLine--;
-            _position = _lines[_currentLine].Length - 1;
-            return true;
-        }
-        return false;
-    }
     public bool EndOfInput()
     {
         return _currentLine == _lines.Length - 1 && _position == _lines[_currentLine].Length - 1;
     }
-
-    public IEnumerator<char> GetEnumerator()
+    public char? PeekNext() 
     {
-        return this;
+        if (_position + 1 < _lines[_currentLine].Length)
+        {
+            return _lines[_currentLine][_position + 1];
+        }
+        else if (_currentLine + 1 < _lines.Length)
+        {
+            return _lines[_currentLine + 1][0];
+        }
+        return null;
     }
-
-    IEnumerator IEnumerable.GetEnumerator()
+    public bool SkipLine()
     {
-        return this;
+        if(_currentLine + 1 > LineCount)
+        {
+            _currentLine++;
+            _position = 0;
+            return true;
+        }
+        return false;
     }
 }
 struct CodeLine

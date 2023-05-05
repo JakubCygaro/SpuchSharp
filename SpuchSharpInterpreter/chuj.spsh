@@ -1,0 +1,19 @@
+﻿import "STDLib";
+pub mod odbyt;
+use super;
+
+fun max([int] array, int len) int {
+	if (len <= 0){
+		return len + 1;
+	}
+	int ret = array[0];
+	for x from 1 to len - 1 {
+		if(array[x] > ret){
+			ret = array[x];
+		}
+	}
+	return ret;
+}
+pub fun szatan(){
+	println("szatan");
+}

@@ -12,14 +12,40 @@ using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 using SpuchSharp.Tokens;
 using SpuchSharp.Parsing;
-using System.Reflection.Metadata.Ecma335;
-
+using SModule = SpuchSharp.Interpreting.Module;
 namespace SpuchSharp.API;
 
 internal static class Importer
 {
+    public static string GetExternalLibsGlobalPath()
+    {
+        var location = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ??
+            throw new Exception("Unable to localize the assembly directory");
+        location = Path.GetFullPath(location);
+        var path = Path.Combine(location, "ExternalLibs");
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+        return path;
+    }
+    public static SModule ImportModule(string ddlPath, Ident moduleIdent)
+    {
+        return new SModule()
+        {
+            OwnedFunctions = ImportFunctions(ddlPath),
+            FunctionScope = new(),
+            VariableScope = new(),
+            Ident = moduleIdent,
+            Modules = new(),
+            ParentModule = null,
+            IsExternal = true,
+            OwnedVariables = new(),
+            DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(ddlPath)) ??
+                                    throw new ImporterException($"Could not determine module directory path for external library `{ddlPath}`")
+        };
+    }
     public static FunctionScope ImportFunctions(string dllPath)
     {
+        
 
         Assembly importedAssembly;
         try
@@ -34,7 +60,9 @@ internal static class Importer
                 Block = Array.Empty<Instructions.Instruction>(),
                 Ident = info.Ident,
                 MethodInfo = info.MethodInfo,
-                ReturnTy = Ty.FromCSharpType(info.MethodInfo.ReturnType)
+                ReturnTy = Ty.FromCSharpType(info.MethodInfo.ReturnType),
+                IsPublic = true,
+                ParentModule = null,
             })
                 .ToDictionary(external => external.Ident, external => external as SFunction);
         }
@@ -88,7 +116,8 @@ internal static class Importer
                 {
                     Name = new Ident { Value = $"external_function_argument_{i++}" },
                     Ty = Ty.FromCSharpType(paramType),
-                    Ref = false
+                    Ref = false,
+                    Const = false,
                 });
             }
             catch

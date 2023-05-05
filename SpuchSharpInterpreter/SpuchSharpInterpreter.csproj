@@ -6,7 +6,22 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Configurations>Debug;Release</Configurations>
+	<!--<PublishSingleFile>true</PublishSingleFile>-->
+	<!--<SelfContained>true</SelfContained>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>-->
+	<!--<TargetName>cumman</TargetName>-->
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="test\dupa\**" />
+    <EmbeddedResource Remove="test\dupa\**" />
+    <None Remove="test\dupa\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SpuchSharp\SpuchSharp.csproj" />
@@ -16,9 +31,10 @@
     <None Update="main.spsh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="STDLib.dll">
+    <None Update="ExternalLibs\STDLib.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	  <Content Include="ExternalLibs" />
   </ItemGroup>
 
 </Project>

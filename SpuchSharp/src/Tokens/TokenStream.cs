@@ -78,8 +78,7 @@ public class TokenStream : INullEnumerator<Token>,
     }
     public static TokenStream ParseFromQuote(string[] quote)
     {
-        var lexer = new Lexer(quote);
-        return lexer.ToList().ToTokenStream();
+        return Lexer.Tokenize(quote);
     }
     public bool Has<T>()
         where T: Token
