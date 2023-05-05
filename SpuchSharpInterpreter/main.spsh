@@ -1,11 +1,12 @@
 ﻿import "STDLib";
 
 fun main(){
-	int a = 10;
-	int b = 20;
-	a += b;
-	println(a);
-	println(b);
+	[int] a;
+	print(a);
+	a = {
+		1,2,3
+	};
+	print(a);
 }
 fun test(const ref [int] arr){
 	for i from 0 to len(arr) - 1 {

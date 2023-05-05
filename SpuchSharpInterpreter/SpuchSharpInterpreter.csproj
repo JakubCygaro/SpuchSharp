@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Configurations>Debug;Release</Configurations>
+	<!--<PublishSingleFile>true</PublishSingleFile>-->
+	<!--<SelfContained>true</SelfContained>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>-->
 	<!--<TargetName>cumman</TargetName>-->
   </PropertyGroup>
 

@@ -472,31 +472,48 @@ public sealed class Interpreter
         Module module,
         ArrayDecl arrayDecl)
     {
-
+        ArrayValue arrayValue;
+        Ty declType;
+        SArray array;
         if (arrayDecl is TypedArrayDecl typedArr)
+        {
             if (typedArr.Sized is not null)
             {
-                var sArray = CreateSizedArray(varScope, funScope, module, typedArr); 
-                
+                var sArray = CreateSizedArray(varScope, funScope, module, typedArr);
+
                 varScope.Add(sArray);
                 return;
             }
-        var arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, module, arrayDecl.ArrayExpression);
-        var declType = arrayDecl switch
+            else if (arrayDecl.ArrayExpression is null)
+            {
+                declType = ArrayTy.ArrayOf(typedArr.Type);
+                arrayValue = (ArrayValue)declType.DefaultValue();
+                array = new SArray(declType, arrayValue.Size)
+                {
+                    Ident = new Ident() { Value = arrayDecl.Name },
+                    Value = arrayValue,
+                    IsPublic = arrayDecl.IsPublic,
+                    Const = arrayDecl.Const,
+                };
+            }
+            else
+                throw new InterpreterException("TODO Typed Array creation failed");
+        }
+        else /*if (arrayDecl.ArrayExpression is not null)*/
         {
-            TypedArrayDecl typed => typed.Type,
-            _ => arrayValue.ValueTy,
-        };
-
-        if (!arrayValue.ValueTy.Equals(declType))
-            throw new InterpreterException("Array type does not match the assigned value", arrayValue);
-        var array = new SArray(declType, arrayValue.Size)
-        {
-            Ident = new Ident() { Value = arrayDecl.Name },
-            Value = arrayValue,
-            IsPublic = arrayDecl.IsPublic,
-            Const = arrayDecl.Const,
-        };
+            arrayValue = (ArrayValue)EvaluateExpression(varScope, funScope, module, arrayDecl.ArrayExpression ??
+                throw new InterpreterException("Untyped variable declaration must contain assignment", arrayDecl));
+            declType = arrayValue.Ty;
+            if (!arrayValue.ValueTy.Equals(declType))
+                throw new InterpreterException("Array type does not match the assigned value", arrayValue);
+            array = new SArray(declType, arrayValue.Size)
+            {
+                Ident = new Ident() { Value = arrayDecl.Name },
+                Value = arrayValue,
+                IsPublic = arrayDecl.IsPublic,
+                Const = arrayDecl.Const,
+            };
+        }
 
         varScope.Add(array);
     }
@@ -983,13 +1000,24 @@ public sealed class Interpreter
         Module module,
         VariableDecl var)
     {
-        var value = EvaluateExpression(varScope, funScope, module, var.Expr);
-        if (value is not ArrayValue arrv)
-            value = value.Clone();
+        Value value;
+        if (var.Expr is null) 
+        {
+            if (var is not TypedVariableDecl tvd)
+                throw new InterpreterException("Untyped variable declaration must contain asssignment", 
+                    var);
+            value = tvd.Type.DefaultValue();
+        }
         else
         {
-            if (arrv.Const && !var.Const)
-                throw InterpreterException.ConstantReassignment(var.Name, var.Location);
+            value = EvaluateExpression(varScope, funScope, module, var.Expr);
+            if (value is not ArrayValue arrv)
+                value = value.Clone();
+            else
+            {
+                if (arrv.Const && !var.Const)
+                    throw InterpreterException.ConstantReassignment(var.Name, var.Location);
+            }   
         }
 
         if (var is TypedVariableDecl typed)

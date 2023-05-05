@@ -241,7 +241,21 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         nextToken = stream.Next();
         if (nextToken is not Assign)
-            throw ParserException.Expected<Assign>(nextToken);
+        {
+            if(nextToken is Semicolon)
+                return new TypedArrayDecl
+                {
+                    Type = ty,
+                    ArrayExpression = null,
+                    Name = ident.Value,
+                    Sized = null,
+                    Location = ident.Location,
+                    IsPublic = pub,
+                    Const = @const,
+                };
+            else
+                throw ParserException.Expected<Assign>(nextToken);
+        }
         if (stream.Peek() is Square.Open)
         {
             stream.Next();
@@ -832,6 +846,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Peek() is Curly.Open)
                 return ParseUntypedArrayDecl(ident, stream, pub: pub, @const: @const);
+
             return new VariableDecl()
             {
                 Name = ident.Value,
@@ -843,15 +858,21 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         else if (token is Ty ty)
         {
+            Expression? expr = null;
             if (stream.Next() is not Ident ident)
                 throw new ParserException("Invalid token error", stream.Current);
             if (stream.Next() is not Assign)
-                throw new ParserException("Invalid token error", stream.Current);
+            {
+                if (stream.Current is not Semicolon)
+                    throw new ParserException("Invalid token error", stream.Current);
+            }
+            else
+                expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream());
 
             return new TypedVariableDecl()
             {
                 Name = ident.Value,
-                Expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
+                Expr = expr,
                 Type = ty,
                 Location = ident.Location,
                 Const = @const,
