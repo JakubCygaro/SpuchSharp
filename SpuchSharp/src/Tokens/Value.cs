@@ -19,7 +19,7 @@ internal abstract class Value : Token
     {
         return type switch
         {
-            TextTy => new TextValue { Value = literal },
+            TextTy => new TextValue(literal),
             BooleanTy => new BooleanValue { Value = bool.Parse(literal) },
             _ => throw new System.Diagnostics.UnreachableException(),
         };
@@ -42,7 +42,7 @@ internal abstract class Value : Token
     {
         return obj switch
         {
-            string s => new TextValue { Value = s },
+            string s => new TextValue(s),
             short h => new ShortValue { Value = h },
             int i => new IntValue { Value = i },
             long l => new LongValue { Value = l },
@@ -110,7 +110,7 @@ internal abstract class Value : Token
             LongTy => new LongValue { Value = 0 },
             FloatTy => new FloatValue { Value = 0f },
             DoubleTy => new DoubleValue { Value = 0f },
-            TextTy => new TextValue { Value = string.Empty },
+            TextTy => new TextValue(string.Empty),
             BooleanTy => new BooleanValue { Value = false },
             AnyTy => new AnyValue { Value = new object() },
             ArrayTy arrayTy => new ArrayValue(arrayTy.OfType, arraySize),
@@ -119,22 +119,48 @@ internal abstract class Value : Token
         };
     }
 }
-internal sealed class TextValue : Value
+internal sealed class TextValue : Value, IAsArray
 {
+    private ArrayValue? _textAsArray;
+    ArrayValue IAsArray.AsArray 
+    { 
+        get 
+        {
+            if(_textAsArray is not null)
+                return _textAsArray;
+
+            Value[] values = new Value[_value.Length];
+            var valueAsSpan = _value.AsSpan();
+
+            for (int i = 0; i < _value.Length; i++)
+            {
+                var chuj = new string(valueAsSpan.Slice(i, 1));
+                values[i] = new TextValue(chuj);
+            }
+            _textAsArray = new ArrayValue(Ty.Text, values);
+            return _textAsArray;
+        }
+    }
+
+    public TextValue(string value)
+    {
+        _value = value;
+    }
     public override object ValueAsObject => Value;
     public override Ty Ty => Ty.Text;
-    public required string Value { get; init; }
+    private string _value;
+    public string Value 
+    {
+        get => _value;
+    }
     public override string Stringify() => $"{Ty.Stringify()} {Value}";
     public override Value Clone() =>
-        new TextValue
-        {
-            Value = this.Value
-        };
+        new TextValue(this._value);
     public override Value Add(Value other)
     {
         if (other is not TextValue text)
             throw InterpreterException.InvalidOperation("addition", this, other);
-        return new TextValue { Value = this.Value + text.Value };
+        return new TextValue(this.Value + text.Value);
     }
     public override BooleanValue Eq(Value other)
     {

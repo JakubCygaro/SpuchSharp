@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 
 namespace SpuchSharp.Tokens;
 
@@ -156,9 +157,14 @@ internal sealed class TextTy : Ty
     public override Ident Ident => _ident;
     public override Value DefaultValue()
     {
-        return new TextValue { Value = string.Empty };
+        return new TextValue("");
     }
-
+    public override Value Cast(Value v)
+    {
+        if (v is TextValue)
+            return v;
+        return base.Cast(v);
+    }
 }
 internal sealed class IntTy : Ty
 {
@@ -343,18 +349,30 @@ internal sealed class ArrayTy : Ty
     {
         return new ArrayValue(_type, size);
     }
-    //public override Value Cast(Value v)
-    //{
-    //    if(v is ArrayValue arrayVal)
-    //    {
-    //        if (_type == arrayVal.ValueTy)
-    //            return arrayVal;
-    //        else
-    //            return base.Cast(v);
-    //    }
-    //    else
-    //        return base.Cast(v);
-    //}
+    public override Value Cast(Value v)
+    {
+        if (v is ArrayValue arrayVal)
+        {
+            if (_type == arrayVal.ValueTy)
+                return arrayVal;
+            else
+                return base.Cast(v);
+        }
+        else
+            return base.Cast(v);
+    }
+    public override string Stringify()
+    {
+        StringBuilder sb = new();
+        sb.Append($"{OfType}[]");
+        var innerType = _type;
+        while(_type is ArrayTy innerArray)
+        {
+            sb.Append("[]");
+            innerType = innerArray;
+        }
+        return sb.ToString();
+    }
 
     new public static ArrayTy Short = new ArrayTy(Ty.Short);
     new public static ArrayTy Long = new ArrayTy(Ty.Long);

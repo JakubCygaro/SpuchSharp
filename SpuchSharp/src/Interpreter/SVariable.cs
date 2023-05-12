@@ -6,10 +6,6 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SpuchSharp.Interpreting;
-internal struct SVariableStacker
-{
-    public SVariable Variable { get; set; }
-}
 internal abstract class SVariable : SObject
 {
     public abstract Tokens.Value Value { get; set; }
@@ -19,6 +15,14 @@ internal class SSimpleVariable : SVariable
 {
     public override string Display() => $"{Value.Ty.Stringify()} = {Value.ValueAsObject}";
     public override required Tokens.Value Value { get; set; }
+}
+
+/// <summary>
+/// Implementing object informs that it can be treated as an array
+/// </summary>
+internal interface IAsArray
+{
+    public ArrayValue AsArray { get; }
 }
 internal class SArray : SVariable
 {

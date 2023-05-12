@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
 
-internal sealed class ArrayValue : Value
+internal class ArrayValue : Value
 {
     /// <summary>
     /// Type of the array
@@ -65,6 +65,13 @@ internal sealed class ArrayValue : Value
             Values[i] = Value.Default(ValueTy, size);
 
     }
+    public ArrayValue(Ty ofType, Value[] values)
+    {
+        ValueTy = ofType;
+        _arrayTy = ArrayTy.ArrayOf(ofType);
+        Size = values.Length;
+        _values = values;
+    }
     private ArrayValue(Ty valueTy, Ty arrayTy, int size, Value[] values)
     {
         ValueTy = valueTy;
@@ -75,7 +82,16 @@ internal sealed class ArrayValue : Value
 
     public override string Stringify()
     {
-        return $"{Ty.Stringify()}";
+        StringBuilder sb = new();
+        sb.Append($"{_arrayTy.Stringify()}");
+        sb.Append("{ ");
+        foreach(var value in _values)
+        {
+            sb.Append($"{value.Stringify()} , ");
+        }
+        sb.Remove(sb.Length - 2, 2);
+        sb.Append('}');
+        return sb.ToString();
     }
 
     public override object ValueAsObject => Values.Select(x => x.ValueAsObject).ToArray();
@@ -86,6 +102,15 @@ internal sealed class ArrayValue : Value
         return ret;
     }
 }
+
+//internal sealed class TextArray : ArrayValue
+//{
+//    public TextArray(Ty ofType, int size) : base(ofType, size)
+//    {
+//    }
+//}
+
+
 //internal sealed class IntArrayValue : ArrayValue
 //{
 //    public override object ValueAsObject => Array;

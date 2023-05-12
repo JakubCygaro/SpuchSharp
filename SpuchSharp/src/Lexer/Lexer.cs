@@ -383,9 +383,8 @@ internal sealed class Lexer
                 Line = charStream.LineNumber,
                 File = charStream.SourceFile
             });
-        return new TextValue
+        return new TextValue(new string(contents.ToArray()))
         {
-            Value = new string(contents.ToArray()),
             Location = new Location 
             { 
                 Column = startPos,

@@ -14,6 +14,7 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using System.Windows.Markup;
 
 namespace SpuchSharp.Interpreting;
 
@@ -486,12 +487,25 @@ public sealed class Interpreter
             }
             else if (arrayDecl.ArrayExpression is null)
             {
-                declType = ArrayTy.ArrayOf(typedArr.Type);
+                declType = typedArr.Type;
                 arrayValue = (ArrayValue)declType.DefaultValue();
                 array = new SArray(declType, arrayValue.Size)
                 {
                     Ident = new Ident() { Value = arrayDecl.Name },
                     Value = arrayValue,
+                    IsPublic = arrayDecl.IsPublic,
+                    Const = arrayDecl.Const,
+                };
+            }
+            else if (arrayDecl.ArrayExpression is Expression expr)
+            {
+                arrayValue = EvaluateExpression(varScope, funScope, module, expr) as ArrayValue ??
+                    throw new InterpreterException("Expression is not an array", expr);
+
+                array = new SArray(typedArr.Type, arrayValue.Size)
+                {
+                    Ident = new Ident() { Value = arrayDecl.Name },
+                    Value = typedArr.Type.Cast(arrayValue),
                     IsPublic = arrayDecl.IsPublic,
                     Const = arrayDecl.Const,
                 };
@@ -833,8 +847,17 @@ public sealed class Interpreter
         Module module,
         IndexerExpression expr)
     {
-        var arrayValue = EvaluateExpression(varScope, funScope, module, expr.ArrayProducer) as ArrayValue 
-            ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
+        //var arrayValue = EvaluateExpression(varScope, funScope, module, expr.ArrayProducer) as ArrayValue 
+        //    ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
+        ArrayValue arrayValue;
+        var value = EvaluateExpression(varScope, funScope, module, expr.ArrayProducer);
+        if(value is IAsArray asArray)
+        {
+            arrayValue = asArray.AsArray;
+        }
+        else
+            arrayValue = value as ArrayValue
+                ?? throw new InterpreterException("Cannot index into a non-array type", expr.ArrayProducer);
 
         var index = EvaluateExpression(varScope, funScope, module, expr.IndexExpression) as IntValue
             ?? throw new InterpreterException("An array index must be of integer type", expr.IndexExpression);
@@ -953,6 +976,8 @@ public sealed class Interpreter
             throw new InterpreterException(
                 $"Return statement type does not match " +
                 $"the return type of the function `{targetFunction.Ident.Stringify()}`");
+        if (retValue is ArrayValue arrV)
+            arrV.Const = false;
 
         foreach (var v in deconst)
             v.Const = false;
@@ -1076,14 +1101,20 @@ public sealed class Interpreter
             as IndexerExpression 
             ?? throw new InterpreterException("Left hand side of assingment is not an index expresion",
             arrayIndexTarget.Target);
+
+        if(indexer.ArrayProducer is IdentExpression identExpression)
+            if(varScope.FindArray(identExpression.Ident).Const)
+                throw new InterpreterException("Tried to reassign a value of a const array",
+                arrayIndexTarget.Target.Location);
+
         var arrayValue = EvaluateExpression(varScope, funScope, module, indexer.ArrayProducer) 
             as ArrayValue
             ?? throw new InterpreterException("Could not obtain the array for assingment", 
             indexer.ArrayProducer);
 
-        if (arrayValue.Const)
-            throw new InterpreterException("Tried to reassign a value of a const array", 
-                arrayIndexTarget.Target.Location);
+        //if (arrayValue.Const)
+        //    throw new InterpreterException("Tried to reassign a value of a const array", 
+        //        arrayIndexTarget.Target.Location);
 
         var index = EvaluateExpression(varScope, funScope, module, arrayIndexTarget.IndexExpression)
                     as IntValue

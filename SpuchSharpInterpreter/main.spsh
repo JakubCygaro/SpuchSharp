@@ -1,16 +1,28 @@
 ﻿import "STDLib";
 
 fun main(){
-	[int] a;
-	print(a);
-	a = {
-		1,2,3
-	};
-	print(a);
+	text dupa = "dupa";
+	
+	text d = dupa[0];
+	println(dupa);
+	println(d);
+	d = "a";
+	println(dupa);
+
 }
-fun test(const ref [int] arr){
+fun ret_arr() int[][] {
+	const int[][] a = {
+		{ 69, 420 },
+		{ 420, 69 }
+	};
+	return a;
+}
+fun test(const ref int[][] arr){
 	for i from 0 to len(arr) - 1 {
-		print(arr[i]);
+		for j from 0 to len(arr[i]) - 1 {
+			println(arr[i][j]);
+		}
+		println("===");
 	}
 }
 fun is_even(int i) bool {

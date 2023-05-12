@@ -41,8 +41,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseKeyWordInstruction(keyWord, stream);
         if (firstToken is Ty type)
             return ParseDeclaration(type, stream);
-        if (firstToken is Square.Open squareOpen)
-            return ParseArrayDeclaration(squareOpen, stream);
+        //if (firstToken is Square.Open squareOpen)
+        //    return ParseArrayDeclaration(squareOpen, stream);
 
         var remainder = new List<Token> { firstToken };
         remainder.AddRange(ReadToSemicolon(stream));
@@ -155,7 +155,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             Var var => ParseDeclaration(var, stream, pub: pub, @const: true),
             Ty ty => ParseDeclaration(ty, stream, pub: pub, @const: true),
-            Square.Open sq => ParseArrayDeclaration(sq, stream, pub: pub, @const: true),
+            //Square.Open sq => ParseArrayDeclaration(sq, stream, pub: pub, @const: true),
             _ => throw ParserException.PrematureEndOfInput(),
         };
     }
@@ -163,8 +163,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     {
         return keyword switch
         {
-            Fun or Var => ParseDeclaration(keyword, stream, pub: true),
-            Square.Open sq => ParseArrayDeclaration(sq, stream, pub: true),
+            Fun or Var or Ty => ParseDeclaration(keyword, stream, pub: true),
+            //Square.Open sq => ParseArrayDeclaration(sq, stream, pub: true),
             Mod m => ParseMod(m, stream, pub: true),
             Const c => ParseWithConst(c, stream, pub: true),
             _ => throw new ParserException("Disallowed pub usage", stream.Current),
@@ -208,44 +208,48 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Location = useKeyword.Location,
         };
     }
-    private Ty ParseType(TokenStream stream)
+    private Ty ParseType(Ty firstToken, TokenStream stream)
     {
-        var firstToken = stream.Next();
-        if (firstToken is Ty normalTy)
-            return normalTy;
-        else if (firstToken is Square.Open)
+        //if (firstToken is Ty normalTy)
+        //    return normalTy;
+        //else if (firstToken is Square.Open)
+        //{
+        //    var arrayTy = ParseType(stream);
+        //    if (stream.Next() is not Square.Closed)
+        //        throw ParserException.Expected<Square.Closed>(stream.Current);
+        //    return ArrayTy.ArrayOf(arrayTy);
+        //}
+        //else
+        //    throw new ParserException("Failed to parse to type", stream.Current);
+
+        //if (firstToken is not Ty asTy)
+        //    throw new ParserException("Failed to parse to type", stream.Current);
+        Ty ret = firstToken;
+        while(stream.Peek() is Square.Open)
         {
-            var arrayTy = ParseType(stream);
+            stream.MoveNext();
             if (stream.Next() is not Square.Closed)
-                throw ParserException.Expected<Square.Closed>(stream.Current);
-            return ArrayTy.ArrayOf(arrayTy);
+                throw new ParserException("Failed to parse to type", stream.Current);
+            ret = ArrayTy.ArrayOf(ret);
         }
-        else
-            throw new ParserException("Failed to parse to type", stream.Current);
+        return ret;
     }
-    private Declaration ParseArrayDeclaration(Square.Open squareOpen, 
+    private Declaration ParseArrayDeclaration(ArrayTy arrayTy,
         TokenStream stream,
         bool pub = false, bool @const = false)
     {
-        var ty = ParseType(stream);
-            //as ArrayTy 
-            //?? throw new ParserException("Array type not an array type!?", stream.Current);
 
         var nextToken = stream.Next();
-        if (nextToken is not Square.Closed)
-            throw ParserException.Expected<Square.Closed>(nextToken);
-
-        nextToken = stream.Next();
         if (nextToken is not Ident ident)
             throw ParserException.Expected<Ident>(nextToken);
 
         nextToken = stream.Next();
         if (nextToken is not Assign)
         {
-            if(nextToken is Semicolon)
+            if (nextToken is Semicolon)
                 return new TypedArrayDecl
                 {
-                    Type = ty,
+                    Type = arrayTy,
                     ArrayExpression = null,
                     Name = ident.Value,
                     Sized = null,
@@ -259,25 +263,24 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         if (stream.Peek() is Square.Open)
         {
             stream.Next();
-            var arrayTy = ArrayTy.ArrayOf(ty);
-            //Console.WriteLine(arrayTy.Stringify());
+            var nestedArrayTy = arrayTy;
             List<Expression> sizes = new();
             var size = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
             sizes.Add(size);
-            while(arrayTy.OfType is ArrayTy arrayType)
+            while (nestedArrayTy.OfType is ArrayTy arrayType)
             {
                 nextToken = stream.Next();
                 if (nextToken is not Square.Open)
                     throw ParserException.Expected<Square.Open>(nextToken);
                 size = ParseExpression(ReadToToken<Square.Closed>(stream).Item1.ToTokenStream());
                 sizes.Add(size);
-                arrayTy = arrayType;
+                nestedArrayTy = arrayType;
             }
             if (stream.Next() is not Semicolon)
                 throw ParserException.Expected<Semicolon>(stream.Current);
             return new TypedArrayDecl
             {
-                Type = ty,
+                Type = arrayTy,
                 Name = ident.Value,
                 ArrayExpression = ArrayExpression.Empty,
                 Sized = sizes,
@@ -289,7 +292,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         return new TypedArrayDecl
         {
-            Type = ty,
+            Type = arrayTy,
             ArrayExpression = ParseExpression(ReadToSemicolon(stream).ToTokenStream()),
             Name = ident.Value,
             Sized = null,
@@ -859,8 +862,18 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else if (token is Ty ty)
         {
             Expression? expr = null;
+
+            var type = ParseType(ty, stream);
+
+            if(type is ArrayTy arrayTy)
+            {
+                var ret = ParseArrayDeclaration(arrayTy, stream, pub: pub, @const: @const);
+                return ret;
+            }
+
             if (stream.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", stream.Current);
+                throw new ParserException("Expected identifier", stream.Current);
+
             if (stream.Next() is not Assign)
             {
                 if (stream.Current is not Semicolon)
@@ -869,11 +882,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             else
                 expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream());
 
+
             return new TypedVariableDecl()
             {
                 Name = ident.Value,
                 Expr = expr,
-                Type = ty,
+                Type = type,
                 Location = ident.Location,
                 Const = @const,
                 IsPublic = pub,
@@ -888,23 +902,25 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //parse function args
             var arguments = ParseFunctionArguments(stream);
 
-            var next = stream.Next();
             Ty type = Ty.Void;
+
+            var next = stream.Next();
+
             if(next is Ty typeName)
             {
-                type = typeName;
+                type = ParseType(typeName, stream);
                 next = stream.Next();
             }
-            else if(next is Square.Open)
-            {
-                var type2 = stream.Next() as Ty ??
-                    throw new ParserException("Incorrect function array return type", next);
-                type = ArrayTy.ArrayOf(type2);
-                next = stream.Next();
-                if (next is not Square.Closed)
-                    throw new ParserException("Incorrect function array return type", next);
-                next = stream.Next();
-            }
+            //else if(next is Square.Open)
+            //{
+            //    var type2 = stream.Next() as Ty ??
+            //        throw new ParserException("Incorrect function array return type", next);
+            //    type = ArrayTy.ArrayOf(type2);
+            //    next = stream.Next();
+            //    if (next is not Square.Closed)
+            //        throw new ParserException("Incorrect function array return type", next);
+            //    next = stream.Next();
+            //}
             if (next is not Curly.Open)
                 throw new ParserException("Invalid token error", stream.Current);
             var instructions = ParseFunctionInstructions(stream);
@@ -951,17 +967,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         if (nextToken is Ty ty)
         {
-            type = ty;
-            nextToken = stream.Next();
-        }
-        else if (nextToken is Square.Open)
-        {
-            if (stream.Next() is not Ty arrayTy)
-                throw new ParserException("Failed to parse argument array type", stream.Current);
-            if (stream.Next() is not Square.Closed)
-                throw new ParserException("Failed to parse argument array, missing closing bracket", 
-                    stream.Current);
-            type = ArrayTy.ArrayOf(arrayTy);
+            type = ParseType(ty, stream);
             nextToken = stream.Next();
         }
         else 
