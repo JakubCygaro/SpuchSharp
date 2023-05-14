@@ -1,39 +1,17 @@
 ﻿import "STDLib";
 
+mod chuj;
+use chuj;
+
 fun main(){
-	text dupa = "dupa";
-	
-	text d = dupa[0];
-	println(dupa);
-	println(d);
-	d = "a";
-	println(dupa);
-
-}
-fun ret_arr() int[][] {
-	const int[][] a = {
-		{ 69, 420 },
-		{ 420, 69 }
-	};
-	return a;
-}
-fun test(const ref int[][] arr){
-	for i from 0 to len(arr) - 1 {
-		for j from 0 to len(arr[i]) - 1 {
-			println(arr[i][j]);
-		}
-		println("===");
-	}
-}
-fun is_even(int i) bool {
-	return i % 2 == 0;
-}
-
-fun ogr() int {
-	return 10;
-}
-fun khuj(int dupa) int {
-	return dupa;
+	push("chuj");
+	push("dupa");
+	push("cipa");
+	push("cyce");
+	println(pop());
+	println(pop());
+	println(pop());
+	println(pop());
 }
 
 

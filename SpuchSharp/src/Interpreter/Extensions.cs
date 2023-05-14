@@ -23,6 +23,13 @@ internal static class ScopeExt
         //return other.ToDictionary(entry => entry.Key, entry => entry.Value);
         return new VariableScope(other);
     }
+    public static void PrintScope(this VariableScope scope)
+    {
+        foreach((var name, var variable) in scope)
+        {
+            Console.WriteLine($"{name.Stringify()} = {variable.Value.Stringify()}");
+        }
+    }
     /// <summary>
     /// Clones a <c>FunctionScope</c>
     /// </summary>

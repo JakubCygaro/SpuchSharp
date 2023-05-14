@@ -134,7 +134,7 @@ public sealed class Interpreter
         };
         newVarScope.Add(variable);
 
-        for(int x = from; x <= to; x += increase)
+        for(int x = from; x < to; x += increase)
         {
             if (context.ShouldBreak)
                 break;
@@ -210,6 +210,9 @@ public sealed class Interpreter
         {
             GlobalExcecute(instruction, module, importedLibs);
         }
+
+        module.VariableScope.Extend(module.OwnedVariables);
+
         foreach (var instruction in instructions)
         {
             ExcecuteModules(instruction, module, importedLibs);
@@ -249,13 +252,32 @@ public sealed class Interpreter
                     CreateFunction(fun, module);
                 else if (stmt is VariableDecl var)
                 {
-                    CreateVariable(module.OwnedVariables, module.FunctionScope, module, var);
-                    module.VariableScope.Extend(module.OwnedVariables);
+                    //Console.WriteLine("VARIABLE CREATION:");
+                    //Console.WriteLine(var.Name);
+
+                    CreateVariable(module.OwnedVariables, 
+                        module.FunctionScope, 
+                        module, 
+                        var, 
+                        toleratePub: true);
+
+
+                    //module.OwnedVariables.PrintScope();
+                    //module.VariableScope.PrintScope();
+
+                    //module.VariableScope.Extend(module.OwnedVariables);
                 }
                 else if (stmt is ArrayDecl arr)
                 {
-                    CreateArray(module.OwnedVariables, module.FunctionScope, module, arr);
-                    module.VariableScope.Extend(module.OwnedVariables);
+                    //Console.WriteLine("ARRAY CREATION:");
+                    //Console.WriteLine(arr.Name);
+
+                    CreateArray(module.OwnedVariables, 
+                        module.FunctionScope, 
+                        module, 
+                        arr, 
+                        toleratePub: true);
+                    //module.VariableScope.Extend(module.OwnedVariables);
                 }
 
                 IfImport(stmt, module, importedLibs);
@@ -451,28 +473,16 @@ public sealed class Interpreter
             throw new InterpreterException("Unallowed declaration statement", decl);
 
     }
-    //static void CreateModule(ModuleDecl modDecl, 
-    //    Module module, 
-    //    HashSet<string> importedLibs)
-    //{
-    //    var file = modDecl.Ident.Value + ".spsh";
-    //    var instructions = GetParserFromSource(file).ToArray();
-    //    var newModule = new Module
-    //    {
-    //        FunctionScope = new(),
-    //        VariableScope = new(),
-    //        Ident = modDecl.Ident,
-    //        Modules = new(),
-    //        ParentModule = module,
-    //    };
-    //    Run(instructions, newModule, importedLibs);
-    //    module.Modules.Add(newModule.Ident, newModule);
-    //}
+
     void CreateArray(VariableScope varScope, 
         FunctionScope funScope, 
         Module module,
-        ArrayDecl arrayDecl)
+        ArrayDecl arrayDecl,
+        bool toleratePub = false)
     {
+        if (arrayDecl.IsPublic && !toleratePub)
+            throw new InterpreterException("Variable declaration cannot be public in this scope", arrayDecl);
+
         ArrayValue arrayValue;
         Ty declType;
         SArray array;
@@ -537,7 +547,9 @@ public sealed class Interpreter
         TypedArrayDecl typedArr)
     {
         var sizes = new LinkedList<(int size, Ty type)>();
-        var arrayType = ArrayTy.ArrayOf(typedArr.Type);
+        //var arrayType = ArrayTy.ArrayOf(typedArr.Type);
+        var arrayType = (ArrayTy)typedArr.Type;
+
         foreach (var size in typedArr.Sized!)
         {
             var s = EvaluateExpression(varScope, funScope, module, size)
@@ -972,10 +984,11 @@ public sealed class Interpreter
 
         retValue ??= Value.Void;
 
+
         if (!retValue.Ty.Equals(returnType))
             throw new InterpreterException(
                 $"Return statement type does not match " +
-                $"the return type of the function `{targetFunction.Ident.Stringify()}`");
+                $"the return type of the function `{targetFunction.Ident.Stringify()}`", call);
         if (retValue is ArrayValue arrV)
             arrV.Const = false;
 
@@ -1023,8 +1036,12 @@ public sealed class Interpreter
     void CreateVariable(VariableScope varScope,
         FunctionScope funScope, 
         Module module,
-        VariableDecl var)
+        VariableDecl var,
+        bool toleratePub = false)
     {
+        if (var.IsPublic && !toleratePub)
+            throw new InterpreterException("Variable declaration cannot be public in this scope", var);
+
         Value value;
         if (var.Expr is null) 
         {

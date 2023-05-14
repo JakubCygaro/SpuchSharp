@@ -83,7 +83,7 @@ internal class ArrayValue : Value
     public override string Stringify()
     {
         StringBuilder sb = new();
-        sb.Append($"{_arrayTy.Stringify()}");
+        sb.Append($"{_arrayTy.Stringify()} ");
         sb.Append("{ ");
         foreach(var value in _values)
         {

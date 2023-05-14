@@ -334,7 +334,7 @@ internal sealed class ArrayTy : Ty
     private ArrayTy(Ty type)
     {
         _type = type;
-        _ident = new Ident() { Value = $"[{_type.Ident.Value}]" };
+        _ident = new Ident() { Value = $"{_type.Ident.Value} []" };
     }
     /// <summary>
     /// This will return an <c>ArrayValue</c> of size 0 !
@@ -364,12 +364,12 @@ internal sealed class ArrayTy : Ty
     public override string Stringify()
     {
         StringBuilder sb = new();
-        sb.Append($"{OfType}[]");
+        sb.Append($"{_type.Stringify()}");
         var innerType = _type;
-        while(_type is ArrayTy innerArray)
+        while(innerType is ArrayTy innerArray)
         {
             sb.Append("[]");
-            innerType = innerArray;
+            innerType = innerArray.OfType;
         }
         return sb.ToString();
     }

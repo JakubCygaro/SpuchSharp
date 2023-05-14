@@ -214,12 +214,7 @@ internal sealed class Lexer
                 return new Add();
 
             case '-':
-                if (charStream.PeekNext() is char posDigit)
-                {
-                    if (char.IsDigit(posDigit))
-                        return ScanForNumberLiteral(ref first, charStream);
-                }
-                else if (charStream.PeekNext() == '-')
+                if (charStream.PeekNext() == '-')
                 {
                     charStream.MoveNext();
                     return new Sub2();
@@ -228,6 +223,11 @@ internal sealed class Lexer
                 {
                     charStream.MoveNext();
                     return new AssignSub();
+                }
+                else if (charStream.PeekNext() is char posDigit)
+                {
+                    if (char.IsDigit(posDigit))
+                        return ScanForNumberLiteral(ref first, charStream);
                 }
                 return new Sub();
 
