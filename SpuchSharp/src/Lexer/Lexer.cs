@@ -6,18 +6,19 @@ using System.IO;
 using System.Collections;
 using SpuchSharp;
 using SpuchSharp.Parsing;
+using System.Data;
 
 namespace SpuchSharp.Lexing;
 
 internal sealed class Lexer
 {
-    internal static TokenStream Tokenize(string[] lines, string sourcePath) 
+    internal static TokenStream Tokenize(string source, string sourcePath) 
     {
-        return new Lexer().Tokenize(new CharStream(lines, sourcePath));
+        return new Lexer(new CharStream(source, sourcePath)).Tokenize();
     }
-    public static TokenStream Tokenize(string[] lines)
+    public static TokenStream Tokenize(string source)
     {
-        return new Lexer().Tokenize(new CharStream(lines));
+        return new Lexer(new CharStream(source)).Tokenize();
     }
 
     enum TypeFlag
@@ -32,293 +33,330 @@ internal sealed class Lexer
     }
     private TypeFlag LastTypeFlag { get; set; } = TypeFlag.NONE;
 
-    public TokenStream Tokenize(CharStream charStream)
+
+    CharStream _charStream;
+    uint _line = 1;
+    uint _column = 0;
+
+    public Lexer(CharStream charStream)
+    {
+        _charStream = charStream;
+    }
+
+    public TokenStream Tokenize()
     {
         List<Token> tokens = new();
-        while (charStream.Next() is char character)
+        Token token;
+        while ((token = Lex()) is not EOFToken)
         {
-            if (character == ' ')
-                continue;
-            if (character == '#')
-            {
-                if (charStream.SkipLine())
-                    continue;
-                else
-                    break;
-            }
             var start = new Location
             {
-                Column = charStream.Column,
-                Line = charStream.LineNumber,
-                File = charStream.SourceFile,
+                Column = _column,
+                Line = _line,
+                File = _charStream.SourceFile,
             };
-            var token = Lex(character, charStream);
             token.Location = start;
             tokens.Add(token);
         }
+        //Console.WriteLine("LEXER OUTPUT");
+        //foreach (var t in tokens)
+        //    Console.WriteLine(t.Stringify());
+        //Console.WriteLine();
+
         return tokens.ToTokenStream();
     }
-    internal Token Lex(char first, CharStream charStream)
+    internal Token Lex()
     {
-        switch (first)
+        while (_charStream.Next() is char character)
         {
-            //case for ident
-            case 'a':
-            case 'b':
-            case 'c':
-            case 'd':
-            case 'e':
-            case 'f':
-            case 'g':
-            case 'h':
-            case 'i':
-            case 'j':
-            case 'k':
-            case 'l':
-            case 'm':
-            case 'n':
-            case 'o':
-            case 'p':
-            case 'q':
-            case 'r':
-            case 's':
-            case 't':
-            case 'u':
-            case 'v':
-            case 'w':
-            case 'x':
-            case 'y':
-            case 'z':
-            case 'A':
-            case 'B':
-            case 'C':
-            case 'D':
-            case 'E':
-            case 'F':
-            case 'G':
-            case 'H':
-            case 'I':
-            case 'J':
-            case 'K':
-            case 'L':
-            case 'M':
-            case 'N':
-            case 'O':
-            case 'P':
-            case 'Q':
-            case 'R':
-            case 'S':
-            case 'T':
-            case 'U':
-            case 'V':
-            case 'W':
-            case 'X':
-            case 'Y':
-            case 'Z':
-            case '_':
-                var token =  ScanForIdentOrKeyWord(ref first, charStream);
-                if(token is Ident ident)
-                {
-                    if(ident == "true")
-                        return new BooleanValue { Value = true };
-                    else if (ident == "false")
-                        return new BooleanValue { Value = false };
-                }
-                return token;
+            _column++;
+            switch (character)
+            {
+                case ' ':
+                case '\t':
+                case '\r':
+                    continue;
 
-            //case for text literal
-            case '"':
-                return ScanForText(ref first, charStream);
+                case '\n':
+                    _line++;
+                    _column = 0;
+                    continue;
 
-            case ';':
-                LastTypeFlag = TypeFlag.NONE;
-                return new Semicolon();
+                case '#':
+                    while (_charStream.Next() is char c)
+                    {
+                        if (c == '\n')
+                            break;
+                    }
+                    _line++;
+                    _column = 0;
+                    continue;
 
-            case '{':
-                return new Curly.Open();
-            case '}':
-                return new Curly.Closed();
+                //case for ident
+                case 'a':
+                case 'b':
+                case 'c':
+                case 'd':
+                case 'e':
+                case 'f':
+                case 'g':
+                case 'h':
+                case 'i':
+                case 'j':
+                case 'k':
+                case 'l':
+                case 'm':
+                case 'n':
+                case 'o':
+                case 'p':
+                case 'q':
+                case 'r':
+                case 's':
+                case 't':
+                case 'u':
+                case 'v':
+                case 'w':
+                case 'x':
+                case 'y':
+                case 'z':
+                case 'A':
+                case 'B':
+                case 'C':
+                case 'D':
+                case 'E':
+                case 'F':
+                case 'G':
+                case 'H':
+                case 'I':
+                case 'J':
+                case 'K':
+                case 'L':
+                case 'M':
+                case 'N':
+                case 'O':
+                case 'P':
+                case 'Q':
+                case 'R':
+                case 'S':
+                case 'T':
+                case 'U':
+                case 'V':
+                case 'W':
+                case 'X':
+                case 'Y':
+                case 'Z':
+                case '_':
+                    var token = ScanForIdentOrKeyWord(ref character);
+                    if (token is Ident ident)
+                    {
+                        if (ident == "true")
+                            return new BooleanValue { Value = true };
+                        else if (ident == "false")
+                            return new BooleanValue { Value = false };
+                    }
+                    return token;
 
-            case '(':
-                return new Round.Open();
-            case ')':
-                return new Round.Closed();
+                //case for text literal
+                case '"':
+                    return ScanForText(ref character);
 
-            case '[':
-                return new Square.Open();
-            case ']':
-                return new Square.Closed();
+                case ';':
+                    LastTypeFlag = TypeFlag.NONE;
+                    return new Semicolon();
 
-            case '.':
-                return new Dot();
+                case '{':
+                    return new Curly.Open();
+                case '}':
+                    return new Curly.Closed();
 
-            case ',':
-                return new Comma();
+                case '(':
+                    return new Round.Open();
+                case ')':
+                    return new Round.Closed();
 
-            case '=':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new Equality();
-                }
-                else
-                    return new Assign();
+                case '[':
+                    return new Square.Open();
+                case ']':
+                    return new Square.Closed();
 
-            case ':':
-                if (charStream.PeekNext() == ':')
-                {
-                    charStream.MoveNext();
-                    return new Colon2();
-                }
-                else
-                    return new Colon();
+                case '.':
+                    return new Dot();
 
-            case '!':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new InEquality();
-                }
-                else
-                    return new Exclam();
+                case ',':
+                    return new Comma();
 
-            case '>':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new GreaterOrEq();
-                }
-                else
-                    return new Greater();
+                case '=':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new Equality();
+                    }
+                    else
+                        return new Assign();
 
-            case '<':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new LessOrEq();
-                }
-                else
-                    return new Less();
+                case ':':
+                    if (_charStream.PeekNext() == ':')
+                    {
+                        _charStream.MoveNext();
+                        return new Colon2();
+                    }
+                    else
+                        return new Colon();
 
-            case '+':
-                if(charStream.PeekNext() == '+')
-                {
-                    charStream.MoveNext();
-                    return new Add2();
-                }
-                else if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new AssignAdd();
-                }
-                return new Add();
+                case '!':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new InEquality();
+                    }
+                    else
+                        return new Exclam();
 
-            case '-':
-                if (charStream.PeekNext() == '-')
-                {
-                    charStream.MoveNext();
-                    return new Sub2();
-                }
-                else if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new AssignSub();
-                }
-                else if (charStream.PeekNext() is char posDigit)
-                {
-                    if (char.IsDigit(posDigit))
-                        return ScanForNumberLiteral(ref first, charStream);
-                }
-                return new Sub();
+                case '>':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new GreaterOrEq();
+                    }
+                    else
+                        return new Greater();
 
-            case '/':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new AssignDiv();
-                }
-                return new Div();
+                case '<':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new LessOrEq();
+                    }
+                    else
+                        return new Less();
 
-            case '*':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new AssignMul();
-                }
-                return new Mult();
-            case '%':
-                if (charStream.PeekNext() == '=')
-                {
-                    charStream.MoveNext();
-                    return new AssignModulo();
-                }
-                return new Percent();
+                case '+':
+                    if (_charStream.PeekNext() == '+')
+                    {
+                        _charStream.MoveNext();
+                        return new Add2();
+                    }
+                    else if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new AssignAdd();
+                    }
+                    return new Add();
 
-            case '&':
-                if (charStream.PeekNext() == '&')
-                {
-                    charStream.MoveNext();
-                    return new And();
-                }
-                else
-                    return new Ampersand();
+                case '-':
+                    if (_charStream.PeekNext() == '-')
+                    {
+                        _charStream.MoveNext();
+                        return new Sub2();
+                    }
+                    else if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new AssignSub();
+                    }
+                    else if (_charStream.PeekNext() is char posDigit)
+                    {
+                        if (char.IsDigit(posDigit))
+                            return ScanForNumberLiteral(ref character);
+                    }
+                    return new Sub();
 
-            case '|':
-                if (charStream.PeekNext() == '|')
-                {
-                    charStream.MoveNext();
-                    return new Or();
-                }
-                else
-                    return new Pipe();
+                case '/':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new AssignDiv();
+                    }
+                    return new Div();
 
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-            case '0':
-                try
-                {
-                    return ScanForNumberLiteral(ref first, charStream);
-                }
-                catch (LexerException le)
-                {
-                    throw le;
-                }
-                catch(Exception) 
-                {
-                    throw new LexerException("Failed to parse number literal at", 
-                        charStream.LineNumber,
-                        charStream.Column);
-                }
-            
+                case '*':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new AssignMul();
+                    }
+                    return new Mult();
+                case '%':
+                    if (_charStream.PeekNext() == '=')
+                    {
+                        _charStream.MoveNext();
+                        return new AssignModulo();
+                    }
+                    return new Percent();
 
-            default:
-                throw new LexerException($"Unallowed character `{first}`");
+                case '&':
+                    if (_charStream.PeekNext() == '&')
+                    {
+                        _charStream.MoveNext();
+                        return new And();
+                    }
+                    else
+                        return new Ampersand();
+
+                case '|':
+                    if (_charStream.PeekNext() == '|')
+                    {
+                        _charStream.MoveNext();
+                        return new Or();
+                    }
+                    else
+                        return new Pipe();
+
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                case '0':
+                    try
+                    {
+                        return ScanForNumberLiteral(ref character);
+                    }
+                    catch (LexerException le)
+                    {
+                        throw le;
+                    }
+                    catch (Exception)
+                    {
+                        throw new LexerException("Failed to parse number literal at",
+                            _line,
+                            _column);
+                    }
+
+
+                default:
+                    throw new LexerException($"Unallowed character `{character}`");
+            }
         }
 
+        return EOFToken.Instance;
     }
-    Token ScanForIdentOrKeyWord(ref char first, CharStream charStream)
+    Token ScanForIdentOrKeyWord(ref char first)
     {
-        int startPos = charStream.Column;
-        List<char> literal = new() { first };
-        while(charStream.PeekNext() is char next)
+        int startPos = _charStream.Tell();
+        int end = startPos;
+        while(_charStream.PeekNext() is char next)
         {
             if(char.IsAsciiLetter(next) ||
                 char.IsAsciiDigit(next) ||
                 next == '_')
             {
-                literal.Add((char)charStream.Next()!);
+                _charStream.MoveNext();
+                end++;
             }
             else
                 break;
         }
-        var value = new string(literal.ToArray());
+        int length = end - startPos;
+
+        _charStream.SeekFromStart(startPos);
+        var value = _charStream.ReadToString(length);
+
+        //Console.WriteLine($"start: {startPos + 1}, end: {end + 1}, length: {length}, value: {value}");
 
         if(KeyWord.From(value) is KeyWord keyWord)
         {
@@ -345,124 +383,168 @@ internal sealed class Lexer
         return new Ident
         {
             Value = value,
-            Location = new() { Column = startPos, Line = charStream.LineNumber, File = charStream.SourceFile }
+            Location = new() 
+            { 
+                Column = _column, 
+                Line = _line, 
+                File = _charStream.SourceFile 
+            }
         };
     }
-    Token ScanForText(ref char first, CharStream charStream)
+    Token ScanForText(ref char first)
     {
-        int startPos = charStream.Column;
+        int startPos = _charStream.Tell() + 1;
+        int end = startPos;
         bool open = true;
-        List<char> contents = new();
-        while(charStream.Next() is char c)
+
+        while(_charStream.Next() is char c)
         {
             if (c == '"')
             {
                 open = false;
                 break;
             }
-            else if (c == '\\')
+            if (c == '\\')
             {
-                var next = charStream.Next() ??
-                    throw new ParserException("Premature end of input", new Location
-                    {
-                        Column = charStream.Column,
-                        Line = charStream.LineNumber,
-                        File = charStream.SourceFile
-                    });
-                contents.Add(ScanEscape(next));
+                if (_charStream.Next() is null)
+                    throw new LexerException("Premature end of input");
+                end += 2;
             }
             else
             {
-                contents.Add(c);
+                end++;
             }
         }
         if (open)
             throw new ParserException("Unclosed parentheses", new Location
             {
-                Column = charStream.Column,
-                Line = charStream.LineNumber,
-                File = charStream.SourceFile
+                Column = _column,
+                Line = _line,
+                File = _charStream.SourceFile
             });
-        return new TextValue(new string(contents.ToArray()))
+        var length = end - startPos;
+        string value;
+        if (length == 0)
+            value = string.Empty;
+        else
+        {
+            _charStream.SeekFromStart(startPos);
+            value = _charStream.ReadToString(length-1);
+            value = ScanEscape(value);
+        }
+        _charStream.MoveNext();
+
+        return new TextValue(value)
         {
             Location = new Location 
             { 
-                Column = startPos,
-                Line = charStream.LineNumber,
-                File = charStream.SourceFile
+                Column = _column,
+                Line = _line,
+                File = _charStream.SourceFile
             }
         };
     }
-    char ScanEscape(char special)
+    string ScanEscape(string s)
     {
-        switch (special) 
+        var span = s.AsSpan();
+        if(span.Length < 2040)
         {
-            case '\'':
-                return '\'';
-            case '"':
-                return '"';
-            case '\\':
-                return '\\';
+            Span<char> ret = stackalloc char[span.Length];
+            for(int i = 0; i < span.Length; i++)
+            {
+                if (span[i] == '\\')
+                    ret[i] = CleanEscapes(span[++i]);
+                else 
+                    ret[i] = span[i];
+            }
+            return ret.ToString();
+        }
+        else
+        {
+            var ret = new char[span.Length];
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (span[i] == '\\')
+                    ret[i] = CleanEscapes(span[++i]);
+                else
+                    ret[i] = span[i];
+            }
+            var str = new string(ret);
+            return str;
+        }
+    }
+    char CleanEscapes(char c)
+    {
+        switch (c)
+        {
+            case 'n':
+                return '\n';
+            case 't':
+                return '\t';
+            case 'r':
+                return '\r';
             case '0':
                 return '\0';
-            case 'a':
-                return '\a';
+            case 'v':
+                return '\v';
+            case '\\':
+                return '\\';
+            case '"':
+                return '"';
+            case '\'':
+                return '\'';
             case 'b':
                 return '\b';
             case 'f':
                 return '\f';
-            case 'n':
-                return '\n';
-            case 'r':
-                return '\r';
-            case 't':
-                return '\t';
-            case 'v':
-                return '\v';
+            case 'a':
+                return '\a';
             default:
-                throw new ParserException("Unrecognized escape sequence");
-
+                throw new LexerException("Unnknown escape sequence");
         }
     }
-    Token ScanForNumberLiteral(ref char first, CharStream charStream)
+    Token ScanForNumberLiteral(ref char first)
     {
         //int column = charStream.Column;
-        List<char> literal = new() { first };
+        var start = _charStream.Tell();
+        var end = start;
         bool dot = false;
         bool @long = false;
-        while (charStream.PeekNext() is char next)
+        while (_charStream.PeekNext() is char next)
         {
             if (char.IsDigit(next))
             {
-                charStream.MoveNext();
-                literal.Add(next);
+                _charStream.MoveNext();
+                end++;
             }
             else if (next == '.')
             {
                 if (dot)
                     throw new ParserException("Invalid number literal format", new Location
                     {
-                        Column = charStream.Column,
-                        Line = charStream.LineNumber,
-                        File = charStream.SourceFile
+                        Column = _column,
+                        Line = _line,
+                        File = _charStream.SourceFile
                     });
                 
-                charStream.MoveNext();
-                literal.Add(next);
+                _charStream.MoveNext();
+                end++;
                 dot = true;
             }
             else if (next == 'f')
             {
                 if (!dot)
                     dot = true;
-                charStream.MoveNext();
+                _charStream.MoveNext();
+                end++;
                 break;
             }
             else if (next == 'L')
             {
                 if (!@long)
                     @long = true;
-                charStream.MoveNext();
+                _charStream.MoveNext();
+                end++;
                 break;
             }
             else
@@ -536,13 +618,15 @@ internal sealed class Lexer
         //                charStream.Column);
         //    }
         //LastTypeFlag = TypeFlag.NONE;
-
+        var length = end - start;
+        _charStream.SeekFromStart(start);
+        var literal = _charStream.ReadToSpan(length);
         Value ret;
         if (dot)
         {
             ret = new FloatValue
             {
-                Value = float.Parse(new string(literal.ToArray()),
+                Value = float.Parse(literal,
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
             };
         }
@@ -550,7 +634,7 @@ internal sealed class Lexer
         {
             ret = new LongValue
             {
-                Value = long.Parse(new string(literal.ToArray()),
+                Value = long.Parse(literal,
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
             };
         }
@@ -558,7 +642,7 @@ internal sealed class Lexer
         {
             ret = new IntValue
             {
-                Value = int.Parse(new string(literal.ToArray()),
+                Value = int.Parse(literal,
                                 System.Globalization.NumberFormatInfo.InvariantInfo)
             };
         }

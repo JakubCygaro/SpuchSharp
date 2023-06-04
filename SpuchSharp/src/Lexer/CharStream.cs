@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using SpuchSharp;
@@ -10,53 +11,25 @@ namespace SpuchSharp.Lexing;
 
 internal sealed class CharStream
 {
-    private CodeLine[] _lines;
-
-
-    //private char[] _text;
+    private readonly string _source;
     private int _position = -1;
-    private int _currentLine = 0;
-    public int Column { get => _position; }
-    //public int Length { get => _text.Length; }
-    public int LineCount { get => _lines.Length; }
-    public int LineNumber { get => _lines[_currentLine].LineNumber; }
-    public int LineLength { get => _lines[_currentLine].Length; }
-    public char Current => _lines[_currentLine][_position];
+    public char Current => _source[_position];
 
     public string SourceFile { get; }
     const string NO_FILE = "";
 
-    public CharStream(string[] input, string sourceFile = NO_FILE)
+    public CharStream(string source, string sourceFile = NO_FILE)
     {
-        var normalized = input
-            .Select(line => line.Trim())
-            .Select((line, num) => new { Line = CutComment(line), Number = num + 1 })
-            .Where(l => !string.IsNullOrEmpty(l.Line))
-            .Select(l => new CodeLine { Characters = l.Line.ToCharArray(), LineNumber = l.Number })
-            .ToArray();
-        _lines = normalized;
+        _source = source;
         SourceFile = sourceFile;
-
-    }
-    static string CutComment(string input)
-    {
-        var index = input.IndexOf('#');
-        if (index == -1) return input;
-        return input.Substring(0, index);
     }
     public void Dispose(){ }
 
     public bool MoveNext()
     {
-        if (_position + 1 < _lines[_currentLine].Length)
+        if (_position + 1 < _source.Length)
         {
             _position++;
-            return true;
-        }
-        else if (_currentLine + 1 < _lines.Length)
-        {
-            _currentLine++;
-            _position = 0;
             return true;
         }
         return false;
@@ -79,36 +52,40 @@ internal sealed class CharStream
     }
     public bool EndOfInput()
     {
-        return _currentLine == _lines.Length - 1 && _position == _lines[_currentLine].Length - 1;
+        return _position == _source.Length - 1;
     }
     public char? PeekNext() 
     {
-        if (_position + 1 < _lines[_currentLine].Length)
+        if (_position + 1 < _source.Length)
         {
-            return _lines[_currentLine][_position + 1];
-        }
-        else if (_currentLine + 1 < _lines.Length)
-        {
-            return _lines[_currentLine + 1][0];
+            return _source[_position + 1];
         }
         return null;
     }
-    public bool SkipLine()
+    public int Tell() => _position;
+    public void SeekFromStart(int position) => _position = position;
+    public string ReadToString(int length)
     {
-        if(_currentLine + 1 > LineCount)
-        {
-            _currentLine++;
-            _position = 0;
-            return true;
-        }
-        return false;
+        var ret = _source.Substring(_position, length + 1);
+        _position += length;
+        return ret;
     }
-}
-struct CodeLine
-{
-    public int LineNumber { get; init; }
-    public char[] Characters { get; init; }
+    public ReadOnlySpan<char> ReadToSpan(int length)
+    {
+        var ret = _source.AsSpan(_position, length + 1);
+        _position += length;
+        return ret;
+    }
 
-    public char this[int index] { get { return Characters[index]; } }
-    public int Length { get { return Characters.Length;} }
+
+    //public bool SkipLine()
+    //{
+    //    if(_currentLine + 1 > LineCount)
+    //    {
+    //        _currentLine++;
+    //        _position = 0;
+    //        return true;
+    //    }
+    //    return false;
+    //}
 }

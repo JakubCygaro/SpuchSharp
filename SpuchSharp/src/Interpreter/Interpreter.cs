@@ -46,7 +46,7 @@ public sealed class Interpreter
         : this(GetParserFromSource(projectSettings.EntryPoint), projectSettings) { }
     static Parser GetParserFromSource(string path)
     {
-        var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllLines(path, Encoding.UTF8), path);
+        var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllText(path, Encoding.UTF8), path);
         return new Parser(tokenStream);
     }
     Value? ExcecuteInstruction(Instruction instruction, 

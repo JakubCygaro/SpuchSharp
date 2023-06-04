@@ -14,6 +14,7 @@
 	text chuj = "chuj";
 	chuj[0] -> "c"
 }
+FUCKING UNIT TESTING
 ## Second priority
 - try catch or something that serves the same purpose
 - Structs & enums

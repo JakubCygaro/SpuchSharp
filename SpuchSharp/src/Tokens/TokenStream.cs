@@ -76,7 +76,7 @@ public class TokenStream : INullEnumerator<Token>,
     {
         return this.Clone();
     }
-    public static TokenStream ParseFromQuote(string[] quote)
+    public static TokenStream ParseFromQuote(string quote)
     {
         return Lexer.Tokenize(quote);
     }

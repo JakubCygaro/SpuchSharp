@@ -4,14 +4,7 @@ mod chuj;
 use chuj;
 
 fun main(){
-	push("chuj");
-	push("dupa");
-	push("cipa");
-	push("cyce");
-	println(pop());
-	println(pop());
-	println(pop());
-	println(pop());
+	println("\"chuj\"");
 }
 
 

@@ -10,10 +10,10 @@ namespace SpuchSharp.Lexing;
 [Serializable]
 public class LexerException : Exception
 {
-	private readonly int _line = 0;
-	private readonly int _column = 0;
+	private readonly ulong _line = 0;
+	private readonly ulong _column = 0;
 
-	public LexerException(string message, int line, int column) : 
+	public LexerException(string message, ulong line, ulong column) : 
 		base($"{message} . ({line}:{column})")
 	{
 		_line = line;
