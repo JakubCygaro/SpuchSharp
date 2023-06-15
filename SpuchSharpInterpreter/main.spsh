@@ -1,11 +1,13 @@
-﻿import "STDLib";
+﻿fun main(){
+    println("\"chuj\"");
+    println(true);
+}    
+fun pizda() {}
+fun chujec(){
 
-mod chuj;
-use chuj;
-
-fun main(){
-	println("\"chuj\"");
 }
-
+import "STDLib";
+#mod chuj;
+#use chuj;
 
 

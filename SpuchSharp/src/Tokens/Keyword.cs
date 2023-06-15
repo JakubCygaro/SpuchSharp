@@ -31,6 +31,29 @@ internal abstract class KeyWord : Token
         "const" => new Const(),
         _ => null
     };
+    public static KeyWord? From(ReadOnlySpan<char> literal) => literal switch
+    {
+        "var" => new Var(),
+        "fun" => new Fun(),
+        "delete" => new Delete(),
+        "import" => new Import(),
+        "return" => new Return(),
+        "if" => new If(),
+        "else" => new Else(),
+        "break" => new Break(),
+        "skip" => new Skip(),
+        "loop" => new Loop(),
+        "for" => new For(),
+        "from" => new From(),
+        "to" => new To(),
+        "while" => new While(),
+        "ref" => new Ref(),
+        "mod" => new Mod(),
+        "use" => new Use(),
+        "pub" => new Public(),
+        "const" => new Const(),
+        _ => null
+    };
 }
 internal sealed class Var : KeyWord 
 {

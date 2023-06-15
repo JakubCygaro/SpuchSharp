@@ -13,6 +13,10 @@ internal sealed class CharStream
 {
     private readonly string _source;
     private int _position = -1;
+    private int _lastNewLine = -1;
+
+    public int Line { get; private set; } = 1;
+    public int Column { get => _position - _lastNewLine; }
     public char Current => _source[_position];
 
     public string SourceFile { get; }
@@ -43,6 +47,12 @@ internal sealed class CharStream
     {
         if (MoveNext())
         {
+            if (Current == '\n')
+            {
+                Line++;
+                _lastNewLine = _position;
+            }
+            
             return Current;
         }
         else

@@ -7,6 +7,7 @@ using System.Collections;
 using SpuchSharp;
 using SpuchSharp.Parsing;
 using System.Data;
+using System.ComponentModel.DataAnnotations;
 
 namespace SpuchSharp.Lexing;
 
@@ -35,8 +36,6 @@ internal sealed class Lexer
 
 
     CharStream _charStream;
-    uint _line = 1;
-    uint _column = 0;
 
     public Lexer(CharStream charStream)
     {
@@ -49,27 +48,26 @@ internal sealed class Lexer
         Token token;
         while ((token = Lex()) is not EOFToken)
         {
-            var start = new Location
+            Location loc = new Location()
             {
-                Column = _column,
-                Line = _line,
+                Column = (ulong)_startColumn,
+                Line = (ulong)_startLine,
                 File = _charStream.SourceFile,
             };
-            token.Location = start;
+            token.Location = loc;
             tokens.Add(token);
         }
-        //Console.WriteLine("LEXER OUTPUT");
-        //foreach (var t in tokens)
-        //    Console.WriteLine(t.Stringify());
-        //Console.WriteLine();
-
         return tokens.ToTokenStream();
     }
+    int _startColumn;
+    int _startLine;
     internal Token Lex()
     {
         while (_charStream.Next() is char character)
         {
-            _column++;
+            _startColumn = _charStream.Column;
+            _startLine = _charStream.Line;
+
             switch (character)
             {
                 case ' ':
@@ -78,8 +76,6 @@ internal sealed class Lexer
                     continue;
 
                 case '\n':
-                    _line++;
-                    _column = 0;
                     continue;
 
                 case '#':
@@ -88,8 +84,6 @@ internal sealed class Lexer
                         if (c == '\n')
                             break;
                     }
-                    _line++;
-                    _column = 0;
                     continue;
 
                 //case for ident
@@ -146,19 +140,12 @@ internal sealed class Lexer
                 case 'Y':
                 case 'Z':
                 case '_':
-                    var token = ScanForIdentOrKeyWord(ref character);
-                    if (token is Ident ident)
-                    {
-                        if (ident == "true")
-                            return new BooleanValue { Value = true };
-                        else if (ident == "false")
-                            return new BooleanValue { Value = false };
-                    }
+                    var token = ScanForIdentOrKeyWord();
                     return token;
 
                 //case for text literal
                 case '"':
-                    return ScanForText(ref character);
+                    return ScanForText();
 
                 case ';':
                     LastTypeFlag = TypeFlag.NONE;
@@ -257,7 +244,7 @@ internal sealed class Lexer
                     else if (_charStream.PeekNext() is char posDigit)
                     {
                         if (char.IsDigit(posDigit))
-                            return ScanForNumberLiteral(ref character);
+                            return ScanForNumberLiteral();
                     }
                     return new Sub();
 
@@ -314,7 +301,7 @@ internal sealed class Lexer
                 case '0':
                     try
                     {
-                        return ScanForNumberLiteral(ref character);
+                        return ScanForNumberLiteral();
                     }
                     catch (LexerException le)
                     {
@@ -323,19 +310,25 @@ internal sealed class Lexer
                     catch (Exception)
                     {
                         throw new LexerException("Failed to parse number literal at",
-                            _line,
-                            _column);
+                            (ulong)_charStream.Line,
+                            (ulong)_charStream.Column);
                     }
 
 
                 default:
-                    throw new LexerException($"Unallowed character `{character}`");
+                    var here = new Location()
+                    {
+                        Column = (ulong)_startColumn,
+                        Line = (ulong)_startLine,
+                        File = _charStream.SourceFile,
+                    };
+                    throw new LexerException($"Unallowed character `{character} at {here}`");
             }
         }
 
         return EOFToken.Instance;
     }
-    Token ScanForIdentOrKeyWord(ref char first)
+    Token ScanForIdentOrKeyWord()
     {
         int startPos = _charStream.Tell();
         int end = startPos;
@@ -354,15 +347,12 @@ internal sealed class Lexer
         int length = end - startPos;
 
         _charStream.SeekFromStart(startPos);
-        var value = _charStream.ReadToString(length);
+        var value = _charStream.ReadToSpan(length);
 
-        //Console.WriteLine($"start: {startPos + 1}, end: {end + 1}, length: {length}, value: {value}");
-
-        if(KeyWord.From(value) is KeyWord keyWord)
+        if (KeyWord.From(value) is KeyWord keyWord)
         {
             if (keyWord is Var)
                 LastTypeFlag = TypeFlag.NONE;
-
             return keyWord;
         }
         else if (Ty.From(value) is Ty type)
@@ -377,21 +367,24 @@ internal sealed class Lexer
                 TextTy => TypeFlag.TEXT,
                 _ => TypeFlag.NONE,
             };
-
+            //type.Location = loc;
             return type;
         }
-        return new Ident
+        else if (MemoryExtensions.Equals(value, "false", StringComparison.Ordinal))
         {
-            Value = value,
-            Location = new() 
-            { 
-                Column = _column, 
-                Line = _line, 
-                File = _charStream.SourceFile 
-            }
-        };
+            return new BooleanValue { Value = false };
+        }
+        else if (MemoryExtensions.Equals(value, "true", StringComparison.Ordinal))
+        {
+            return new BooleanValue { Value = true };
+        }
+        else
+            return new Ident
+            {
+                Value = value.ToString(),
+            };
     }
-    Token ScanForText(ref char first)
+    Token ScanForText()
     {
         int startPos = _charStream.Tell() + 1;
         int end = startPos;
@@ -418,8 +411,8 @@ internal sealed class Lexer
         if (open)
             throw new ParserException("Unclosed parentheses", new Location
             {
-                Column = _column,
-                Line = _line,
+                Column = (ulong)_charStream.Column,
+                Line = (ulong)_charStream.Line,
                 File = _charStream.SourceFile
             });
         var length = end - startPos;
@@ -437,9 +430,9 @@ internal sealed class Lexer
         return new TextValue(value)
         {
             Location = new Location 
-            { 
-                Column = _column,
-                Line = _line,
+            {
+                Column = (ulong)_startColumn,
+                Line = (ulong)_startLine,
                 File = _charStream.SourceFile
             }
         };
@@ -503,7 +496,7 @@ internal sealed class Lexer
                 throw new LexerException("Unnknown escape sequence");
         }
     }
-    Token ScanForNumberLiteral(ref char first)
+    Token ScanForNumberLiteral()
     {
         //int column = charStream.Column;
         var start = _charStream.Tell();
@@ -522,8 +515,8 @@ internal sealed class Lexer
                 if (dot)
                     throw new ParserException("Invalid number literal format", new Location
                     {
-                        Column = _column,
-                        Line = _line,
+                        Column = (ulong)_charStream.Column,
+                        Line = (ulong)_charStream.Line,
                         File = _charStream.SourceFile
                     });
                 

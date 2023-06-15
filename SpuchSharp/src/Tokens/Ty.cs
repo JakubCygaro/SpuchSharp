@@ -112,6 +112,18 @@ internal abstract class Ty : Token, IEquatable<Ty>
         "double" => Ty.Double,
         _ => null,
     };
+    public static Ty? From(ReadOnlySpan<char> lit) => lit switch
+    {
+        "short" => Ty.Short,
+        "int" => Ty.Int,
+        "long" => Ty.Long,
+        "text" => Ty.Text,
+        "bool" => Ty.Boolean,
+        "void" => Ty.Void,
+        "float" => Ty.Float,
+        "double" => Ty.Double,
+        _ => null,
+    };
     public override string Stringify() => Ident.Value;
     public override bool Equals(object? obj)
     {
