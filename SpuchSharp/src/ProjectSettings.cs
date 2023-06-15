@@ -19,5 +19,11 @@ public class ProjectSettings
         ProjectName = Directory.GetCurrentDirectory(),
         ExternalLibs = new(),
     };
+    public static ProjectSettings Debug = new SpuchSharp.ProjectSettings
+    {
+        EntryPoint = "debug",
+        ProjectName = "<DEBUG PROJECT>",
+        ExternalLibs = new(),
+    };
 
 }

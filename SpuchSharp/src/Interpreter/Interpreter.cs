@@ -44,6 +44,12 @@ public sealed class Interpreter
     }
     public Interpreter(ProjectSettings projectSettings) 
         : this(GetParserFromSource(projectSettings.EntryPoint), projectSettings) { }
+    /// <summary>
+    /// For debug purposes
+    /// </summary>
+    /// <param name="source"> A source code literal </param>
+    public Interpreter(string source)
+        : this(new Parser(TokenStream.ParseFromQuote(source)), ProjectSettings.Debug) { }
     static Parser GetParserFromSource(string path)
     {
         var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllText(path, Encoding.UTF8), path);
