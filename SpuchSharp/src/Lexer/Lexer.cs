@@ -503,6 +503,7 @@ internal sealed class Lexer
         var end = start;
         bool dot = false;
         bool @long = false;
+        bool @float = false;
         while (_charStream.PeekNext() is char next)
         {
             if (char.IsDigit(next))
@@ -528,8 +529,9 @@ internal sealed class Lexer
             {
                 if (!dot)
                     dot = true;
+                @float = true;
                 _charStream.MoveNext();
-                end++;
+                //end++;
                 break;
             }
             else if (next == 'L')
@@ -537,7 +539,7 @@ internal sealed class Lexer
                 if (!@long)
                     @long = true;
                 _charStream.MoveNext();
-                end++;
+                //end++;
                 break;
             }
             else
@@ -614,6 +616,8 @@ internal sealed class Lexer
         var length = end - start;
         _charStream.SeekFromStart(start);
         var literal = _charStream.ReadToSpan(length);
+        if (@long || @float)
+            _charStream.MoveNext();
         Value ret;
         if (dot)
         {

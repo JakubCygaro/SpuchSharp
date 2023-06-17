@@ -77,8 +77,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     Target = ix,
                     IndexExpression = ix.IndexExpression,
                 },
-            _ => throw new ParserException("This expression cannot be a target for an assignment",
-                target.Location)
+            _ => throw new AssignmentTargetException(target.Location)
         };
 
         return assignToken switch
@@ -119,8 +118,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 Expr = expression,
                 Location = expression.Location,
             },
-            _ => throw new ParserException("Unknown assignment type", 
-                assignToken.Location) 
+            _ => throw new UnknownAssignmentException(assignToken.Location) 
         };
         
     }
@@ -142,10 +140,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Mod mod => ParseMod(mod, stream),
             Use use => ParseUse(use, stream),
             Public => ParseWithPublic(stream.Next() ?? 
-                    throw new ParserException("Premature end of input", stream.Current), 
+                    throw new PrematureEndOfInputException(stream.Current.Location), 
                     stream),
             Const @const => ParseWithConst(@const, stream),
-            _ => throw new ParserException("Failed to parse keyword instruction!", keyword),
+            _ => throw new KeywordException(keyword.Location),
         };
     }
     private Instruction ParseWithConst(Const constKeyword, TokenStream stream, bool pub = false)
@@ -167,7 +165,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //Square.Open sq => ParseArrayDeclaration(sq, stream, pub: true),
             Mod m => ParseMod(m, stream, pub: true),
             Const c => ParseWithConst(c, stream, pub: true),
-            _ => throw new ParserException("Disallowed pub usage", stream.Current),
+            _ => throw new DisallowedPubUsageException(stream.Current.Location),
         };
     }
     private Instruction ParseMod(Mod modKeyword, TokenStream stream, bool pub = false)
@@ -229,7 +227,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             stream.MoveNext();
             if (stream.Next() is not Square.Closed)
-                throw new ParserException("Failed to parse to type", stream.Current);
+                throw new FailedToParseToTypeException(stream.Current.Location);
             ret = ArrayTy.ArrayOf(ret);
         }
         return ret;
@@ -390,15 +388,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             throw ParserException.Expected<Round.Open>(keyWord);
         var expressions = ParseInsideRound(stream);
         if (expressions.Count != 1)
-            throw new ParserException("An if statement clause must be only a single logical expression",
-                stream.Current);
+            throw new IfClauseSyntaxException("An if statement clause must be only a single logical expression",
+                stream.Current.Location);
 
         var expressionStream = expressions[0];
         var expr = ParseExpression(expressionStream);
 
         if (stream.Next() is not Curly.Open)
-            throw new ParserException("An if statement requires a block of instructions in curly braces",
-                stream.Current);
+            throw new IfClauseSyntaxException("An if statement requires a block of instructions in curly braces",
+                stream.Current.Location);
 
         var block = ParseFunctionInstructions(stream);
 
@@ -434,14 +432,13 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private Instruction ParseImport(KeyWord Keyword, TokenStream stream)
     {
         if (stream.Next() is not TextValue value)
-            throw new ParserException("An import statement takes an external library path as an argument.",
-                stream.Current);
+            throw new ImportStatementSyntaxException("An import statement takes an external library path as an argument.",
+                stream.Current.Location);
         if (!value.Ty.Equals(Ty.Text))
-            throw new ParserException("The path to an external library must be a string value.",
-                stream.Current);
+            throw new ImportStatementSyntaxException("The path to an external library must be a string value.",
+                stream.Current.Location);
         if (stream.Next() is not Semicolon)
-            throw new ParserException("Expected semicolon.",
-                stream.Current);
+            throw ParserException.Expected<Semicolon>(stream.Current);
         return new ImportStatement
         {
             Path = value.Value,
@@ -451,11 +448,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private Instruction ParseDelete(KeyWord keyWord, TokenStream stream)
     {
         if (stream.Next() is not Ident ident)
-            throw new ParserException("A delete statement takes a variable name as a parameter.",
-                stream.Current);
+            throw new DeleteStatementSyntaxException("A delete statement takes a variable name as a parameter.",
+                stream.Current.Location);
         if(stream.Next() is not Semicolon)
-            throw new ParserException("Expected semicolon.",
-                stream.Current);
+            throw ParserException.Expected<Semicolon>(stream.Current);
         return new DeleteStatement
         {
             VariableIdent = ident,
@@ -465,14 +461,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     private Expression ParseExpression(TokenStream stream)
     {
         var parsing = Transform(stream);
-        //foreach (var chuj in parsing)
-        //{
-        //    if (chuj.Value is Operator op)
-        //        Console.WriteLine(op.Stringify());
-        //    if (chuj.Value is Expression exp)
-        //        Console.WriteLine(exp.Display());
-        //}
-
         while (parsing.Count > 1)
         {
             int index = 0;
@@ -495,11 +483,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             }
             catch
             {
-                throw new ParserException("Failed to parse an expression", reff as Token);
+                throw new FailedToParseExpressionException((reff as Token)?.Location);
             }
         }
         return parsing[0].Right ?? 
-            throw new ParserException("Failed to parse an expression");
+            throw new FailedToParseExpressionException(default(Location));
 
     }
     private void HandleOperator(int index, Operator op, List<Optional<Operator, Expression>> parsing)
@@ -527,15 +515,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             case Add2:
                 if(parsing.ElementAtOrDefault(index - 1).HasRight && 
                     parsing.ElementAtOrDefault(index + 1).HasRight)
-                    throw new ParserException("Invalid usage of `++` operator", op);
+                    throw new OperatorException("Invalid usage of `++` operator", op.Location);
                 if(parsing.ElementAtOrDefault(index - 1).HasRight)
                 {
                     v1 = parsing.TakeOutAt(index - 1).RightOrThrow; //take expr
                     parsing[index - 1] = new IncrementExpression
                     {
                         Expression = v1 as IdentExpression ??
-                            throw new ParserException("Increment operator can only target variable names", 
-                            op),
+                            throw new OperatorException("Increment operator can only target variable names", 
+                            op.Location),
                         Location = op.Location,
                         Pre = false,
                     };
@@ -546,8 +534,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     parsing[index] = new IncrementExpression
                     {
                         Expression = v1 as IdentExpression ??
-                            throw new ParserException("Increment operator can only target variable names",
-                            op),
+                            throw new OperatorException("Increment operator can only target variable names",
+                            op.Location),
                         Location = op.Location,
                         Pre = true,
                     };
@@ -557,15 +545,15 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             case Sub2:
                 if (parsing.ElementAtOrDefault(index - 1).HasRight &&
                     parsing.ElementAtOrDefault(index + 1).HasRight)
-                    throw new ParserException("Invalid usage of `--` operator", op);
+                    throw new OperatorException("Invalid usage of `--` operator", op.Location);
                 if (parsing.ElementAtOrDefault(index - 1).HasRight)
                 {
                     v1 = parsing.TakeOutAt(index - 1).RightOrThrow; 
                     parsing[index - 1] = new DecrementExpression
                     {
                         Expression = v1 as IdentExpression ??
-                            throw new ParserException("Decrement operator can only target variable names",
-                            op),
+                            throw new OperatorException("Decrement operator can only target variable names",
+                            op.Location),
                         Location = op.Location,
                         Pre = false,
                     };
@@ -576,8 +564,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     parsing[index] = new DecrementExpression
                     {
                         Expression = v1 as IdentExpression ??
-                            throw new ParserException("Decrement operator can only target variable names",
-                            op),
+                            throw new OperatorException("Decrement operator can only target variable names",
+                            op.Location),
                         Location = op.Location,
                         Pre = true,
                     };
@@ -595,7 +583,8 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 break;
 
             default:
-                throw new ParserException($"Unable to parse expression with operator {op.Stringify()}");
+                throw new FailedToParseExpressionException($"Unable to parse expression with operator {op.Stringify()}", 
+                    op.Location);
         }
     }
 
@@ -638,8 +627,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             {
                 ret.Add(ParseArrayExpression(stream));
                 if (stream.Next() is not null)
-                    throw new ParserException(
-                        "Array initialisation expression cannot be used with operators or other expressions");
+                    throw new ArrayException(
+                        "Array initialisation expression cannot be used with operators or other expressions", 
+                        stream.Current.Location);
                 break;
             }
             SimpleExpression simpleExpression = ParseIdentOrValueExpression(token);
@@ -750,7 +740,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else if (token is Ident ident)
             return new IdentExpression { Ident = ident, Location = ident.Location };
         else
-            throw new ParserException("Invalid token.", token);
+            throw new UnexpectedTokenException(token);
     }
 
 
@@ -789,7 +779,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             else if (token is T tokenT)
                 return (tokens, tokenT);
         }
-        throw new ParserException("Premature end of input", location);
+        throw new PrematureEndOfInputException(location);
     }
     /// <summary>
     /// Does the same as <c>ReadToToken()</c> but does not throw an exception if the <c>T</c> was not encountered before the end of the stream
@@ -844,9 +834,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         if (token is Var var)
         {
             if (stream.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", stream.Current);
+                throw new UnexpectedTokenException(stream.Current);
             if (stream.Next() is not Assign)
-                throw new ParserException("Invalid token error", stream.Current);
+                throw new UnexpectedTokenException(stream.Current);
             if (stream.Peek() is Curly.Open)
                 return ParseUntypedArrayDecl(ident, stream, pub: pub, @const: @const);
 
@@ -872,12 +862,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             }
 
             if (stream.Next() is not Ident ident)
-                throw new ParserException("Expected identifier", stream.Current);
+                throw new UnexpectedTokenException(stream.Current);
 
             if (stream.Next() is not Assign)
             {
                 if (stream.Current is not Semicolon)
-                    throw new ParserException("Invalid token error", stream.Current);
+                    throw new UnexpectedTokenException(stream.Current);
             }
             else
                 expr = ParseExpression(ReadToSemicolon(stream).ToTokenStream());
@@ -896,7 +886,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         else if (token is Fun fun)
         {
             if (stream.Next() is not Ident ident)
-                throw new ParserException("Invalid token error", stream.Current);
+                throw new UnexpectedTokenException(stream.Current);
             //if (stream.Next() is not Round.Open)
             //    throw new ParserException("Invalid token error", stream.Current);
             //parse function args
@@ -922,7 +912,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //    next = stream.Next();
             //}
             if (next is not Curly.Open)
-                throw new ParserException("Invalid token error", stream.Current);
+                throw new UnexpectedTokenException(stream.Current);
             var instructions = ParseFunctionInstructions(stream);
 
             return new FunctionDecl()
@@ -936,7 +926,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             };
         }
         else
-            throw new ParserException("Invalid syntax error!", token);
+            throw new ParserException("Invalid syntax", token);
     }
     private FunArg[] ParseFunctionArguments(TokenStream stream)
     {
@@ -945,7 +935,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
 
         foreach (var tokens in tokensList)
             if (!args.Add(ParseFunctionArgument(tokens)))
-                throw new ParserException("Repeating argument names", tokens.Current);
+                throw new FunctionDeclarationException("Repeating argument names", tokens.Current.Location);
         return args.ToArray();
     }
     private FunArg ParseFunctionArgument(TokenStream stream)
@@ -971,10 +961,12 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             nextToken = stream.Next();
         }
         else 
-            throw new ParserException("Could not determine function argument type", stream.Current);
+            throw new FunctionDeclarationException("Could not determine function argument type", 
+                stream.Current.Location);
 
         if (nextToken is not Ident ident)
-            throw new ParserException("Failed to parse function argument name", stream.Current);
+            throw new FunctionDeclarationException("Failed to parse function argument name", 
+                stream.Current.Location);
         return new FunArg
         {
             Name = ident,
@@ -1083,8 +1075,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         }
         throw new ParserException("Unclosed parentheses", stream.Current);
     }
-    
-
 
     public IEnumerator<Instruction> GetEnumerator() => this;
 
@@ -1097,9 +1087,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         _tokenStream.Reset();
     }
     public void Dispose() { }
-
-
-    
 }
 
 

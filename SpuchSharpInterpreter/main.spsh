@@ -1,13 +1,28 @@
-﻿fun main(){
-    println("\"chuj\"");
-    println(true);
-}    
-fun pizda() {}
-fun chujec(){
+﻿import "STDLib";
+fun main(){
+    short s = 1;
+    int a = 1;
+    long l1 = 100;
+    long l2 = 100L;
+    float f1 = 1.0;
+    float f2 = 1f;
+    double d1 = 1.0;
+    double d2 = 1f;
+
+    # text t1 = "text";
+    # text t2 = "text\ntext";
+
+    # int[] i_arr1 = {
+    #     1,
+    #     2,
+    #     3,
+    #     4,
+    # };
+    # int[] i_arr2 = [10];
+    # int[][] i_arr3 = {
+    #     {1, 2},
+    #     {3, 4}
+    # };
 
 }
-import "STDLib";
-#mod chuj;
-#use chuj;
-
 
