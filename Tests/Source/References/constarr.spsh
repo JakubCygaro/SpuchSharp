@@ -1,4 +1,3 @@
-﻿import "STDLib";
 fun main(){
     const text[] arr = {
         "test",

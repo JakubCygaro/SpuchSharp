@@ -28,6 +28,8 @@
 
   <ItemGroup>
     <Folder Include="Source\Modules\" />
+    <Folder Include="Source\Expressions\" />
+    <Folder Include="Source\References\" />
   </ItemGroup>
 
 </Project>

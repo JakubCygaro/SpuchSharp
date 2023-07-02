@@ -43,6 +43,22 @@ public static class STD
     public static int RandomInt(int start, int end) => Random.Shared.Next(start, end);
 
     [Function("len")]
-    public static int Length(object[] array) => array.Length; 
+    public static int Length(object[] array) => array.Length;
+
+    [Function("assert")]
+    public static bool Assert(object a, object b) =>
+        (a, b) switch
+        {
+            (string @as, string bs) => @as == bs,
+            (object ao, object bo) => ao.Equals(bo),
+            (_, _) => true,
+        };
+
+    [Function("throwIf")]
+    public static void ThrowIf(bool cond)
+    {
+        if (cond)
+            throw new Exception("Throw condition was satisfied");
+    }
 
 }

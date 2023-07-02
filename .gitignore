@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 /SpuchSharpInterpreter/test/dupa
 /SpuchSharpInterpreter/test
+/SpuchSharpInterpreter/ExternalLibs/SpuchSharp.deps.json
+/SpuchSharpInterpreter/ExternalLibs/SpuchSharp.dll
+/SpuchSharpInterpreter/ExternalLibs/STDLib.deps.json

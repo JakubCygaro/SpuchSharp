@@ -1,0 +1,22 @@
+import "STDLib";
+
+fun main(){
+    bool ass = false;
+    ass = assert(2+2*2, 6);
+    throwIf(!ass);
+
+    text str = "string";
+    var s = str[0];
+    ass = assert(s, "s");
+    throwIf(!ass);
+
+    int i = 100;
+    add_to_ref(i);
+    ass = assert(i, 101);
+    throwIf(!ass);
+}
+
+fun add_to_ref(ref int i) {
+    i++;
+}
+

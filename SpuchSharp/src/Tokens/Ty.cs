@@ -208,6 +208,12 @@ internal sealed class BooleanTy : Ty
     {
         return new BooleanValue { Value = false };
     }
+    public override Value? SafeCast(Value v)
+    {
+        if(v is BooleanValue) 
+            return (BooleanValue)v;
+        return base.SafeCast(v);
+    }
 }
 internal sealed class VoidTy : Ty
 {
@@ -225,6 +231,14 @@ internal sealed class AnyTy : Ty
     public override Value DefaultValue()
     {
         return new AnyValue { Value = null! };
+    }
+    public override Value? SafeCast(Value v)
+    {
+        return new AnyValue { Value = v.ValueAsObject };
+    }
+    public override Value Cast(Value v)
+    {
+        return new AnyValue { Value = v.ValueAsObject };
     }
 }
 internal sealed class NothingTy : Ty

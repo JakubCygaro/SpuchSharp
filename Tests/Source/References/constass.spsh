@@ -1,0 +1,4 @@
+fun main(){
+    const int a = 100;
+    a = 1000;
+}

@@ -1,0 +1,10 @@
+import "STDLib";
+
+fun main(){
+    int a = 10;
+    take_const_ref(a);
+}
+
+fun take_const_ref(const ref int i){
+    i++;
+}

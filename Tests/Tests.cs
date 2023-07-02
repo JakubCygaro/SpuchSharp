@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Xunit.Sdk;
 using System;
 using SpuchSharp;
+using System.Reflection;
+using System.IO;
 
 namespace Tests;
 
@@ -63,6 +65,8 @@ public class Tests
         """
         import "STDLib";
         fun main(){
+            bool b = false;
+            bool b2 = true;
             short s = 1;
             int a = 1;
             long l1 = 100;
@@ -93,8 +97,11 @@ public class Tests
     }
     [Theory]
     [InlineData("Modules")]
+    [InlineData("Expressions")]
     public void TestSources(string dir)
     {
+        //var root = Directory.GetCurrentDirectory();
+        //var entry = Path.Combine(root, "Source\\", dir, "main.spsh");
         var proj = new ProjectSettings()
         {
             EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\main.spsh",
@@ -102,5 +109,27 @@ public class Tests
             ProjectName = dir,
         };
         new Interpreter(proj).Run();
+    }
+    /// <summary>
+    /// Tests code that is supposed to throw an exception
+    /// </summary>
+    [Theory]
+    [InlineData("References", "constreffun")]
+    [InlineData("References", "constvar")]
+    [InlineData("References", "constass")]
+    [InlineData("References", "constarr")]
+
+    public void TestThrowingSources(string dir, string? main = null)
+    {
+        //var root = Directory.GetCurrentDirectory();
+        //var entry = Path.Combine(root, "Source\\", dir, "main.spsh");
+        var proj = new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\{(main ?? "main") + ".spsh"}",
+            ExternalLibs = new(),
+            ProjectName = dir,
+        };
+        Assert.ThrowsAny<Exception>(() => new Interpreter(proj).Run());
+        //new Interpreter(proj).Run();
     }
 }
