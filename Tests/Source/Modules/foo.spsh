@@ -1,0 +1,5 @@
+import "STDLib";
+
+pub fun bar() {
+    println("bar");
+}

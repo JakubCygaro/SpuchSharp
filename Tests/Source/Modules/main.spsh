@@ -1,0 +1,11 @@
+mod foo;
+use foo;
+
+# module as a directory
+mod dir;
+use dir;
+
+fun main(){
+    bar();
+    dir_bar();
+}

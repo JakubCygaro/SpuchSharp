@@ -1,0 +1,8 @@
+import "STDLib";
+mod nest_dir;
+use nest_dir;
+
+pub fun nest_bar(){
+    println("nest_bar");
+    nest_dir();
+}

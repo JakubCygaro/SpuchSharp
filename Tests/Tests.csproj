@@ -26,4 +26,8 @@
     <ProjectReference Include="..\SpuchSharp\SpuchSharp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Source\Modules\" />
+  </ItemGroup>
+
 </Project>

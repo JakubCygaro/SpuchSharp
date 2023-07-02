@@ -39,7 +39,8 @@ public sealed class Interpreter
             ParentModule = null,
             OwnedFunctions = new(),
             OwnedVariables = new(),
-            DirectoryPath = Directory.GetCurrentDirectory(),
+            //DirectoryPath = Directory.GetCurrentDirectory(),
+            DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(projectSettings.EntryPoint))!
         };
     }
     public Interpreter(ProjectSettings projectSettings) 
@@ -338,6 +339,15 @@ public sealed class Interpreter
         module.VariableScope.ExtendPublic(toInclude.OwnedVariables);
         module.FunctionScope.ExtendPublic(toInclude.OwnedFunctions);
     }
+    /// <summary>
+    /// Creates a new <c>Module</c> from a <c>ModuleDecl</c> and adds it as a child of the provided <c>Module</c>
+    /// instance
+    /// </summary>
+    /// <param name="modDecl">Module declaration</param>
+    /// <param name="module">Parent module</param>
+    /// <param name="importedLibs">Global imports</param>
+    /// <exception cref="InterpreterException"></exception>
+    /// <exception cref="ParserException"></exception>
     void CreateModule(ModuleDecl modDecl, 
         Module module,
         Dictionary<Ident, Module> importedLibs)
@@ -367,6 +377,9 @@ public sealed class Interpreter
         else
             throw new ParserException($"Could not locate source file for module `{supposedSource}`");
 
+        var directoryPath = Path.GetDirectoryName(Path.GetFullPath(path)) ??
+                                    throw new InterpreterException($"Could not determine module directory path for module `{supposedSource}`");
+
         Directory.SetCurrentDirectory(dir);
 
         var newModule = new Module
@@ -379,8 +392,7 @@ public sealed class Interpreter
             OwnedFunctions = new(),
             OwnedVariables = new(),
             IsPublic = modDecl.IsPublic,
-            DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(path)) ??
-                                    throw new InterpreterException($"Could not determine module directory path for module `{supposedSource}`")
+            DirectoryPath = directoryPath
         };
         Run(moduleInstructions, newModule, importedLibs);
         modules.Add(modDecl.Ident, newModule);

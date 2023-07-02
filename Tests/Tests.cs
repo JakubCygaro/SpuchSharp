@@ -2,6 +2,7 @@ using SpuchSharp.Parsing;
 using System.Collections.Generic;
 using Xunit.Sdk;
 using System;
+using SpuchSharp;
 
 namespace Tests;
 
@@ -89,5 +90,17 @@ public class Tests
         }
         """;
         RunSource(s);
+    }
+    [Theory]
+    [InlineData("Modules")]
+    public void TestSources(string dir)
+    {
+        var proj = new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\main.spsh",
+            ExternalLibs = new(),
+            ProjectName = dir,
+        };
+        new Interpreter(proj).Run();
     }
 }

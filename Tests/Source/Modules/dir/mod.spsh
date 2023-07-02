@@ -1,0 +1,10 @@
+import "STDLib";
+
+#nested module
+mod nest;
+use nest;
+
+pub fun dir_bar(){
+    println("dir_bar");
+    nest_bar();
+}
