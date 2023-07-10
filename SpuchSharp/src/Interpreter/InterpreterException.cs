@@ -50,23 +50,64 @@ public class InterpreterException : Exception
 			$"{a.Ty.Stringify()} {b.Ty.Stringify()}";
         return new InterpreterException(message, a);
     }
-	internal static InterpreterException ConstantReassignment(SVariable variable, Location? location = null)
+	internal static ConstException ConstantReassignment(SVariable variable, Location? location = null)
 	{
 		var message = $"Tried to reassing a constant variable `{variable.Ident.Stringify()}`";
-		return new InterpreterException(message, location);
+		return new ConstException(message, location);
 	}
-    internal static InterpreterException ConstantReassignment(string name, Location? location = null)
+    internal static ConstException ConstantReassignment(string name, Location? location = null)
     {
         var message = $"Tried to reassing a constant variable `{name}`";
-        return new InterpreterException(message, location);
+        return new ConstException(message, location);
     }
-    internal static InterpreterException ConstantReassignment(Ident variableName, Location? location = null)
+    internal static ConstException ConstantReassignment(Ident variableName, Location? location = null)
     {
         var message = $"Tried to reassing a constant variable `{variableName.Stringify()}`";
-        return new InterpreterException(message, location);
+        return new ConstException(message, location);
     }
     public InterpreterException(string message, Exception inner) : base(message, inner) { }
 	protected InterpreterException(
 	  System.Runtime.Serialization.SerializationInfo info,
 	  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+}
+
+[Serializable]
+public class ConstReferenceException : ConstException
+{
+	public ConstReferenceException() { }
+	public ConstReferenceException(string message) : base(message) { }
+	public ConstReferenceException(string message, Exception inner) : base(message, inner) { }
+	protected ConstReferenceException(
+	  System.Runtime.Serialization.SerializationInfo info,
+	  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    public ConstReferenceException(string message, Tokens.Token token)
+        : base($"{message} {token.Location}")
+    { }
+    public ConstReferenceException(string message, Location? location = null)
+        : base($"{message} {location}")
+    { }
+    internal ConstReferenceException(string message, Instructions.Instruction instruction)
+        : base($"{message} {instruction.Location}")
+    { }
+}
+
+
+[Serializable]
+public class ConstException : InterpreterException
+{
+	public ConstException() { }
+	public ConstException(string message) : base(message) { }
+	public ConstException(string message, Exception inner) : base(message, inner) { }
+	protected ConstException(
+	  System.Runtime.Serialization.SerializationInfo info,
+	  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    public ConstException(string message, Tokens.Token token)
+        : base($"{message} {token.Location}")
+    { }
+    public ConstException(string message, Location? location = null)
+        : base($"{message} {location}")
+    { }
+    internal ConstException(string message, Instructions.Instruction instruction)
+        : base($"{message} {instruction.Location}")
+    { }
 }

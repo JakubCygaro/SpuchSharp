@@ -90,7 +90,6 @@ public class Tests
                 {1, 2},
                 {3, 4}
             };
-
         }
         """;
         RunSource(s);
@@ -98,13 +97,15 @@ public class Tests
     [Theory]
     [InlineData("Modules")]
     [InlineData("Expressions")]
-    public void TestSources(string dir)
+    [InlineData("Expressions", "operators")]
+    [InlineData("Arrays")]
+    [InlineData("Loops")]
+
+    public void TestCorrectSources(string dir, string main = "main")
     {
-        //var root = Directory.GetCurrentDirectory();
-        //var entry = Path.Combine(root, "Source\\", dir, "main.spsh");
         var proj = new ProjectSettings()
         {
-            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\main.spsh",
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\{main + ".spsh"}",
             ExternalLibs = new(),
             ProjectName = dir,
         };
@@ -118,18 +119,47 @@ public class Tests
     [InlineData("References", "constvar")]
     [InlineData("References", "constass")]
     [InlineData("References", "constarr")]
+    [InlineData("References", "constmultfun")]
+    [InlineData("Arrays", "indexing_one")]
+    [InlineData("Arrays", "indexing_two")]
+    [InlineData("Arrays", "indexing_three")]
+    [InlineData("Arrays", "empty_array")]
 
-    public void TestThrowingSources(string dir, string? main = null)
+    public void TestThrowingSources(string dir, string main = "main")
     {
-        //var root = Directory.GetCurrentDirectory();
-        //var entry = Path.Combine(root, "Source\\", dir, "main.spsh");
         var proj = new ProjectSettings()
         {
-            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\{(main ?? "main") + ".spsh"}",
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\{dir}\\{main + ".spsh"}",
             ExternalLibs = new(),
             ProjectName = dir,
         };
-        Assert.ThrowsAny<Exception>(() => new Interpreter(proj).Run());
-        //new Interpreter(proj).Run();
+        Assert.ThrowsAny<InterpreterException>(() => new Interpreter(proj).Run());
     }
+
+    [Fact]
+    public void TestArguments()
+    {
+        var proj = new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\Args\\main.spsh",
+            ExternalLibs = new(),
+            ProjectName = "Args",
+        };
+        new Interpreter(proj, new string[] { "a", "b", "c" }).Run();
+    }
+
+    [Theory]
+    [InlineData("fail")]
+    public void TestArgumentsFailing(string source, string[]? args = null)
+    {
+        args ??= Array.Empty<string>();
+        var proj = new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\Args\\{source + ".spsh"}",
+            ExternalLibs = new(),
+            ProjectName = "Args",
+        };
+        Assert.ThrowsAny<InterpreterException>(() => new Interpreter(proj, args).Run());
+    }
+
 }

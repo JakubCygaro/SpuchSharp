@@ -140,3 +140,8 @@ internal sealed class Const : KeyWord
 {
     public override string Stringify() => "const";
 }
+
+internal sealed class Switch : KeyWord
+{
+    public override string Stringify() => "switch";
+}

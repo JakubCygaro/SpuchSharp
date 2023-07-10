@@ -14,6 +14,22 @@ fun main(){
     add_to_ref(i);
     ass = assert(i, 101);
     throwIf(!ass);
+
+    #default values
+    short ds;
+    throwIf(!assert(ds, (short)0));
+    int di;
+    throwIf(!assert(di, 0));
+    long dl;
+    throwIf(!assert(dl, 0L));
+    bool db;
+    throwIf(!assert(db, false));
+    float df;
+    throwIf(!assert(df, 0f));
+    double dd;
+    throwIf(!assert(dd, (double)0f));
+
+    
 }
 
 fun add_to_ref(ref int i) {

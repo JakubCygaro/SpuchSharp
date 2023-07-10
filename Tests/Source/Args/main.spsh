@@ -1,0 +1,5 @@
+import "STDLib";
+
+fun main(int argc, text[] argv){
+    throwIf(argc != 3);
+}

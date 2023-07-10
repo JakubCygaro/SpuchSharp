@@ -27,8 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Source\Arrays\" />
     <Folder Include="Source\Modules\" />
     <Folder Include="Source\Expressions\" />
+    <Folder Include="Source\Loops\" />
+    <Folder Include="Source\Control\" />
     <Folder Include="Source\References\" />
   </ItemGroup>
 

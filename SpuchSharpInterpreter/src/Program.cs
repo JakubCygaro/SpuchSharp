@@ -20,11 +20,18 @@ internal class Program
 
     static int Main(string[] args)
     {
-        return Parser.Default.ParseArguments<RunOptions, SetupOptions>(args)
-            .MapResult(
-                (RunOptions runopts) => RunProject(runopts),
-                (SetupOptions setupupt) => SetupProject(setupupt),
-                errs => HandleErrors(errs));
+        //return Parser.Default.ParseArguments<RunOptions, SetupOptions>(args)
+        //    .MapResult(
+        //        (RunOptions runopts) => RunProject(runopts),
+        //        (SetupOptions setupupt) => SetupProject(setupupt),
+        //        errs => HandleErrors(errs));
+        return ParseOptions(args) switch
+        {
+            RunOptions r => RunProject(r),
+            SetupOptions s => SetupProject(s),
+            ParseFailure f => HandleFailure(f),
+            _ => -1,
+        };
     }
     static int RunProject(RunOptions runOptions)
     {
@@ -49,7 +56,7 @@ internal class Program
         {
             settings.EntryPoint = runOptions.EntryFile;
         }
-        Interpreter interpreter = new(settings);
+        Interpreter interpreter = new(settings, runOptions.Args?.ToArray());
         try
         {
             interpreter.Run();
@@ -93,19 +100,97 @@ internal class Program
         }
         return 1;
     }
+
+    static ParseResult ParseOptions(string[] args)
+    {
+        if (args.Length == 0)
+            return new ParseFailure
+            {
+                Reason = "Invalid argument count"
+            };
+        if (args[0] == "run")
+            return ParseRun(args);
+        else if (args[0] == "setup")
+            return ParseSetup(args);
+        else
+            return new ParseFailure
+            {
+                Reason = "Unknown command type"
+            };
+    }
+    static ParseResult ParseRun(string[] args)
+    {
+        if (args.Length < 2)
+            return new ParseFailure
+            {
+                Reason = "Entry point file path required as the second argument"
+            };
+        var entryFile = args[1];
+        var remainder = args[2..];
+
+        return new RunOptions
+        {
+            Args = remainder ?? new string[0],
+            EntryFile = entryFile,
+        };
+
+    }
+    static ParseResult ParseSetup(string[] args)
+    {
+        if (args.Length != 2)
+            return new ParseFailure
+            {
+                Reason = "Project name required as the second argument"
+            };
+        var projectName = args[1];
+        return new SetupOptions
+        {
+            ProjectName = projectName
+        };
+    }
+
+    static int HandleFailure(ParseFailure parseFailure)
+    {
+        Console.Error.WriteLine(parseFailure.Reason);
+        return -1;
+    }
 }
 
-
-[Verb("run", HelpText = "Run a Spuch# script")]
-class RunOptions
+abstract class ParseResult { }
+sealed class RunOptions : ParseResult 
 {
-    [Option('e', "entry", Required = false, HelpText = "Run from provided entry point .spsh file, `main` by default")]
-    public string? EntryFile { get; set; }
+    public required string EntryFile { get; init; }
+    public required string[] Args { get; init; }
 }
 
-[Verb("setup", HelpText = "Setup a project")]
-class SetupOptions
+sealed class SetupOptions : ParseResult
 {
-    [Option('n', "name", Required = true, HelpText = "Project Name")]
-    public required string ProjectName { get; set; }
+    public required string ProjectName { get; init; }
 }
+
+sealed class ParseFailure : ParseResult
+{
+    public required string Reason { get; init; }
+}
+
+
+
+
+
+
+//[Verb("run", HelpText = "Run a Spuch# script")]
+//class RunOptions
+//{
+//    [Option('e', "entry", Required = false, HelpText = "Run from provided entry point .spsh file, `main` by default")]
+//    public string? EntryFile { get; set; }
+    
+//    [Option('a', "args")]
+//    public IEnumerable<string>? Args { get; set; }
+//}
+
+//[Verb("setup", HelpText = "Setup a project")]
+//class SetupOptions
+//{
+//    [Option('n', "name", Required = true, HelpText = "Project Name")]
+//    public required string ProjectName { get; set; }
+//}

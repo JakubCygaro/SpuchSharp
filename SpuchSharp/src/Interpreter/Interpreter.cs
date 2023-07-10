@@ -23,11 +23,14 @@ public sealed class Interpreter
     private readonly Parser _parser;
     private readonly ProjectSettings _settings;
     private Module _rootModule;
-
+    private readonly string[] _args;
 
     private Dictionary<Ident, Module> _importedExternalLibs = new();
-    internal Interpreter(Parser parser, ProjectSettings projectSettings) 
+    internal Interpreter(Parser parser, 
+        ProjectSettings projectSettings,
+        string[] args) 
     {
+        _args = args;
         _parser = parser;
         _settings = projectSettings;
         _rootModule = new()
@@ -43,14 +46,18 @@ public sealed class Interpreter
             DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(projectSettings.EntryPoint))!
         };
     }
-    public Interpreter(ProjectSettings projectSettings) 
-        : this(GetParserFromSource(projectSettings.EntryPoint), projectSettings) { }
+    public Interpreter(ProjectSettings projectSettings, string[]? args = null) 
+        : this(GetParserFromSource(projectSettings.EntryPoint), 
+              projectSettings,
+              args ?? new string[0]) { }
     /// <summary>
     /// For debug purposes
     /// </summary>
     /// <param name="source"> A source code literal </param>
-    public Interpreter(string source)
-        : this(new Parser(TokenStream.ParseFromQuote(source)), ProjectSettings.Debug) { }
+    public Interpreter(string source, string[]? args = null)
+        : this(new Parser(TokenStream.ParseFromQuote(source)), 
+              ProjectSettings.Debug,
+              args ?? new string[0]) { }
     static Parser GetParserFromSource(string path)
     {
         var tokenStream = Lexing.Lexer.Tokenize(File.ReadAllText(path, Encoding.UTF8), path);
@@ -448,19 +455,76 @@ public sealed class Interpreter
         var mainIdent = new Ident { Value = "main" };
         if (!_rootModule.FunctionScope.TryGetValue(mainIdent, out var main))
             throw new InterpreterException("Could not find a main() fuction to begin execution.");
-        if(main.Args.Length != 0)
-            throw new InterpreterException("The main() function cannot take any arguments.");
-        if(main.ReturnTy is not VoidTy)
-            throw new InterpreterException("The main() function cannot have a return type.");
-        EvaluateCall(_rootModule.VariableScope, 
-            _rootModule.FunctionScope,
-            _rootModule,
-            new CallExpression
+        if(main.Args.Length == 0 && main.ReturnTy is VoidTy)
+        {
+            EvaluateCall(_rootModule.VariableScope,
+                _rootModule.FunctionScope,
+                _rootModule,
+                new CallExpression
+                {
+                    Args = Array.Empty<Expression>(),
+                    Function = mainIdent,
+                    Location = null,
+                });
+        }
+        else if (main.Args.Length == 2 && main.ReturnTy is VoidTy)
+        {
+            ConstantExpression argc = new ()
             {
-                Args = Array.Empty<Expression>(),
-                Function = mainIdent,
-                Location = null,
-            });
+                Val = new IntValue() 
+                {
+                    Value = _args.Length
+                },
+                Location = default
+            };
+
+            //if (_args.Length == 0)
+            //{
+
+            //}
+            var args = _args
+                .Select(s => new TextValue(s))
+                //.Select(v => new ConstantExpression() 
+                //{ 
+                //    Location = default,
+                //    Val = v,
+                //})
+                .ToArray();
+
+            //var argv = new ArrayExpression()
+            //{
+            //    Expressions = args,
+            //    Location = default
+            //};
+
+            var argv = new ArrayValue(Ty.Text, _args.Length)
+            {
+                Values = args,
+            };
+
+
+            var callArgs = new Expression[]
+            {
+                argc,
+                new ConstantExpression()
+                {
+                    Val = argv,
+                    Location = default,
+                }
+            };
+
+            EvaluateCall(_rootModule.VariableScope,
+                _rootModule.FunctionScope,
+                _rootModule,
+                new CallExpression
+                {
+                    Args = callArgs,
+                    Function = mainIdent,
+                    Location = null,
+                });
+        }
+        else
+            throw new InterpreterException("Could not find a suitable main() function to start excecution");
     }
     void IfDeclaration(VariableScope varScope, 
         FunctionScope funScope, 
@@ -867,6 +931,7 @@ public sealed class Interpreter
         var size = values.Count();
         if (size == 0)
             throw new InterpreterException("An empty array cannot be initialized");
+
         return new ArrayValue(values[0].Ty, size)
         {
             Values = values,
@@ -948,7 +1013,7 @@ public sealed class Interpreter
                 else
                 {
                     if (variable.Const)
-                        throw new InterpreterException(
+                        throw new ConstReferenceException(
                             $"Cannot pass a non-constant reference to a constant variable `{variable.Ident.Stringify()}`", call);
                 }
                 newVariables.Add(targetFunction.Args[index].Name, variable);
@@ -986,7 +1051,7 @@ public sealed class Interpreter
         }
 
         if (targetFunction is ExternalFunction ext)
-            return CallExternalFunction(ext, newVariables.Values.ToList());
+            return CallExternalFunction(ext, newVariables.Values.ToList(), call.Location);
 
         newVariables.Extend(functionModule.VariableScope);
         var newFunScope = new FunctionScope();
@@ -1015,9 +1080,11 @@ public sealed class Interpreter
 
         return retValue;
     }
-    Value CallExternalFunction(ExternalFunction external, List<SVariable> variables)
+    Value CallExternalFunction(ExternalFunction external, 
+        List<SVariable> variables,
+        Location? loc = default)
     {
-        return external.Invoke(variables.Select(v => v.Value.ValueAsObject).ToArray());
+        return external.Invoke(variables.Select(v => v.Value.ValueAsObject).ToArray(), loc);
     }
     Value EvaluateComplex(VariableScope varScope,
         FunctionScope funScope, 
@@ -1139,7 +1206,7 @@ public sealed class Interpreter
 
         if(indexer.ArrayProducer is IdentExpression identExpression)
             if(varScope.FindArray(identExpression.Ident).Const)
-                throw new InterpreterException("Tried to reassign a value of a const array",
+                throw new ConstException("Tried to reassign a value of a const array",
                 arrayIndexTarget.Target.Location);
 
         var arrayValue = EvaluateExpression(varScope, funScope, module, indexer.ArrayProducer) 
@@ -1171,19 +1238,19 @@ public sealed class Interpreter
                 arrayValue[index] = assignedValue;
                 break;
             case AddAssignment:
-                arrayValue[index] = assignedValue.Add(assignedValue);
+                arrayValue[index] = arrayValue[index].Add(assignedValue);
                 break;
             case SubAssignment:
-                arrayValue[index] = assignedValue.Sub(assignedValue);
+                arrayValue[index] = arrayValue[index].Sub(assignedValue);
                 break;
             case MulAssignment:
-                arrayValue[index] = assignedValue.Mul(assignedValue);
+                arrayValue[index] = arrayValue[index].Mul(assignedValue);
                 break;
             case DivAssignment:
-                arrayValue[index] = assignedValue.Div(assignedValue);
+                arrayValue[index] = arrayValue[index].Div(assignedValue);
                 break;
             case ModuloAssignment:
-                arrayValue[index] = assignedValue.Modulo(assignedValue);
+                arrayValue[index] = arrayValue[index].Modulo(assignedValue);
                 break;
             default:
                 throw new InterpreterException("Assignment Failure");
@@ -1214,7 +1281,7 @@ public sealed class Interpreter
             if (sArray.Value.Ty != arrayValue.Ty)
                 throw new InterpreterException("Type mismatch", identTarget.Target);
             if(!sArray.Const && arrayValue.Const)
-                throw new InterpreterException("Cannot assing a constant array to a non constant variable", 
+                throw new ConstException("Cannot assing a constant array to a non constant variable", 
                     identTarget.Target);
             sArray.Value = arrayValue;
             return;

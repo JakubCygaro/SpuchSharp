@@ -1,9 +1,10 @@
 ﻿import "STDLib";
-fun main(){
-    const text[] arr = {
-        "test",
-        "test2",
-        "test3"
-    };
-    arr[0] = "no";
+fun main(int argc, text[] argv){
+    println(argc);
+    if(argc == 0){
+        return;
+    }
+    for x from 0 to argc {
+        println(argv[x]);
+    }
 }

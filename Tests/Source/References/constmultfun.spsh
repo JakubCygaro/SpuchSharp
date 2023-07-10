@@ -1,0 +1,12 @@
+fun main() {
+    const int a = 100;
+    take_const_ref1(a);
+}
+
+fun take_const_ref1(const ref int a_ref1) {
+    take_const_ref2(a_ref1);
+}
+
+fun take_const_ref2(const ref int a_ref2) {
+    a_ref2++;
+}

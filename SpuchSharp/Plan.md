@@ -250,3 +250,22 @@ fun test(ref Dupsko dupsko) {
 when encountering `dupsko.woda` the interpreter would do a check for wether dupsko is a SStruct and
 then look for a field with the name "woda" and check that its type is the same as that of the right value
 if at any stage of this process there occurs an exception the interpreter would throw an exception.
+
+
+
+# Switch statements
+
+```
+switch (lval) {
+	(cond) => {
+		//code
+	},
+	(cond) => {
+		//code
+	},
+	default => {
+
+	},
+}
+
+```

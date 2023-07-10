@@ -1,19 +1,8 @@
 ﻿# TODO
 
 ## Top priority
-- assignment and const update {
-	const keyword,
-	const ref,
-	declaration without assignment (values defaulted),
-	+= -+ *= /= %= operators
-}
 - module scoped variables and arrays
-- [int] -> int[]
 - args for main()
-- indexing into text {
-	text chuj = "chuj";
-	chuj[0] -> "c"
-}
 FUCKING UNIT TESTING
 ## Second priority
 - try catch or something that serves the same purpose
@@ -31,6 +20,7 @@ FUCKING UNIT TESTING
 }
 - casting into any (void*) and possibly some safe casting possibilities? (as, is)
 - uint ulong ushort
+- switch statements
 
 ## The great gig
 - Compilation to C

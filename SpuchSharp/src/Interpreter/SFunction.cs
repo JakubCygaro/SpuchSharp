@@ -29,7 +29,7 @@ internal class SFunction : SObject
 internal class ExternalFunction : SFunction
 {
     public required System.Reflection.MethodInfo MethodInfo { private get; init; }
-    public Value Invoke(object[] arguments)
+    public Value Invoke(object[] arguments, Location? loc = default)
     {
         object? ret = null;
         try
@@ -38,7 +38,7 @@ internal class ExternalFunction : SFunction
         }
         catch (Exception ex)
         {
-            throw new ExternalLibraryException(ex.Message, ex);
+            throw new ExternalLibraryException($"An external library function `{this.Ident.Stringify()}` has thrown an exception, at {loc}", ex);
         }
         // schizo type marshalling back into spuch#
         return Value.FromObject(ret);

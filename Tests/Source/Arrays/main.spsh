@@ -1,0 +1,58 @@
+import "STDLib";
+
+fun main() {
+    #declaring
+    int[][] int_arr = {
+        { 1, 2, 3 },
+        { 4, 5, 6 }
+    };
+    #accessing
+    throwIf(int_arr[0][0] != 1);
+    throwIf(int_arr[1][2] != 6);
+
+    #assignment
+    int_arr[0] = { 7, 8, 9 };
+    throwIf(int_arr[0][0] != 7);
+
+    int_arr[1][1] = 10;
+    throwIf(int_arr[1][1] != 10);
+
+    #passing contents
+    take_array_from_array(int_arr[0]);
+    throwIf(int_arr[0][0] != 100);
+
+    # text array
+    text[][] text_arr = {
+        { "asd", "sdf", "dfg" },
+        { "zxc", "xcv", "cvb" }
+    };
+
+    # function passing
+    take_text_array_from_array(text_arr[0]);
+
+    # referencing
+    text t = text_arr[0][0];
+    throwIf(t[0] != "a");
+    throwIf(t[1] != "s");
+    throwIf(t[2] != "d");
+
+    # and then passing
+    take_text(t);
+
+}
+
+fun take_array_from_array(int[] array) {
+    array[0] = 100;
+}
+
+fun take_text_array_from_array(text[] array) {
+    throwIf(array[0][0] != "a");
+    throwIf(array[0][1] != "s");
+    throwIf(array[0][2] != "d");
+}
+
+fun take_text(text array) {
+    throwIf(array[0] != "a");
+    throwIf(array[1] != "s");
+    throwIf(array[2] != "d");
+}

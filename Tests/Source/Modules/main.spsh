@@ -5,6 +5,8 @@ use foo;
 mod dir;
 use dir;
 
+pub text sperma = "sperma";
+
 fun main(){
     bar();
     dir_bar();

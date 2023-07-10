@@ -695,13 +695,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);
         List<Expression> expressions = new();
 
-        //foreach(var tokenStream in tokens)
-        //{
-        //    foreach(var token in tokenStream)
-        //        Console.WriteLine(token.Stringify());
-        //    tokenStream.Reset();
-        //}
-
         foreach(var tokenStream in tokens)
         {
             expressions.Add(ParseExpression(tokenStream));

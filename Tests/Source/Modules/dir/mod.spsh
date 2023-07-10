@@ -4,7 +4,10 @@ import "STDLib";
 mod nest;
 use nest;
 
+text dupa = "dupa";
+
 pub fun dir_bar(){
+    throwIf(dupa != "dupa");
     println("dir_bar");
     nest_bar();
 }

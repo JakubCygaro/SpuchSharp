@@ -1,5 +1,8 @@
 import "STDLib";
 
+use super::sperma;
+
 pub fun bar() {
     println("bar");
+    throwIf(sperma != "sperma");
 }

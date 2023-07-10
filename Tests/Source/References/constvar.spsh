@@ -2,9 +2,9 @@ import "STDLib";
 
 fun main(){
     const int a = 10;
-    take_const_ref(a);
+    take_non_const_ref(a);
 }
 
-fun take_const_ref(ref int i){
+fun take_non_const_ref(ref int i){
     i++;
 }

@@ -1,5 +1,14 @@
 import "STDLib";
 
+mod single;
+use single::single;
+
 pub fun nest_dir(){
     println("nest_dir");
+    single();
+    second();
+}
+
+fun second() {
+
 }
