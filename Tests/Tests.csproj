@@ -32,6 +32,7 @@
     <Folder Include="Source\Expressions\" />
     <Folder Include="Source\Loops\" />
     <Folder Include="Source\Control\" />
+    <Folder Include="Source\Args\" />
     <Folder Include="Source\References\" />
   </ItemGroup>
 

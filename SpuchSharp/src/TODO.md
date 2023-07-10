@@ -1,12 +1,11 @@
 ﻿# TODO
 
 ## Top priority
-- module scoped variables and arrays
-- args for main()
 FUCKING UNIT TESTING
+- Structs & enums
+- module scoped variables and arrays
 ## Second priority
 - try catch or something that serves the same purpose
-- Structs & enums
 - function pointers {
 	|<typename> , ...|-><typename>
 	fun main(){
