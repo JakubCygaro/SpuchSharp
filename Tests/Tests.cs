@@ -150,6 +150,8 @@ public class Tests
 
     [Theory]
     [InlineData("fail")]
+    [InlineData("malformedmain")]
+    [InlineData("malformedmain2")]
     public void TestArgumentsFailing(string source, string[]? args = null)
     {
         args ??= Array.Empty<string>();
@@ -162,4 +164,20 @@ public class Tests
         Assert.ThrowsAny<InterpreterException>(() => new Interpreter(proj, args).Run());
     }
 
+    [Fact]
+    public void TestMainReturn()
+    {
+        Assert.Equal(0, new Interpreter(new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\Returns\\success.spsh",
+            ExternalLibs = new(),
+            ProjectName = "Args",
+        }).Run());
+        Assert.NotEqual(0, new Interpreter(new ProjectSettings()
+        {
+            EntryPoint = $"A:\\C#\\SpuchSharp\\Tests\\Source\\Returns\\failure.spsh",
+            ExternalLibs = new(),
+            ProjectName = "Args",
+        }).Run());
+    }
 }

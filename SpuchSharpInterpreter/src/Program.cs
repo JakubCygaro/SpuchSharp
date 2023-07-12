@@ -59,17 +59,17 @@ internal class Program
         Interpreter interpreter = new(settings, runOptions.Args?.ToArray());
         try
         {
-            interpreter.Run();
+            return interpreter.Run();
         }
         catch (Exception ex)
         {
 #if DEBUG 
-            Console.Error.WriteLine(ex);
+            Console.Error.WriteLine($"Error: {ex}");
 #else
-            Console.Error.WriteLine(ex.Message);
+            Console.Error.WriteLine($"Error: {ex.Message}");
 #endif
         }
-        return 0;
+        return 1;
     }
     static int SetupProject(SetupOptions setupOptions)
     {

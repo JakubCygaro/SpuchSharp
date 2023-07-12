@@ -208,12 +208,12 @@ public sealed class Interpreter
         }
         return null;
     }
-    public void Run()
+    public int Run()
     {
         Run(_parser.ToArray(),
             _rootModule,
             _importedExternalLibs);
-        RunMain();
+        return RunMain();
         //DebugInfo();
     }
     void Run(Instruction[] instructions, 
@@ -450,14 +450,15 @@ public sealed class Interpreter
                 throw new InterpreterException(ex.Message, ex);
             }
     }
-    private void RunMain()
+    private int RunMain()
     {
         var mainIdent = new Ident { Value = "main" };
         if (!_rootModule.FunctionScope.TryGetValue(mainIdent, out var main))
-            throw new InterpreterException("Could not find a main() fuction to begin execution.");
-        if(main.Args.Length == 0 && main.ReturnTy is VoidTy)
+            throw new InterpreterException($"Could not find a main() fuction to begin execution, file: {Path.GetFullPath(_settings.EntryPoint)}");
+        Value ret;
+        if(main.Args.Length == 0 && main.ReturnTy is VoidTy or IntTy)
         {
-            EvaluateCall(_rootModule.VariableScope,
+            ret = EvaluateCall(_rootModule.VariableScope,
                 _rootModule.FunctionScope,
                 _rootModule,
                 new CallExpression
@@ -467,7 +468,7 @@ public sealed class Interpreter
                     Location = null,
                 });
         }
-        else if (main.Args.Length == 2 && main.ReturnTy is VoidTy)
+        else if (main.Args.Length == 2 && main.ReturnTy is VoidTy or IntTy)
         {
             ConstantExpression argc = new ()
             {
@@ -513,7 +514,7 @@ public sealed class Interpreter
                 }
             };
 
-            EvaluateCall(_rootModule.VariableScope,
+            ret = EvaluateCall(_rootModule.VariableScope,
                 _rootModule.FunctionScope,
                 _rootModule,
                 new CallExpression
@@ -524,7 +525,11 @@ public sealed class Interpreter
                 });
         }
         else
-            throw new InterpreterException("Could not find a suitable main() function to start excecution");
+            throw new InterpreterException($"Could not find a main() fuction to begin execution, file: {Path.GetFullPath(_settings.EntryPoint)}");
+        if (ret is IntValue i)
+            return i;
+        else 
+            return 0;
     }
     void IfDeclaration(VariableScope varScope, 
         FunctionScope funScope, 
