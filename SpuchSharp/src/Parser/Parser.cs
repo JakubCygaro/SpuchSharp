@@ -8,6 +8,8 @@ using VariableScope =
 using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 using System.Data;
+using System.Runtime.InteropServices;
+using System.Collections.Immutable;
 
 namespace SpuchSharp.Parsing;
 
@@ -143,6 +145,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                     throw new PrematureEndOfInputException(stream.Current.Location), 
                     stream),
             Const @const => ParseWithConst(@const, stream),
+            Struct @struct => ParseSturctDeclaration(@struct, stream),
             _ => throw new KeywordException(keyword.Location),
         };
     }
@@ -165,6 +168,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             //Square.Open sq => ParseArrayDeclaration(sq, stream, pub: true),
             Mod m => ParseMod(m, stream, pub: true),
             Const c => ParseWithConst(c, stream, pub: true),
+            Struct s => ParseSturctDeclaration(s, stream, pub: true),
             _ => throw new DisallowedPubUsageException(stream.Current.Location),
         };
     }
@@ -821,6 +825,39 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             IsPublic = pub,
         };
     }
+    private StructDecl ParseSturctDeclaration(Struct @struct, 
+        TokenStream stream, 
+        bool pub = false)
+    {
+        if (stream.Next() is not Ident name)
+            throw ParserException.Expected<Ident>(stream.Current);
+        var inside = ReadBetweenParen<Curly.Open, Curly.Closed>(stream);
+        var builder = ImmutableDictionary.CreateBuilder<Ident, Ty>();
+        //foreach(var t in inside.Clone())
+        //{
+        //    Console.WriteLine(t.Stringify());
+        //}
+
+        while(inside.Next() is Token next)
+        {
+            if (next is not Ty type)
+                throw ParserException.UnexpectedToken(next);
+            if (inside.Next() is not Ident fieldName)
+                throw ParserException.UnexpectedToken(inside.Current);
+            if (inside.Next() is not Semicolon)
+                throw ParserException.Expected<Semicolon>(inside.Current);
+            builder.Add(fieldName, type);
+        }
+        return new StructDecl
+        {
+            IsPublic = pub,
+            Name = name,
+            Fields = builder.ToImmutable(),
+            Location = name.Location,
+        };
+    }
+
+
     private Instruction ParseDeclaration(Token token, TokenStream stream, 
         bool pub = false, bool @const = false)
     {

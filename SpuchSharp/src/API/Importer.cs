@@ -27,18 +27,22 @@ internal static class Importer
             Directory.CreateDirectory(path);
         return path;
     }
+    static Dictionary<Ident, StructTy> EMPTY_STRUCT_SCOPE = new();
+    static Dictionary<Ident, SVariable> EMPTY_VARIABLE_SCOPE = new();
     public static SModule ImportModule(string ddlPath, Ident moduleIdent)
     {
         return new SModule()
         {
             OwnedFunctions = ImportFunctions(ddlPath),
             FunctionScope = new(),
-            VariableScope = new(),
+            VariableScope = EMPTY_VARIABLE_SCOPE,
+            StructScope = EMPTY_STRUCT_SCOPE,
             Ident = moduleIdent,
             Modules = new(),
             ParentModule = null,
             IsExternal = true,
-            OwnedVariables = new(),
+            OwnedVariables = EMPTY_VARIABLE_SCOPE,
+            OwnedStructs = EMPTY_STRUCT_SCOPE,
             DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(ddlPath)) ??
                                     throw new ImporterException($"Could not determine module directory path for external library `{ddlPath}`")
         };

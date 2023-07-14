@@ -9,6 +9,8 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using StructScope =
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Tokens.StructTy>;
 
 namespace SpuchSharp.Interpreting.Ext;
 internal static class ScopeExt
@@ -95,7 +97,7 @@ internal static class ScopeExt
     {
         if (!funScope.TryAdd(function.Ident, function))
             throw new InterpreterException(
-                    $"Variable {function.Ident.Stringify()} already declared ", function.Ident);
+                    $"Function {function.Ident.Stringify()} already declared ", function.Ident);
     }
     public static void AddPublic(this FunctionScope funScope, SFunction function)
     {
@@ -104,7 +106,22 @@ internal static class ScopeExt
                 $"`{function.Ident.Stringify()}`");
         if (!funScope.TryAdd(function.Ident, function))
             throw new InterpreterException(
-                    $"Variable {function.Ident.Stringify()} already declared ", function.Ident);
+                    $"Function {function.Ident.Stringify()} already declared ", function.Ident);
+    }
+    public static void Add(this StructScope structScope, StructTy structTy)
+    {
+        if (!structScope.TryAdd(structTy.Ident, structTy))
+            throw new InterpreterException(
+                    $"Struct {structTy.Ident.Stringify()} already declared ", structTy.Ident);
+    }
+    public static void AddPublic(this StructScope structScope, StructTy structTy)
+    {
+        if (!structTy.IsPublic)
+            throw new InterpreterException($"Cannot import a struct declaration that is not public " +
+                $"`{structTy.Ident.Stringify()}`");
+        if (!structScope.TryAdd(structTy.Ident, structTy))
+            throw new InterpreterException(
+                    $"Struct {structTy.Ident.Stringify()} already declared ", structTy.Ident);
     }
     public static SSimpleVariable FindSimpleVariable(this VariableScope scope, Ident ident)
     {
@@ -136,6 +153,7 @@ internal static class ScopeExt
                 throw new InterpreterException("Tried indexing into a non array type", ident);
         throw InterpreterException.VariableNotFound(ident);
     }
+
 }
 public static class EnumerableExt
 {

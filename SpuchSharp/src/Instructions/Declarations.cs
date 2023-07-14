@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Immutable;
 
 namespace SpuchSharp.Instructions;
 
@@ -55,5 +56,30 @@ internal sealed class FunctionDecl : Declaration
         sb.Remove(sb.Length - 1, 1);
         sb.Append(")");
         return sb.ToString();
+    }
+}
+internal sealed class StructDecl : Declaration
+{
+    public required Ident Name { get; init; }
+    public required ImmutableDictionary<Ident, Ty> Fields { get; init; }
+    public string Stringify()
+    {
+        return 
+        $$"""
+        struct {{Name.Stringify()}}
+        {
+        {{StringifyFields(Fields)}}
+        }
+        """;
+
+        static string StringifyFields(ImmutableDictionary<Ident, Ty> fields)
+        {
+            StringBuilder sb = new();
+            foreach (var (f, t) in fields)
+            {
+                sb.Append($"\t{t.Stringify()} {f.Stringify()};\n");
+            }
+            return sb.ToString();
+        }
     }
 }

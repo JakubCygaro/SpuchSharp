@@ -29,6 +29,7 @@ internal abstract class KeyWord : Token
         "use" => new Use(),
         "pub" => new Public(),
         "const" => new Const(),
+        "struct" => new Struct(),
         _ => null
     };
     public static KeyWord? From(ReadOnlySpan<char> literal) => literal switch
@@ -52,6 +53,7 @@ internal abstract class KeyWord : Token
         "use" => new Use(),
         "pub" => new Public(),
         "const" => new Const(),
+        "struct" =>  new Struct(),
         _ => null
     };
 }
@@ -144,4 +146,8 @@ internal sealed class Const : KeyWord
 internal sealed class Switch : KeyWord
 {
     public override string Stringify() => "switch";
+}
+internal sealed class Struct : KeyWord
+{
+    public override string Stringify() => "struct";
 }

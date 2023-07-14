@@ -10,6 +10,8 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
+using StructScope =
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Tokens.StructTy>;
 
 namespace SpuchSharp.Interpreting;
 internal sealed class Module
@@ -20,6 +22,8 @@ internal sealed class Module
     public required VariableScope OwnedVariables { get; init; }
     public required FunctionScope FunctionScope { get; init; }
     public required FunctionScope OwnedFunctions { get; init; }
+    public required StructScope OwnedStructs { get; init; }
+    public required StructScope StructScope { get; init; }
     public required WeakReference<Module>? ParentModule { get; init; }
     public required string DirectoryPath { get; set; }
     public FunctionScope UsedFunctions { get; init; } = new();

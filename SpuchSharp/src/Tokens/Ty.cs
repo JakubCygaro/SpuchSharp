@@ -1,11 +1,10 @@
 ﻿using SpuchSharp.Interpreting;
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Markup;
 
 namespace SpuchSharp.Tokens;
 
@@ -408,4 +407,31 @@ internal sealed class ArrayTy : Ty
     new public static ArrayTy Boolean = new ArrayTy(Ty.Boolean);
     new public static ArrayTy Text = new ArrayTy(Ty.Text);
     new public static ArrayTy Any = new ArrayTy(Ty.Any);
+}
+
+internal sealed class StructTy : Ty
+{
+
+    private Ident _ident;
+    private ImmutableDictionary<Ident, Ty> _fieldsTemplate;
+    public override Ident Ident => _ident;
+    public required bool IsPublic { get; set; }
+    public StructTy(Ident ident, ImmutableDictionary<Ident, Ty> fieldsTemplate)
+    {
+        _ident = ident;
+        _fieldsTemplate = fieldsTemplate;
+    }
+    public override Value DefaultValue()
+    {
+        return new StructValue(this)
+        {
+            Fields = _fieldsTemplate.ToDictionary(fnt => fnt.Key, fnt => fnt.Value.DefaultValue()),
+        };
+    }
+
+    public override int GetHashCode()
+    {
+        return Ident.GetHashCode();
+    }
+
 }

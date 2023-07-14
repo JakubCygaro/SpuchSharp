@@ -14,7 +14,10 @@ using VariableScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SVariable>;
 using FunctionScope = 
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
-using System.Windows.Markup;
+using StructScope =
+    System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Tokens.StructTy>;
+
+using System.Collections.Immutable;
 
 namespace SpuchSharp.Interpreting;
 
@@ -37,12 +40,13 @@ public sealed class Interpreter
         {
             FunctionScope = new(),
             VariableScope = new(),
+            StructScope = new(),
             Ident = new Ident { Value = "root" },
             Modules = new(),
             ParentModule = null,
             OwnedFunctions = new(),
             OwnedVariables = new(),
-            //DirectoryPath = Directory.GetCurrentDirectory(),
+            OwnedStructs = new(),
             DirectoryPath = Path.GetDirectoryName(Path.GetFullPath(projectSettings.EntryPoint))!
         };
     }
@@ -283,9 +287,6 @@ public sealed class Interpreter
                 }
                 else if (stmt is ArrayDecl arr)
                 {
-                    //Console.WriteLine("ARRAY CREATION:");
-                    //Console.WriteLine(arr.Name);
-
                     CreateArray(module.OwnedVariables, 
                         module.FunctionScope, 
                         module, 
@@ -293,7 +294,11 @@ public sealed class Interpreter
                         toleratePub: true);
                     //module.VariableScope.Extend(module.OwnedVariables);
                 }
-
+                else if (stmt is StructDecl sd)
+                {
+                    CreateStructType(sd, module);
+                    //Console.WriteLine($"Struct declaration detected: \n{sd.Stringify()}");
+                }
                 IfImport(stmt, module, importedLibs);
             }
             //IfAssignment(varScope, funScope, stmt);
@@ -301,6 +306,16 @@ public sealed class Interpreter
         else
             throw new InterpreterException($"Only variable and function declarations can happen in" +
                 $" the global module scope.", instruction);
+    }
+    void CreateStructType(StructDecl structDecl,
+        Module module)
+    {
+        StructTy structTy = new(structDecl.Name, structDecl.Fields) 
+        { 
+            IsPublic = structDecl.IsPublic 
+        };
+        module.OwnedStructs.Add(structTy);
+        throw InterpreterException.UnsuportedInstruction(structDecl);
     }
     void UseModule(UseStmt useStmt, Module module)
     {
@@ -393,11 +408,13 @@ public sealed class Interpreter
         {
             FunctionScope = new FunctionScope(),
             VariableScope = new VariableScope(),
+            StructScope = new StructScope(),
             Ident = modDecl.Ident,
             Modules = new(),
             ParentModule = new(module),
             OwnedFunctions = new(),
             OwnedVariables = new(),
+            OwnedStructs = new(),
             IsPublic = modDecl.IsPublic,
             DirectoryPath = directoryPath
         };
