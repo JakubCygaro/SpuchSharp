@@ -428,7 +428,22 @@ internal sealed class StructTy : Ty
             Fields = _fieldsTemplate.ToDictionary(fnt => fnt.Key, fnt => fnt.Value.DefaultValue()),
         };
     }
-
+    public StructValue New(Dictionary<Ident, Value> fieldsWithValues)
+    {
+        if (fieldsWithValues.Count != _fieldsTemplate.Count)
+            throw new InterpreterException("STRUCT TYPE NEW TODO");
+        foreach(var (ident, ty) in _fieldsTemplate)
+        {
+            var val = fieldsWithValues.GetValueOrDefault(ident) ??
+                throw new InterpreterException("STRUCT TYPE NEW TODO 2");
+            if (val.Ty != ty)
+                throw new InterpreterException("STRUCT TYPE NEW TODO 3");
+        }
+        return new StructValue(this)
+        {
+            Fields = fieldsWithValues,
+        };
+    }
     public override int GetHashCode()
     {
         return Ident.GetHashCode();

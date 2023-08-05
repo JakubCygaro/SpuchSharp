@@ -57,97 +57,121 @@ internal abstract class KeyWord : Token
         _ => null
     };
 }
-internal sealed class Var : KeyWord 
+internal sealed class Var : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "var";
+    public static string StaticStringify => "var";
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Fun : KeyWord
+internal sealed class Fun : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "fun";
+    public static string StaticStringify => "fun";
+
+    public override string Stringify() => StaticStringify;
 }
 
-internal sealed class Delete : KeyWord
+internal sealed class Delete : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "delete";
+    public static string StaticStringify => "delete"; 
+    public override string Stringify() => StaticStringify;
 }
 
-internal sealed class Import : KeyWord
+internal sealed class Import : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "import";
+    public static string StaticStringify => "import"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Return : KeyWord
+internal sealed class Return : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "return";
+    public static string StaticStringify => "return"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class If : KeyWord
+internal sealed class If : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "if";
+    public static string StaticStringify => "if"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Else : KeyWord
+internal sealed class Else : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "else";
+    public static string StaticStringify => "else"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Loop : KeyWord
+internal sealed class Loop : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "loop";
+    public static string StaticStringify => "loop"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class Skip : KeyWord
+internal sealed class Skip : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "skip";
+    public static string StaticStringify => "skip"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class Break : KeyWord
+internal sealed class Break : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "break";
+    public static string StaticStringify => "break"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class For : KeyWord
+internal sealed class For : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "for";
+    public static string StaticStringify => "for"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class From : KeyWord
+internal sealed class From : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "from";
+    public static string StaticStringify => "from"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class To : KeyWord
+internal sealed class To : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "to";
+    public static string StaticStringify => "to"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class While : KeyWord
+internal sealed class While : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "while";
+    public static string StaticStringify => "while"; 
+    public override string Stringify() => StaticStringify;
 
 }
-internal sealed class Ref : KeyWord
+internal sealed class Ref : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "ref";
+    public static string StaticStringify => "ref"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Use : KeyWord
+internal sealed class Use : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "use";
+    public static string StaticStringify => "use"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Mod : KeyWord
+internal sealed class Mod : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "mod";
+    public static string StaticStringify => "mod"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Public : KeyWord
+internal sealed class Public : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "mod";
+    public static string StaticStringify => "pub";
+
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Const : KeyWord
+internal sealed class Const : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "const";
+    public static string StaticStringify => "const";
+
+    public override string Stringify() => StaticStringify;
 }
 
-internal sealed class Switch : KeyWord
+internal sealed class Switch : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "switch";
+    public static string StaticStringify => "switch"; 
+    public override string Stringify() => StaticStringify;
 }
-internal sealed class Struct : KeyWord
+internal sealed class Struct : KeyWord, IStaticStringify
 {
-    public override string Stringify() => "struct";
+    public static string StaticStringify => "struct";
+    public override string Stringify() => StaticStringify;
 }

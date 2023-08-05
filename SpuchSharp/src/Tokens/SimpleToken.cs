@@ -32,49 +32,68 @@ internal abstract class SimpleToken : Token
 }
 
 abstract class AssignToken : SimpleToken { }
-sealed class Assign : AssignToken
+sealed class Assign : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "=";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => "=";
 }
-sealed class Semicolon: SimpleToken 
+sealed class Semicolon: SimpleToken, IStaticStringify
 {
-    public override string Stringify() => ";";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => ";";
 }
-sealed class Colon : SimpleToken
+sealed class Colon : SimpleToken, IStaticStringify
 {
-    public override string Stringify() => ":";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => ":";
+
 }
-sealed class Colon2 : SimpleToken
+sealed class Colon2 : SimpleToken, IStaticStringify
 {
-    public override string Stringify() => "::";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => "::";
+
 }
-sealed class Dot : SimpleToken 
+sealed class Dot : Operator, IStaticStringify
 {
-    public override string Stringify() => ".";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => ".";
+
 }
-sealed class Comma : SimpleToken
+sealed class Comma : SimpleToken, IStaticStringify
 {
-    public override string Stringify() => ",";
+    public override string Stringify() => StaticStringify;
+
+    public static string StaticStringify => ",";
+
 }
-sealed class AssignAdd : AssignToken
+sealed class AssignAdd : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "+=";
+    public override string Stringify() => StaticStringify;
+    public static string StaticStringify => "+=";
+
 }
-sealed class AssignSub : AssignToken
+sealed class AssignSub : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "-=";
+    public override string Stringify() => StaticStringify;
+
+    public static string StaticStringify => "-=";
+
 }
-sealed class AssignMul : AssignToken
+sealed class AssignMul : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "*=";
+    public override string Stringify() => StaticStringify; 
+    public static string StaticStringify => "*=";
 }
-sealed class AssignDiv : AssignToken
+sealed class AssignDiv : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "/=";
+    public override string Stringify() => StaticStringify; 
+    public static string StaticStringify => "/=";
 }
-sealed class AssignModulo : AssignToken
+sealed class AssignModulo : AssignToken, IStaticStringify
 {
-    public override string Stringify() => "%=";
+    public override string Stringify() => StaticStringify; 
+    public static string StaticStringify => "%=";
 }
 
 abstract class Paren : SimpleToken
@@ -83,54 +102,42 @@ abstract class Paren : SimpleToken
 
 abstract class Round: Paren
 {
-    internal sealed class Open : Round
+    internal sealed class Open : Round, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return "(";
-        }
+        public override string Stringify() => StaticStringify;
+        public static string StaticStringify => "(";
     }
-    internal sealed class Closed : Round
+    internal sealed class Closed : Round, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return ")";
-        }
+        public override string Stringify() => StaticStringify;
+        public static string StaticStringify => ")";
     }
 }
 abstract class Curly : Paren
 {
-    internal sealed class Open : Curly
+    internal sealed class Open : Curly, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return "{";
-        }
+        public override string Stringify() => StaticStringify;
+        public static string StaticStringify => "{";
     }
-    internal sealed class Closed : Curly
+    internal sealed class Closed : Curly, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return "}";
-        }
+        public override string Stringify() => StaticStringify;
+        public static string StaticStringify => "}";
     }
 }
 abstract class Brackets : SimpleToken { }
 internal abstract class Square : Brackets
 {
-    internal sealed class Open : Square
+    internal sealed class Open : Square, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return "[";
-        }
+        public override string Stringify() => StaticStringify; 
+        public static string StaticStringify => "[";
     }
-    internal sealed class Closed : Square
+    internal sealed class Closed : Square, IStaticStringify
     {
-        public override string Stringify()
-        {
-            return "]";
-        }
+        public override string Stringify() => StaticStringify; 
+        public static string StaticStringify => "]";
     }
 }
 

@@ -237,5 +237,39 @@ internal sealed class CastExpression : SimpleExpression
         return $"({TargetType.Stringify()}){Expression.Display()}";
     }
 }
+internal sealed class StructExpression : SimpleExpression
+{
+    public required Dictionary<Ident, Expression> FiendsExpressions { get; init; }
+    public required Ident Type { get; init; }
+    public override string Display()
+    {
+        StringBuilder sb = new();
+
+        sb.AppendLine("struct");
+        sb.AppendLine("{");
+
+        foreach(var (ident, expr) in FiendsExpressions)
+        {
+            sb.AppendLine($"{ident.Stringify()} = {expr.Display()},");
+        }
+
+        sb.AppendLine("}");
+
+        return sb.ToString();
+    }
+}
+internal sealed class FieldExpression : SimpleExpression
+{
+    /// <summary>
+    /// this expression should produce a struct value after evaluation
+    /// </summary>
+    public required Expression StructProducer { get; init; }
+    /// <summary>
+    /// this is the name of the struct field we want to access
+    /// </summary>
+    public required Ident FieldName { get; set; }
+
+    public override string Display() => $"{StructProducer.Display()}.{FieldName.Stringify()}";
+}
 
 

@@ -315,7 +315,8 @@ public sealed class Interpreter
             IsPublic = structDecl.IsPublic 
         };
         module.OwnedStructs.Add(structTy);
-        throw InterpreterException.UnsuportedInstruction(structDecl);
+        module.StructScope.Add(structTy);
+        //throw InterpreterException.UnsuportedInstruction(structDecl);
     }
     void UseModule(UseStmt useStmt, Module module)
     {
@@ -763,8 +764,41 @@ public sealed class Interpreter
             IncrementExpression ie => EvaluateIncrement(varScope, funScope, module, ie),
             DecrementExpression de => EvaluateDecrement(varScope, funScope, module, de),
             CastExpression ce => EvaluateCast(varScope, funScope, module, ce),
+            StructExpression se => EvaluateStruct(varScope, funScope, module, se),
+            FieldExpression fe => EvaluateField(varScope, funScope, module, fe),
             _ => throw new System.Diagnostics.UnreachableException(),
         };
+    }
+    Value EvaluateField(VariableScope varScope, 
+        FunctionScope funScope, 
+        Module module, 
+        FieldExpression fieldExpression)
+    {
+        var structValue = EvaluateExpression(varScope,
+            funScope,
+            module,
+            fieldExpression.StructProducer)
+            as StructValue ??
+            throw new InterpreterException("EVALUATE FIELD TODO 1");
+
+        return structValue.Fields.GetValueOrDefault(fieldExpression.FieldName) ??
+            throw new InterpreterException("EVALUATE FIELD TODO 2");
+    }
+    Value EvaluateStruct(VariableScope varScope, 
+        FunctionScope funScope, 
+        Module module, 
+        StructExpression structExpression)
+    {
+        var structTy = module.StructScope.GetValueOrDefault(structExpression.Type) ??
+            throw new InterpreterException(
+                $"No struct type `{structExpression.Type.Stringify()}` defined in this scope", structExpression);
+
+        Dictionary<Ident, Value> fields = new();
+        foreach(var (ident, expr) in structExpression.FiendsExpressions)
+        {
+            fields.Add(ident, EvaluateExpression(varScope, funScope, module, expr));
+        }
+        return structTy.New(fields);
     }
     Value EvaluateCast(VariableScope varScope,
         FunctionScope funScope,
@@ -1150,7 +1184,17 @@ public sealed class Interpreter
             throw new InterpreterException("Variable declaration cannot be public in this scope", var);
 
         Value value;
-        if (var.Expr is null) 
+        if(var is StructVariableDecl structVariableDecl)
+        {
+            var structTy = module.StructScope.GetValueOrDefault(structVariableDecl.Type) ??
+                throw new InterpreterException("STRUCT NOT FOUND TOOD");
+            value = structVariableDecl.Expr switch
+            {
+                Expression expr => EvaluateExpression(varScope, funScope, module, expr),
+                _ => structTy.DefaultValue()
+            };
+        }
+        else if (var.Expr is null) 
         {
             if (var is not TypedVariableDecl tvd)
                 throw new InterpreterException("Untyped variable declaration must contain asssignment", 
@@ -1177,6 +1221,13 @@ public sealed class Interpreter
         }
         SVariable newVariable = value switch
         {
+            StructValue structValue => new SStruct(structValue) 
+            { 
+                Ident = new Ident { Value = var.Name },
+                IsPublic = var.IsPublic,
+                Const = var.Const,
+                Value = structValue,
+            },
             ArrayValue arrayValue => new SArray(arrayValue.ValueTy, arrayValue.Size) 
             { 
                 Ident = new Ident { Value = var.Name },
@@ -1201,17 +1252,28 @@ public sealed class Interpreter
         Module module,
         Assignment ass)
     {
-
-
-
-        //var svar = FindSimpleVariable(ass.Left.Ident, scope);
         var val = EvaluateExpression(varScope, funScope, module, ass.Expr).Clone();
-
 
         if (ass.Left is ArrayIndexTarget arrayIndexTarget)
             AssignIndex(varScope, funScope, module, arrayIndexTarget, ass, val);
-        else if(ass.Left is IdentTarget identTarget)
+        else if (ass.Left is FieldTarget fieldTarget)
+            AssignField(varScope, funScope, module, fieldTarget, ass, val);
+        else if (ass.Left is IdentTarget identTarget)
             AssignVariable(varScope, identTarget, ass, val);
+    }
+    void AssignField(VariableScope varScope,
+        FunctionScope funScope,
+        Module module,
+        FieldTarget fieldTarget,
+        Assignment assignment,
+        Value assignedValue)
+    {
+        var fieldAccess = fieldTarget.FieldExpression;
+        var value = EvaluateExpression(varScope, funScope, module, fieldAccess.StructProducer) 
+            as StructValue ??
+            throw new InterpreterException("ASSIGN FIELD TODO 1");
+        var fieldTy = value.Fields[fieldAccess.FieldName].Ty;
+        value.Fields[fieldAccess.FieldName] = fieldTy.Cast(assignedValue);
     }
     void AssignIndex(VariableScope varScope, 
         FunctionScope funScope,

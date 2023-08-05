@@ -28,6 +28,10 @@ internal sealed class TypedVariableDecl : VariableDecl
 {
     public required Ty Type { get; init; }
 }
+internal sealed class StructVariableDecl : VariableDecl
+{
+    public required Ident Type { get; init; }
+}
 internal class ArrayDecl : Declaration
 {
     public required bool Const { get; set; }

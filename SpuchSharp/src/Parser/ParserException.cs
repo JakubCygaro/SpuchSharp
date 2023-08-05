@@ -21,9 +21,9 @@ public class ParserException: Exception
         : base($"{message}, expected: `{expected.Stringify()}` got: `{token.Stringify()}` " +
             $"{token.Location}") { }
     public static ParserException Expected<T>(Token? wrongToken)
-        where T: Token
+        where T: Token, IStaticStringify
     {
-        return new ExpectedTokenException(wrongToken);
+        return new ExpectedTokenException(T.StaticStringify, wrongToken);
     }
     public static ParserException PrematureEndOfInput(Location? location = default)
     {
@@ -77,8 +77,8 @@ public class DisallowedPubUsageException : ParserException
 }
 public class ExpectedTokenException : ParserException
 {
-    public ExpectedTokenException(Token? token)
-        : base($"Expected token, got `{token?.Stringify()}`", token?.Location) { }
+    public ExpectedTokenException(string tokenName, Token? token)
+        : base($"Expected token ` `, got `{token?.Stringify()}`", token?.Location) { }
 }
 public class UnexpectedTokenException : ParserException
 {

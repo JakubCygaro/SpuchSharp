@@ -153,6 +153,13 @@ internal static class ScopeExt
                 throw new InterpreterException("Tried indexing into a non array type", ident);
         throw InterpreterException.VariableNotFound(ident);
     }
+    public static T Find<T>(this Dictionary<Ident, T> dict, Ident ident)
+        where T: SObject
+    {
+        if (dict.TryGetValue(ident, out var arr))
+            return arr;
+        throw InterpreterException.VariableNotFound(ident);
+    }
 
 }
 public static class EnumerableExt

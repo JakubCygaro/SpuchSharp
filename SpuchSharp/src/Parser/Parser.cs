@@ -43,6 +43,9 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseKeyWordInstruction(keyWord, stream);
         if (firstToken is Ty type)
             return ParseDeclaration(type, stream);
+        if (firstToken is Ident i1 && stream.Peek() is Ident)
+            return ParseStructDeclaration(i1, (stream.Next() as Ident)!, stream);
+
         //if (firstToken is Square.Open squareOpen)
         //    return ParseArrayDeclaration(squareOpen, stream);
 
@@ -62,6 +65,34 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             return ParseExpression(stream);
         }
     }
+    private Instruction ParseStructDeclaration(Ident type, 
+        Ident varName,
+        TokenStream stream,
+        bool pub = false, 
+        bool @const = false)
+    {
+        Expression? expression;
+        var remainder = ReadToSemicolon(stream);
+        if (remainder.Count == 0)
+            expression = null;
+        else
+        {
+            var remainderStream = remainder.ToTokenStream();
+            if (remainderStream.Next() is not Assign)
+                throw ParserException.Expected<Assign>(remainderStream.Current);
+            expression = ParseExpression(remainderStream);
+        }
+
+        return new StructVariableDecl
+        {
+            Const = @const,
+            IsPublic = pub,
+            Location = type.Location,
+            Name = varName.Value,
+            Type = type,    
+            Expr = expression,
+        };
+    }
     private Assignment ParseAssignment(TokenStream stream)
     {
         (var unparsedTarget, var assignToken) = ReadToToken<AssignToken>(stream);
@@ -78,6 +109,10 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 {
                     Target = ix,
                     IndexExpression = ix.IndexExpression,
+                },
+            FieldExpression fe => new FieldTarget
+                {
+                    FieldExpression = fe,
                 },
             _ => throw new AssignmentTargetException(target.Location)
         };
@@ -212,20 +247,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     }
     private Ty ParseType(Ty firstToken, TokenStream stream)
     {
-        //if (firstToken is Ty normalTy)
-        //    return normalTy;
-        //else if (firstToken is Square.Open)
-        //{
-        //    var arrayTy = ParseType(stream);
-        //    if (stream.Next() is not Square.Closed)
-        //        throw ParserException.Expected<Square.Closed>(stream.Current);
-        //    return ArrayTy.ArrayOf(arrayTy);
-        //}
-        //else
-        //    throw new ParserException("Failed to parse to type", stream.Current);
-
-        //if (firstToken is not Ty asTy)
-        //    throw new ParserException("Failed to parse to type", stream.Current);
         Ty ret = firstToken;
         while(stream.Peek() is Square.Open)
         {
@@ -586,6 +607,18 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 };
                 break;
 
+            case Dot:
+                v1 = parsing.TakeOutAt(index + 1).RightOrThrow as IdentExpression ??
+                    throw ParserException.Expected<Ident>(null);
+                v2 = parsing.TakeOutAt(index - 1).RightOrThrow;
+                parsing[index - 1] = new FieldExpression
+                {
+                    FieldName = ((IdentExpression)v1).Ident,
+                    Location = op.Location,
+                    StructProducer = v2,
+                };
+                break;
+
             default:
                 throw new FailedToParseExpressionException($"Unable to parse expression with operator {op.Stringify()}", 
                     op.Location);
@@ -626,6 +659,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 ret.Add(op);
                 continue;
             }
+            if (token is Dot dot)
+            {
+                ret.Add(dot);
+                continue;
+            }
 
             if (token is Curly.Open)
             {
@@ -645,6 +683,16 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 simpleExpression = ParseCall(identExpression.Ident, insideParen);
                 //nextToken = stream.Next();
                 ret.Add(simpleExpression);
+                continue;
+            }
+            if (nextToken is Curly.Open && simpleExpression is IdentExpression structName)
+            {
+                ret.Add(new StructExpression
+                {
+                    FiendsExpressions = ParseStructFields(stream),
+                    Location = structName.Location,
+                    Type = structName.Ident,
+                });
                 continue;
             }
             if (nextToken is Square.Open/* && simpleExpression is IdentExpression identForIndex*/)
@@ -693,7 +741,27 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         return ret;
 
     }
-    
+    private Dictionary<Ident, Expression> ParseStructFields(TokenStream stream)
+    {
+        //var loc = stream.Current.Location;
+        var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);
+
+
+
+        Dictionary<Ident, Expression> fields = new();
+        foreach(var tokenStream in tokens)
+        {
+            //foreach(var chuj in tokenStream.Clone())
+            //    Console.WriteLine(chuj.Stringify());
+            if (tokenStream.Next() is not Ident fieldName)
+                throw ParserException.Expected<Ident>(tokenStream.Current);
+            if (tokenStream.Next() is not Assign)
+                throw ParserException.Expected<Assign>(tokenStream.Current);
+            fields.Add(fieldName, ParseExpression(tokenStream));
+        }
+        return fields;
+    }
+
     private ArrayExpression ParseArrayExpression(TokenStream stream)
     {
         var tokens = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Comma>(stream, 1);
@@ -831,22 +899,19 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     {
         if (stream.Next() is not Ident name)
             throw ParserException.Expected<Ident>(stream.Current);
-        var inside = ReadBetweenParen<Curly.Open, Curly.Closed>(stream);
+        var inside = ParseBetweenParenWithSeparator<Curly.Open, Curly.Closed, Semicolon>(stream);
         var builder = ImmutableDictionary.CreateBuilder<Ident, Ty>();
         //foreach(var t in inside.Clone())
         //{
         //    Console.WriteLine(t.Stringify());
         //}
 
-        while(inside.Next() is Token next)
+        foreach(var s in inside)
         {
-            if (next is not Ty type)
-                throw ParserException.UnexpectedToken(next);
-            if (inside.Next() is not Ident fieldName)
-                throw ParserException.UnexpectedToken(inside.Current);
-            if (inside.Next() is not Semicolon)
-                throw ParserException.Expected<Semicolon>(inside.Current);
-            builder.Add(fieldName, type);
+            var field = ParseFieldDeclaration(s.Next() ?? 
+                throw ParserException.PrematureEndOfInput(), 
+                s);
+            builder.Add(field.Item1, field.Item2);
         }
         return new StructDecl
         {
@@ -855,6 +920,16 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
             Fields = builder.ToImmutable(),
             Location = name.Location,
         };
+    }
+    (Ident, Ty) ParseFieldDeclaration(Token token, TokenStream stream,
+        bool pub = false, bool @const = false)
+    {
+        if (token is not Ty ty)
+            throw ParserException.UnexpectedToken(token);
+        var type = ParseType(ty, stream);
+        if (stream.Next() is not Ident ident)
+            throw ParserException.UnexpectedToken(stream.Current);
+        return (ident, type);
     }
 
 

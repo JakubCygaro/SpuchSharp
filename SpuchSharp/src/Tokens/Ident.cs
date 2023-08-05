@@ -5,8 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SpuchSharp.Tokens;
-public sealed class Ident : Token, IEquatable<Ident>, ICloneable<Ident>
+public sealed class Ident : Token, IEquatable<Ident>, ICloneable<Ident>, IStaticStringify
 {
+    public static string StaticStringify => "identifier";
     public required string Value { get; set; }
     public override string Stringify() => Value;
     public static Ident From(string text)
