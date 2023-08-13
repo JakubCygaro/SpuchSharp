@@ -409,6 +409,19 @@ internal sealed class ArrayTy : Ty
     new public static ArrayTy Any = new ArrayTy(Ty.Any);
 }
 
+internal class RuntimeTy : Ty
+{
+    public override Ident Ident => _ident;
+    private Ident _ident;
+
+    public RuntimeTy(Ident ident) => _ident = ident;
+
+    public override Value DefaultValue()
+    {
+        throw new InterpreterException("");
+    }
+}
+
 internal sealed class StructTy : Ty
 {
 
@@ -448,5 +461,4 @@ internal sealed class StructTy : Ty
     {
         return Ident.GetHashCode();
     }
-
 }

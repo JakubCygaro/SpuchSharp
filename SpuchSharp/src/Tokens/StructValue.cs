@@ -18,7 +18,10 @@ internal class StructValue : Value
 
     public override Value Clone()
     {
-        throw new NotImplementedException();
+        return new StructValue(_structTy)
+        {
+            Fields = Fields.ToDictionary(fnt => fnt.Key, fnt => fnt.Value.Clone()),
+        };
     }
 
     public override string Stringify()

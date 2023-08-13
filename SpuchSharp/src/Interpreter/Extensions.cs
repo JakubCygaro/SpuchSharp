@@ -11,10 +11,16 @@ using FunctionScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Interpreting.SFunction>;
 using StructScope =
     System.Collections.Generic.Dictionary<SpuchSharp.Tokens.Ident, SpuchSharp.Tokens.StructTy>;
+using SpuchSharp.Instructions;
 
 namespace SpuchSharp.Interpreting.Ext;
 internal static class ScopeExt
 {
+    public static Ty? FindTy<T>(this Dictionary<Ident, T> map, Ident ident)
+        where T : Ty
+    {
+        return map.GetValueOrDefault(ident);
+    }
     /// <summary>
     /// Clones a <c>VariableScope</c>
     /// </summary>

@@ -992,9 +992,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         {
             if (stream.Next() is not Ident ident)
                 throw new UnexpectedTokenException(stream.Current);
-            //if (stream.Next() is not Round.Open)
-            //    throw new ParserException("Invalid token error", stream.Current);
-            //parse function args
             var arguments = ParseFunctionArguments(stream);
 
             Ty type = Ty.Void;
@@ -1006,16 +1003,6 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
                 type = ParseType(typeName, stream);
                 next = stream.Next();
             }
-            //else if(next is Square.Open)
-            //{
-            //    var type2 = stream.Next() as Ty ??
-            //        throw new ParserException("Incorrect function array return type", next);
-            //    type = ArrayTy.ArrayOf(type2);
-            //    next = stream.Next();
-            //    if (next is not Square.Closed)
-            //        throw new ParserException("Incorrect function array return type", next);
-            //    next = stream.Next();
-            //}
             if (next is not Curly.Open)
                 throw new UnexpectedTokenException(stream.Current);
             var instructions = ParseFunctionInstructions(stream);
@@ -1047,7 +1034,7 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
     {
         var @ref = false;
         var @const = false;
-        Ty type;
+        Optional<Ty, Ident> type;
 
         var nextToken = stream.Next();
         if(nextToken is Const)
@@ -1063,6 +1050,11 @@ internal sealed class Parser : IEnumerable<Instruction>, IEnumerator<Instruction
         if (nextToken is Ty ty)
         {
             type = ParseType(ty, stream);
+            nextToken = stream.Next();
+        }
+        else if (nextToken is Ident i)
+        {
+            type = i;
             nextToken = stream.Next();
         }
         else 

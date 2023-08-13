@@ -10,8 +10,8 @@ namespace SpuchSharp.Parsing;
 internal sealed class FunArg : Token
 {
     public override string Stringify() =>
-        $"Function Argument Token: {Ty.Stringify()} {Name.Stringify()} ref: {Ref}";
-    public required Ty Ty { get; init; }
+        $"Function Argument Token: {((Token)Ty.Value).Stringify()} {Name.Stringify()} ref: {Ref}";
+    public required Optional<Ty, Ident> Ty { get; init; }
     public required Ident Name { get; init; }
     public required bool Ref { get; init; }
     public required bool Const { get; init; }

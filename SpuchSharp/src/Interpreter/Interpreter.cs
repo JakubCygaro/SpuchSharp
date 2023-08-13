@@ -1014,7 +1014,20 @@ public sealed class Interpreter
             ?? throw new InterpreterException("An array index must be of integer type", expr.IndexExpression);
         return arrayValue[index];
     }
-    
+
+    Ty ProduceType(Optional<Ty, Ident> optional, Module module)
+    {
+        if (optional.HasLeft)
+            return optional.LeftOrThrow;
+        else
+            return FindRuntimeType(optional.RightOrThrow, module);
+    }
+    Ty FindRuntimeType(Ident ident, Module module)
+    {
+        return module.StructScope.FindTy(ident) ??
+            throw new InterpreterException($"No type `{ident.Stringify()}` defined in this scope");
+    }
+
     Value EvaluateCall(VariableScope varScope,
         FunctionScope funScope,
         Module module,
@@ -1048,15 +1061,17 @@ public sealed class Interpreter
 
         foreach(var (argument, index) in call.Args.Select((x, i) => (x, i)))
         {
+            Ty ty;
             if (targetFunction.Args[index].Ref)
             {
                 if(argument is not IdentExpression identExpression)
                     throw new InterpreterException("A ref argument can only be a variable name", argument);
                 var variable = varScope.FindVariable(identExpression.Ident);
-                if (variable.Value.Ty != targetFunction.Args[index].Ty)
+                ty = ProduceType(targetFunction.Args[index].Ty, module);
+                if (variable.Value.Ty != ty)
                     throw new InterpreterException($"Mismatched argument type, " +
-                        $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
-                        $"but got a variable of type {variable.Value.Ty.Stringify()}", argument);
+                        $"expected variable of type {ty.Stringify()} " +
+                        $"but got a variable of type {ty.Stringify()}", argument);
 
                 if (targetFunction.Args[index].Const)
                 {
@@ -1076,12 +1091,13 @@ public sealed class Interpreter
                 continue;
             }
             var value = EvaluateExpression(varScope, funScope, module, argument);
-            if (targetFunction.Args[index].Ty != value.Ty)
+            ty = ProduceType(targetFunction.Args[index].Ty, module);
+            if (ty != value.Ty)
                 throw new InterpreterException($"Mismatched argument type, " +
-                        $"expected variable of type {targetFunction.Args[index].Ty.Stringify()} " +
-                        $"but got a variable of type {value.Ty.Stringify()}", argument);
+                        $"expected variable of type {ty.Stringify()} " +
+                        $"but got a variable of type {ty.Stringify()}", argument);
 
-            if (targetFunction.Args[index].Ty is ArrayTy arrayTy)
+            if (ty is ArrayTy arrayTy)
             {
                 var valueAsArray = value as ArrayValue
                     ?? throw new InterpreterException("Type mismatch, call argument was not an array", 
@@ -1092,6 +1108,18 @@ public sealed class Interpreter
                 {
                     Ident = targetFunction.Args[index].Name,
                     Value = valueAsArray,//.Clone()
+                    IsPublic = false,
+                    Const = targetFunction.Args[index].Const,
+                });
+            }
+            else if(ty is StructTy structTy)
+            {
+                var valueAsStruct = value as StructValue
+                    ?? throw new InterpreterException("Type mismatch, call argument was not a struct",
+                    call.Args[index]);
+                newVariables.Add(targetFunction.Args[index].Name, new SStruct((StructValue)valueAsStruct.Clone())
+                {
+                    Ident = targetFunction.Args[index].Name,
                     IsPublic = false,
                     Const = targetFunction.Args[index].Const,
                 });
